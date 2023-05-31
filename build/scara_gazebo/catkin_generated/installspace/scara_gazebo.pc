@@ -1,0 +1,8 @@
+prefix=/home/jc-merlab/duc_repo/install
+
+Name: scara_gazebo
+Description: Description of scara_gazebo
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

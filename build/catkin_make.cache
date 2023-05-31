@@ -1,0 +1,2 @@
+panda_test:scara_command:scara_control:scara_description:scara_gazebo
+-DCATKIN_DEVEL_PREFIX=/home/jc-merlab/duc_repo/devel -DCMAKE_INSTALL_PREFIX=/home/jc-merlab/duc_repo/install -G Unix Makefiles

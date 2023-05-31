@@ -1,0 +1,8 @@
+prefix=/home/jc-merlab/duc_repo/install
+
+Name: scara_control
+Description: Description of scara_control
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 
