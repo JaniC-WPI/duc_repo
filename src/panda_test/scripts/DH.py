@@ -7,16 +7,19 @@ class Kinematics():
 
     def __init__(self, DH_params_home, joint_var_types, mdh=False):
         """
-        DH_params_home: Dict(
-                joint_name: [a, d_offset, alpha, theta_offset])
-        joints_list: List of joint names from base to end-effector
+        DH_params_home
+        joints_var_types: List of joint types from base to end-effector
+            'theta': revolute joint
+            'd': prismatic joint
+            'alpha'
+            'a'
         """
         self.DH_params_home = np.array(deepcopy(DH_params_home))
         self.mdh = mdh  # Modified DH
         self.joint_mat = []
         # add joints' values to the DH table
         for j in joint_var_types:
-            if j == 't':
+            if j == 'theta':
                 self.joint_mat.append([0, 0, 0, 1])
             elif j == 'd':
                 self.joint_mat.append([0, 1, 0, 0])
@@ -88,7 +91,8 @@ if __name__ == '__main__':
         [0.088,      0,   (math.pi/2),   0],
         [0.1,      0.1070,   0,          0]]
 
-    joint_types = ['t', 't', 't', 't', 't', 't', 't', ' ']
+    joint_types = ['theta', 'theta', 'theta', 'theta', 'theta',
+                   'theta', 'theta', ' ']
 
     joint_angles = (0.040000191676486996, 0.015665356921891246, 0.004531416875103389, 0.20470613453454778, 0.0040978403291731524, -1.145515951463083, 0.0034248409741799435, -0.017448595150700186, -0.010164490335088594, 0)
 
