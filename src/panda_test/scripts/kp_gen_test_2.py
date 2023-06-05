@@ -11,14 +11,15 @@ import numpy as np
 import cv2
 from cv_bridge import CvBridge
 import json
+import os
 from Robot import RobotTest, PandaTest, ScaraTest
 
 
 # prefix to the image and json files names
 int_stream = '000000'
-folder = 5
+folder = 7
 # folder for main dataset
-file_path = f'/home/user/Workspace/WPI/Summer2023/ws/src/panda_test/data/kp_test_images/{folder}/'
+file_path = f'/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/kp_test_images/{folder}/'
 
 
 # homogenous tranformation from 4X1 translation and
@@ -37,6 +38,10 @@ def transform(tvec, quat):
 class KpDetection():
 
     def __init__(self, robot: RobotTest, iterations=None):
+        """
+        Initializes test object that runs for [iterations] tests.
+        If [iterations] is not provided, run indefinitely.
+        """
         self.robot = robot
 
         rospy.init_node('image_pix_gen', anonymous=True)
@@ -268,5 +273,13 @@ class KpDetection():
 
 
 if __name__ == '__main__':
+    # Create folder if not exists
+    if not os.path.exists(file_path):
+        rospy.logwarn('Data folder not found. Creating one...')
+        os.mkdir(file_path)
+
+    # Run tests
+
     # KpDetection(PandaTest(), iterations=100).run()
-    KpDetection(ScaraTest(), iterations=100).run()
+    KpDetection(PandaTest()).run()
+    # KpDetection(ScaraTest(), iterations=100).run()
