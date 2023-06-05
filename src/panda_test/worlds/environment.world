@@ -12,7 +12,8 @@
     <include>
       <uri>model://tableAV</uri>
       <name>Wooden_Table</name>
-      <pose>0.55 0 -1.015 0 0 0.0</pose>
+      <!-- <pose>0.55 0 -1.015 0 0 0.0</pose> -->
+      <pose>0.55 0 0 0 0 0.0</pose>
       <static>true</static>
     </include>
   </world>
