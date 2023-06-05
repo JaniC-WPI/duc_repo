@@ -1,1 +1,4 @@
 src/panda_test/data
+build
+devel
+__pycache__
