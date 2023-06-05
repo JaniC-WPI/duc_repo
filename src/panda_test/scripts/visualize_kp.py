@@ -1,10 +1,12 @@
+#!/usr/bin/env python3
+
 import cv2
 import json
 import os
 
 int_stream = '000000'
-folder = 5
-data_dir = f'/home/user/Workspace/WPI/Summer2023/ws/src/panda_test/data/kp_test_images/{folder}/'
+folder = 7
+data_dir = f'/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/kp_test_images/{folder}/'
 
 if __name__ == '__main__':
     data_files = os.listdir(data_dir)  # all files in the data folder
@@ -36,5 +38,6 @@ if __name__ == '__main__':
                                       color=(0, 255, 0), thickness=1)
 
             cv2.imshow(f'image{j}', image)
-    cv2.waitKey(0)
+            cv2.waitKey(0)
+            cv2.destroyWindow(f'image{j}')
     cv2.destroyAllWindows()
