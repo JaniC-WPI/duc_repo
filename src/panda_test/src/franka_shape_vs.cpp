@@ -5,9 +5,9 @@
 #include <vector>
 
 // #include "encoderless_vs/control_points.h"
-#include "encoderless_vision_dl/energyFuncMsg.h"
-#include "encoderless_vision_dl/franka_control_points.h"
-#include "encoderless_vision_dl/vel_start.h"
+#include "panda_test/energyFuncMsg.h"
+#include "panda_test/franka_control_points.h"
+#include "panda_test/vel_start.h"
 
 #include "std_msgs/Float32.h"
 #include "std_msgs/Float64.h"
@@ -109,8 +109,8 @@ int main(int argc, char **argv){
 
     // ros::service::waitForService("binary_image_output", 1000);
 
-    ros::ServiceClient energyClient = n.serviceClient<encoderless_vision_dl::energyFuncMsg>("computeEnergyFunc");
-    ros::ServiceClient cp_client = n.serviceClient<encoderless_vision_dl::franka_control_points>("franka_control_service");
+    ros::ServiceClient energyClient = n.serviceClient<panda_test::energyFuncMsg>("computeEnergyFunc");
+    ros::ServiceClient cp_client = n.serviceClient<panda_test::franka_control_points>("franka_control_service");
 
     // Initializing status msg
     std_msgs::Int32 status;
@@ -187,7 +187,7 @@ int main(int argc, char **argv){
     std_msgs::Float64MultiArray control_points; // msg to store control points for current curve
 
     // Declaring msg for control points service call
-    encoderless_vision_dl::franka_control_points cp_msg;
+    panda_test::franka_control_points cp_msg;
     cp_msg.request.input = 1;
 
     float t = 1/rate; // time in seconds, used for integrating angular velocity
@@ -363,7 +363,7 @@ int main(int argc, char **argv){
 
     // Compute Jacobian
     it = 0;
-    encoderless_vision_dl::energyFuncMsg msg;
+    panda_test::energyFuncMsg msg;
     while(it < window){
         // Service request data
         msg.request.gamma = gamma;

@@ -8,17 +8,26 @@ project(panda_test)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  roscpp
   rospy
+  std_msgs
+  rosbag
+  cv_bridge
+  image_transport
+  message_generation
+  sensor_msgs
 )
 
+find_package(Eigen3)
+
 ## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
+find_package(Boost REQUIRED COMPONENTS system)
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-# catkin_python_setup()
+catkin_python_setup()
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -52,11 +61,19 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+FILES
+energyFuncMsg.srv
+franka_control_points.srv
+franka_bin_img.srv
+franka_cp_goal.srv
+# dream_goal_img.srv
+# dream_kp.srv
+# dream_img.srv
+dl_goal_img.srv
+dl_img.srv
+vel_start.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -66,10 +83,12 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
+  sensor_msgs  # Or other packages containing msgs
+ )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -102,8 +121,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES panda_test
-#  CATKIN_DEPENDS rospy
+  LIBRARIES panda_test
+#  CATKIN_DEPENDS roscpp rospy
 #  DEPENDS system_lib
 )
 
@@ -122,6 +141,76 @@ include_directories(
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/panda_test.cpp
 # )
+
+# add_executable(franka_energy_func_node src/franka_compute_energy_functional.cpp)
+# add_dependencies(franka_energy_func_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(franka_energy_func_node ${catkin_LIBRARIES})
+
+add_executable(franka_shape_energy_func_node src/franka_shape_compute_energy_functional.cpp)
+add_dependencies(franka_shape_energy_func_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(franka_shape_energy_func_node ${catkin_LIBRARIES})
+
+# add_executable(servo_controller_node src/servo_controller.cpp)
+# add_dependencies(servo_controller_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(servo_controller_node ${catkin_LIBRARIES})
+
+# add_executable(vsbot_record_node src/recorder.cpp)
+# add_dependencies(vsbot_record_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(vsbot_record_node ${catkin_LIBRARIES})
+
+# add_executable(redundant_record_node src/redundant_recorder.cpp)
+# add_dependencies(redundant_record_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(redundant_record_node ${catkin_LIBRARIES})
+
+# add_executable(vsbot_vis_node src/visualization.cpp)
+# add_dependencies(vsbot_vis_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(vsbot_vis_node ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+
+# add_executable(shape_servo_controller_node src/shape_servo_controller.cpp)
+# add_dependencies(shape_servo_controller_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(shape_servo_controller_node ${catkin_LIBRARIES} ${ARMADILL_LIBRARIES})
+
+# add_executable(time_recorder_node src/time_recorder.cpp)
+# add_dependencies(time_recorder_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(time_recorder_node ${catkin_LIBRARIES})
+
+
+add_executable(franka_joint_pub src/franka_joint_pub.cpp)
+add_dependencies(franka_joint_pub ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(franka_joint_pub ${catkin_LIBRARIES})
+
+# add_executable(franka_adaptive_vs_node src/franka_adaptive_vs.cpp)
+# add_dependencies(franka_adaptive_vs_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(franka_adaptive_vs_node ${catkin_LIBRARIES})
+
+
+add_executable(franka_shape_record_node src/franka_shape_vs_recorder.cpp)
+add_dependencies(franka_shape_record_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(franka_shape_record_node ${catkin_LIBRARIES})
+
+add_executable(franka_shape_controller_node src/franka_shape_vs.cpp)
+add_dependencies(franka_shape_controller_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(franka_shape_controller_node ${catkin_LIBRARIES})
+
+# add_executable(redundant_shape_controller_node src/redundant_shape_servo_controller.cpp)
+# add_dependencies(redundant_shape_controller_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(redundant_shape_controller_node ${catkin_LIBRARIES})
+
+add_executable(franka_dl_controller_node src/franka_dl_vs.cpp)
+add_dependencies(franka_dl_controller_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(franka_dl_controller_node ${catkin_LIBRARIES})
+
+add_executable(franka_dl_energy_func_node src/franka_dl_compute_energy_functional.cpp)
+add_dependencies(franka_dl_energy_func_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(franka_dl_energy_func_node ${catkin_LIBRARIES})
+
+add_executable(franka_dl_record_node src/franka_dl_vs_recorder.cpp)
+add_dependencies(franka_dl_record_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(franka_dl_record_node ${catkin_LIBRARIES})
+
+# add_executable(franka_multiref_shape_vs_node src/franka_multiref_shape_vs.cpp)
+# add_dependencies(franka_multiref_shape_vs_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(franka_multiref_shape_vs_node ${catkin_LIBRARIES})
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -157,10 +246,20 @@ include_directories(
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-# catkin_install_python(PROGRAMS
+catkin_install_python(PROGRAMS
 #   scripts/my_python_script
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+  # scripts/image_capture.py
+  # scripts/python_skeleton/astar.py
+  # scripts/python_skeleton/franka_bin_svc_server.py
+  # scripts/python_skeleton/franka_cp_svc_server.py
+  # scripts/python_skeleton/franka_goal_bin_svc.py
+  # scripts/python_skeleton/franka_goal_cp_svc_rqst.py
+  # scripts/python_skeleton/franka_goal_cp_svc.py
+  # scripts/python_skeleton/franka_goal_img_pub.py
+  # scripts/python_skeleton/franka_shape_plot.py
+
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html

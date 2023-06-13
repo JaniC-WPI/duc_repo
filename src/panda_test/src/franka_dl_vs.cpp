@@ -5,10 +5,10 @@
 #include <vector>
 
 // #include "encoderless_vs/control_points.h"
-#include "encoderless_vision_dl/energyFuncMsg.h"
+#include "panda_test/energyFuncMsg.h"
 // #include "encoderless_vs/franka_control_points.h"
-#include "encoderless_vision_dl/dl_img.h"
-#include "encoderless_vision_dl/vel_start.h"
+#include "panda_test/dl_img.h"
+#include "panda_test/vel_start.h"
 
 #include "std_msgs/Float32.h"
 #include "std_msgs/Float64.h"
@@ -102,12 +102,12 @@ int main(int argc, char **argv){
 
     // ros::service::waitForService("binary_image_output", 1000);
 
-    ros::ServiceClient energyClient = n.serviceClient<encoderless_vision_dl::energyFuncMsg>("computeEnergyFunc");
+    ros::ServiceClient energyClient = n.serviceClient<panda_test::energyFuncMsg>("computeEnergyFunc");
     std::cout<<"Compute Energy func is getting called ?"<<std::endl;
     // ros::ServiceClient cp_client = n.serviceClient<encoderless_vs::franka_control_points>("franka_control_service");
 
     // Added client for dream kp generation
-    ros::ServiceClient kp_client = n.serviceClient<encoderless_vision_dl::dl_img>("franka_kp_dl_service");
+    ros::ServiceClient kp_client = n.serviceClient<panda_test::dl_img>("franka_kp_dl_service");
     std::cout<<"franka kp service is getting called ?"<<std::endl;
 
     // Initializing status msg
@@ -204,7 +204,7 @@ int main(int argc, char **argv){
 
     // Declaring msg for control points service call
     // encoderless_vs::franka_control_points cp_msg;
-    encoderless_vision_dl::dl_img cp_msg;
+    panda_test::dl_img cp_msg;
     cp_msg.request.input = 1;
 
     float t = 1/rate; // time in seconds, used for integrating angular velocity
@@ -395,7 +395,7 @@ int main(int argc, char **argv){
 
     // Compute Jacobian
     it = 0;
-    encoderless_vision_dl::energyFuncMsg msg;
+    panda_test::energyFuncMsg msg;
     while(it < window){
         // Service request data
         msg.request.gamma = gamma;

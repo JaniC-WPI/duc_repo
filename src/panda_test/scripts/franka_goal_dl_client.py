@@ -5,7 +5,7 @@ import numpy as np
 import cv2
 from std_msgs.msg import Float64MultiArray
 from sensor_msgs.msg import Image
-from encoderless_vision_dl.srv import dl_img, dl_imgResponse
+from panda_test.srv import dl_img, dl_imgResponse
 from scipy.interpolate import splev
 from cv_bridge import CvBridge, CvBridgeError
 

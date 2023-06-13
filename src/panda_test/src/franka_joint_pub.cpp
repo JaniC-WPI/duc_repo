@@ -27,7 +27,8 @@ int main(int argc, char **argv){
     ros::Subscriber joint_vel_sub = n.subscribe("joint_vel", 1, jointVelCallback);
     
     // Publishers
-    ros::Publisher franka_joint_vel_pub = n.advertise<std_msgs::Float64MultiArray>("/joint_group_velocity_controller/command",1);
+    ros::Publisher franka_joint2_vel_pub = n.advertise<std_msgs::Float64>("/panda/joint2_velocity_controller/command",1);
+    ros::Publisher franka_joint4_vel_pub = n.advertise<std_msgs::Float64>("/panda/joint4_velocity_controller/command",1);
 
     // Read params from yaml
     
@@ -39,16 +40,16 @@ int main(int argc, char **argv){
     // Rate Loop
     while(ros::ok()){
         
-        std_msgs::Float64MultiArray franka_joint_vel;
+        // std_msgs::Float64MultiArray franka_joint_vel;
         
         // Comment - This block is to activate 2 joints
-        franka_joint_vel.data.push_back(0);
-        franka_joint_vel.data.push_back(j1_vel);    // joint 2 on Franka
-        franka_joint_vel.data.push_back(0);     
-        franka_joint_vel.data.push_back(j2_vel);    // joint 4 on Franka
-        franka_joint_vel.data.push_back(0);
-        franka_joint_vel.data.push_back(0);
-        franka_joint_vel.data.push_back(0);
+        // franka_joint_vel.data.push_back(0);
+        // franka_joint_vel.data.push_back(j1_vel);    // joint 2 on Franka
+        // franka_joint_vel.data.push_back(0);     
+        // franka_joint_vel.data.push_back(j2_vel);    // joint 4 on Franka
+        // franka_joint_vel.data.push_back(0);
+        // franka_joint_vel.data.push_back(0);
+        // franka_joint_vel.data.push_back(0);
 
 
         // Comment - This block is to activate 3 joints in planar
@@ -70,7 +71,8 @@ int main(int argc, char **argv){
         // franka_joint_vel.data.push_back(0);
         // franka_joint_vel.data.push_back(0);
 
-        franka_joint_vel_pub.publish(franka_joint_vel);
+        franka_joint2_vel_pub.publish(j1_vel);
+        franka_joint4_vel_pub.publish(j2_vel);
 
         ros::spinOnce();
         r.sleep();

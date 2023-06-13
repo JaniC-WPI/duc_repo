@@ -14,9 +14,9 @@ import os
 from PIL import Image as Img
 from datetime import datetime
 from os.path import expanduser
-from utils import DataPrePro
-from encoderless_vision_dl.srv import dl_img, dl_imgResponse
-from visualization import visualize
+# from utils import DataPrePro
+from panda_test.srv import dl_img, dl_imgResponse
+# from visualization import visualize
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # weights_path = '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_weights_ld_b3_e25.pth'
@@ -94,7 +94,7 @@ def dl_image_service(img):
         # uncomment the next line for 4 feature points
         # indices = [0,1,2,3,4,5,6,8]
         # uncomment the next line for 3 feature points
-        indices = [0,1,3,4,5]
+        indices = [0,1,2,3,4,5]
         keypoints_ = [keypoints_[i] for i in indices]
 
         kp_x = []

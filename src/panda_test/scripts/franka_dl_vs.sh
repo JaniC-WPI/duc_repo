@@ -1,14 +1,15 @@
 #!/bin/bash
 mkdir ~/.ros/raw &&
 # mkdir ~/.ros/d_raw &&
-cd ~/mer_lab/ros_ws
+cd ~/duc_repo
 
 source devel/setup.bash
 
-roslaunch encoderless_vision_dl franka_dl_vs.launch &&
+# roslaunch panda_test franka_sim.launch
+roslaunch panda_test franka_dl_vs.launch &&
 # roslaunch encoderless_vs franka_shape_multiref_vs.launch &&
-roslaunch encoderless_vision_dl franka_dl_plot.launch &&
+roslaunch panda_test franka_dl_plot.launch &&
 
-cd ~/mer_lab/ros_ws/src/projects/encoderless_vision_dl/scripts/
+cd ~/duc_repo/src/panda_test/scripts/
 
 ./franka_export_dl_results.sh
