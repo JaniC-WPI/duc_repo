@@ -5,7 +5,7 @@ import json
 import os
 
 int_stream = '000000'
-folder = 7
+folder = 8
 data_dir = f'/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/kp_test_images/{folder}/'
 
 if __name__ == '__main__':

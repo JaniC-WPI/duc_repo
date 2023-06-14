@@ -10,7 +10,7 @@ class WorkspacePublisher:
     Cover the workspace of a robot using velocity control.
     """
 
-    def __init__(self, resolutions, joint_limits, v_max, timestep):
+    def __init__(self, resolutions, joint_limits, v_max, timestep, sync=True):
         """
         resolutions: List of data intervals per joint (i.e. num_data_points-1)
         joint_limits: List of tuples representing lower and upper
@@ -23,6 +23,7 @@ class WorkspacePublisher:
         """
         self.resolutions = np.array(resolutions)
         self.joint_limits = joint_limits
+        self.sync = sync
 
         self.num_joints = len(self.resolutions)
 
@@ -79,7 +80,7 @@ class WorkspacePublisher:
         while not rospy.is_shutdown() and not done:
             rospy.loginfo(f'Iteration {t}')
             # Wait for trigger from kp_gen
-            while not self.triggered:
+            while self.sync and not self.triggered:
                 pass
             self.triggered = False
             # Decide which joint to move this iteration
@@ -105,7 +106,7 @@ class WorkspacePublisher:
             # For resolutions R, the counter system is similar to 
             # base-R number system.
             self.counters[i] = self.counters_next[i]
-            if i == self.num_joints - 1:
+            if i == self.num_joints - 1:  # When 
                 self.counters_next[i] += 1
             for j in range(i, -1, -1):
                 if self.counters_next[j] >= self.resolutions[j]:
@@ -129,10 +130,13 @@ class WorkspacePublisher:
 
 if __name__ == '__main__':
     # Test
-    resolutions = [5] * 3
-    joint_limits = [(-1.7628, 1.7628),
+    resolutions = [15] * 3
+    # joint_limits = [(-1.7628, 1.7628),
+    #                 (-2.754, -0.075),
+    #                 (-0.0175, 2.053)]
+    joint_limits = [(-1.7628, 1.2),
                     (-2.754, -0.075),
-                    (-0.0175, 2.053)]
+                    (-0.0175, 1.7)]
     v_max = [2.1, 2.1, 2.58]
     timestep = 0.2
-    WorkspacePublisher(resolutions, joint_limits, v_max, timestep).run()
+    WorkspacePublisher(resolutions, joint_limits, v_max, timestep, sync=False).run()

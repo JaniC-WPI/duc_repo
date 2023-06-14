@@ -18,7 +18,7 @@ from Robot import RobotTest, PandaTest, ScaraTest
 
 # prefix to the image and json files names
 int_stream = '000000'
-folder = 7
+folder = 8
 # folder for main dataset
 file_path = f'/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/kp_test_images/{folder}/'
 
