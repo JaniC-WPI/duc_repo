@@ -4,7 +4,7 @@ import os
 def create_video(image_folder, video_name, fps):
     images = [img for img in sorted(os.listdir(image_folder)) if img.endswith(".png")]
     # Sort the images by name
-    # images.sort()
+    images.sort()
 
     frame = cv2.imread(os.path.join(image_folder, images[0]))
     height, width, layers = frame.shape
