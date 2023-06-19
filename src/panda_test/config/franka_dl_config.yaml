@@ -28,7 +28,7 @@ vsbot :
 # Deep learning parameters
   deeplearning:
     # weights_path: '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_weights_ld_b1_e30.pth'
-    weights_path: '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_weights_ld_b1_e25_v2.pth'
+    weights_path: '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_weights_sim_b1_e25_v1.pth'
 
 # Jacobian Estimation Parameters ------------------------------------
   estimation:
@@ -51,7 +51,7 @@ vsbot :
     goal_pos_y: 206
     # window: 20 # window size
     # lam: -10.0e-4 # servoing gain
-    lam: -0.3 # for 2 joints
+    lam: -0.5 # for 2 joints
     jacobian: [7,13,-21,17,19,-23,11,-29,31,11,3,17]
     # gains: [-0.3, -0.3, -0.3, -0.3, -0.3, -0.3] # for 2 joints
     # gains: [-1.0, -1.0, 1.0, 1.0, -0.5, -0.5, -0.6, -0.6, -0.3, -0.3, -0.3, -0.3] # for 3 joints

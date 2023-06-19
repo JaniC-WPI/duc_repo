@@ -4,8 +4,9 @@
 #include "std_msgs/Float64MultiArray.h"
 
 
-float j1_vel = 0.0;
-float j2_vel = 0.0;
+
+std_msgs::Float64 j1_vel;
+std_msgs::Float64 j2_vel;
 // float j3_vel = 0.0; // used only in case of 3 joints
 
 // This node acts as an interface between the Control algorithm and hardware. 
@@ -13,8 +14,8 @@ float j2_vel = 0.0;
 
 void jointVelCallback(const::std_msgs::Float64MultiArray &msg){
 
-    j1_vel = msg.data.at(0);
-    j2_vel = msg.data.at(1);
+    j1_vel.data = msg.data.at(0);
+    j2_vel.data = msg.data.at(1);
     // j3_vel = msg.data.at(2); //comment/unc0mment depending on number of joints used
 }
 
@@ -30,6 +31,8 @@ int main(int argc, char **argv){
     ros::Publisher franka_joint2_vel_pub = n.advertise<std_msgs::Float64>("/panda/joint2_velocity_controller/command",1);
     ros::Publisher franka_joint4_vel_pub = n.advertise<std_msgs::Float64>("/panda/joint4_velocity_controller/command",1);
 
+    // ros::Publisher franka_joint_vel_pub = n.advertise<std_msgs::Float64MultiArray>("/joint_group_velocity_controller/command",1);
+
     // Read params from yaml
     
     float rate;
@@ -39,8 +42,6 @@ int main(int argc, char **argv){
     
     // Rate Loop
     while(ros::ok()){
-        
-        // std_msgs::Float64MultiArray franka_joint_vel;
         
         // Comment - This block is to activate 2 joints
         // franka_joint_vel.data.push_back(0);
@@ -73,6 +74,8 @@ int main(int argc, char **argv){
 
         franka_joint2_vel_pub.publish(j1_vel);
         franka_joint4_vel_pub.publish(j2_vel);
+
+        // franka_joint_vel_pub.publish(franka_joint_vel);
 
         ros::spinOnce();
         r.sleep();
