@@ -5,5 +5,5 @@
 
 
 <!-- PLotting node -->
-    <node name="franka_dl_vs_plots" pkg="encoderless_vision_dl" type="franka_dl_plot_3f.py" output="screen" respawn="false" />
+    <node name="franka_dl_vs_plots" pkg="panda_test" type="franka_dl_plot_3f.py" output="screen" respawn="false" />
 </launch>

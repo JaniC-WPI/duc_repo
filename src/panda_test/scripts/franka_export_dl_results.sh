@@ -37,6 +37,6 @@ mv ~/.ros/goal_raw ~/Pictures/Dl_Exps/dl_vs/servoing/exps/$exp_no/
 # mv ~/.ros/goal_d_raw ~/Pictures/Dl_Exps/dl_vs/servoing/exps/$exp_no/
 # mv ~/.ros/d_raw ~/Pictures/Dl_Exps/dl_vs/servoing/exps/$exp_no/
 
-cp ~/mer_lab/ros_ws/src/projects/panda_test/config/franka_dl_config.yaml  ~/Pictures/Dl_Exps/dl_vs/servoing/exps/$exp_no/
-cp ~/mer_lab/ros_ws/src/projects/panda_test/config/dl_features.yaml  ~/Pictures/Dl_Exps/dl_vs/servoing/exps/$exp_no/
+cp ~/duc_repo/src/panda_test/config/franka_dl_config.yaml  ~/Pictures/Dl_Exps/dl_vs/servoing/exps/$exp_no/
+cp ~/duc_repo/src/panda_test/config/dl_features.yaml  ~/Pictures/Dl_Exps/dl_vs/servoing/exps/$exp_no/
 

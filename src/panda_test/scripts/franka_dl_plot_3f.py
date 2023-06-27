@@ -69,7 +69,7 @@ def main(args):
     ax2.legend(['x1','y1','x2','y2', 'x3', 'y3'],loc='upper center',
     bbox_to_anchor=(0.5, -0.30), fancybox=True, shadow=True, ncol=len(err_data[0]), fontsize=12)
     
-    plt.savefig('feature_error.png', 4=300)
+    plt.savefig('feature_error.png', dpi=300)
     Image.open('feature_error.png').convert("RGB").save('feature_error.jpg','JPEG')
 
     # plt.savefig('/home/jc-merlab/Pictures/Dl_Exps/dl_vs/servoing/exps_latest_planar_02_21_2023/4/feature_error.png', dpi=400)
