@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+"""
+Predicts using R-CNN model in real time.
+"""
+
 import os
 import rospy
 from sensor_msgs.msg import Image, CameraInfo
@@ -67,8 +71,17 @@ def visualize(image, bboxes, keypoints, image_original=None, bboxes_original=Non
 
 
 class KpDLVisualizer():
+    """
+    Visualize prediction from KP detection network in real time.
+    """
 
     def __init__(self, model_path, im_plt, save_img=False, img_dir_path=None):
+        """
+        model_path: str: path to keypoint detection model
+        im_plt: unused
+        save_img: save the prediction to file
+        img_dir_path: if [save_img] is True, this will be the path to save images
+        """
         self.model_path = model_path
         self.save_img = save_img
         self.img_dir_path = img_dir_path
@@ -127,7 +140,7 @@ class KpDLVisualizer():
                 self.i += 1
             else:
                 cv2.imshow('Camera', img)
-                cv2.waitKey(30)
+                cv2.waitKey(30)  # 30 milisec
             # self.im_plt.set_data(img)
 
     def get_image(self, image: Image):
@@ -167,10 +180,10 @@ class KpDLVisualizer():
 
 
 if __name__ == '__main__':
-    model_path = '/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/trained_models/keypointsrcnn_weights_ld_b1_e25_v1.pth'
+    model_path = '/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/trained_models/keypointsrcnn_weights_ld_b1_e25_v9.pth'
 
     # DL prediction image data
-    folder = 8
+    folder = 9
     pred = 1
     file_path = f'/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/dl_prediction_result/{folder}/{pred}/'
     # Create folder if not exists
@@ -194,7 +207,7 @@ if __name__ == '__main__':
     im_plt = None
     # plt.ion()
 
-    KpDLVisualizer(model_path=model_path, im_plt=im_plt, save_img=True, img_dir_path=file_path).run()
+    KpDLVisualizer(model_path=model_path, im_plt=im_plt, save_img=False, img_dir_path=file_path).run()
 
     # plt.ioff()
     # plt.show()

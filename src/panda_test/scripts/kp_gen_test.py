@@ -1,51 +1,27 @@
 #!/usr/bin/env python3
+"""
+This version has factored out the robot-related code.
+"""
 
 import rospy
 import tf
 from sensor_msgs.msg import JointState, Image, CameraInfo
-from std_msgs.msg import Float64
+from std_msgs.msg import Bool
 from scipy.spatial.transform import Rotation as R
-import math
 import numpy as np
 import cv2
 from cv_bridge import CvBridge
 import json
-import random
-from DH import Kinematics
+import os
+from Robot import RobotTest, PandaTest, ScaraTest, UR5Test
+from visualize_kp import visualize
 
-
-# Panda
-DH_params_home = [
-    [0,      0.333,             0,   0],
-    [0,          0,  -(math.pi/2),   0],
-    [0,      0.316,   (math.pi/2),   0],
-    [0.0825,     0,   (math.pi/2),   0],
-    [-0.0825, 0.384,  -(math.pi/2),  0],
-    [0,          0,   (math.pi/2),   0],
-    [0.088,      0,   (math.pi/2),   0]]
-    # [0.1,      0.1070,   0,          0]]
-joint_types = ['t', 't', 't', 't', 't', 't', 't']
-mdh = True
-joint_states_topic = '/panda/joint_states'
-base_link = '/panda_link0'
-target_link = '/panda_link7'
-
-# SCARA
-# DH_params_home = [
-#     [0,       0.05, 0,        0],
-#     [0.425,   0.45, 0,        0],
-#     [0.345,  -0.06, 3.14,  0]]
-# joint_types = ['t', 't', 'd']
-# mdh = False
-# joint_states_topic = '/scara/joint_states'
-# base_link = '/base_link'
-# target_link = '/link3'
 
 # prefix to the image and json files names
 int_stream = '000000'
-folder = 4
+folder = 9
 # folder for main dataset
-file_path = f'/home/user/Workspace/WPI/Summer2023/ws/src/panda_test/data/kp_test_images/{folder}/'
+file_path = f'/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/kp_test_images/{folder}/'
 
 
 # homogenous tranformation from 4X1 translation and
@@ -61,82 +37,37 @@ def transform(tvec, quat):
     return ht
 
 
-def func_post_panda_pos():
-    # Post-test function (runs after every test)
-    # moves the robot to a random configuration with joints 2 and 4
-    pub2 = rospy.Publisher(
-            "/panda/joint2_position_controller/command", Float64, queue_size=1)
-    pub4 = rospy.Publisher(
-            "/panda/joint4_position_controller/command", Float64, queue_size=1)
-    joint2 = random.uniform(-1, 1)
-    joint4 = random.uniform(-1, 1)
-    pub2.publish(Float64(joint2))
-    pub4.publish(Float64(joint4))
-    # rospy.sleep(1)  # wait for the joints to reach targets
-
-
-def func_post_panda_vel():
-    # Post-test function (runs after every test)
-    # moves the robot to a random configuration with joints 2, 4, 6
-
-    # Using static variables for storing previous joint values
-    if not hasattr(func_post_panda_vel, "pubs"):
-        func_post_panda_vel.pubs = [
-            rospy.Publisher(
-                f'/panda/joint{i*2}_velocity_controller/command',
-                Float64, queue_size=1)
-            for i in range(1, 4)
-        ]
-
-    if not hasattr(func_post_panda_vel, "joints"):
-        func_post_panda_vel.joints = [1, 1, -1]
-
-    for i in range(3):
-        # New velocity has opposite sign with previous value to prevent
-        # reaching joint limits
-        func_post_panda_vel.joints[i] = \
-            math.copysign(random.uniform(-1, 1),
-                          -func_post_panda_vel.joints[i])
-        func_post_panda_vel.pubs[i].publish(
-            Float64(func_post_panda_vel.joints[i]))
-
-
-def func_pre_panda_vel():
-    # Pre-test function (runs before every test)
-    # stops the joints
-    pub2 = rospy.Publisher(
-            "/panda/joint2_velocity_controller/command", Float64, queue_size=1)
-    pub4 = rospy.Publisher(
-            "/panda/joint4_velocity_controller/command", Float64, queue_size=1)
-    pub6 = rospy.Publisher(
-            "/panda/joint6_velocity_controller/command", Float64, queue_size=1)
-    pub2.publish(Float64(0))
-    pub4.publish(Float64(0))
-    pub6.publish(Float64(0))
-
-
-def func_post_scara():
-    # Post-test function (runs after every test)
-    # moves the robot to a random configuration
-    pubs = [
-        rospy.Publisher(
-            f'/scara/joint{i}_position_controller/command',
-            Float64, queue_size=1)
-        for i in range(1, 4)
-    ]
-    joints = [random.uniform(-1, 1) for i in range(3)]
-    for i in range(3):
-        pubs[i].publish(Float64(joints[i]))
-    rospy.sleep(6)  # wait for the joints to reach targets
-
-
 class KpDetection():
+    """
+    Generates data for keypoint detection application.
+    This class only records data (images and keypoints) but not move the robot.
+    Therefore, a separate code, such as workspace_control.py, is needed to move
+    the robot to different configurations.
 
-    def __init__(self, iterations=None, func_init=None, func_pre=None,
-                 func_post=None, func_end=None):
+    This class allow both synchronous and asynchronous data recording. In sync
+    mode, KpDetection class will sync with the movement code.
+    """
+
+    def __init__(self, robot: RobotTest,
+                 iterations=None, sync=True, rate=10,
+                 remove_dup=False,
+                 screen_output=False,
+                 no_kp_gen=False):
+        """
+        robot: a RobotTest object
+        iterations: Initializes test object that runs for [iterations] tests.
+            If [iterations] is not provided, run indefinitely.
+        sync: if True, this class will synchronize with movement code.
+        rate: data taking rate in Hz
+        remove_dup: if True, skip keypoints that are at the same position
+        screen_output: if True, display the image with keypoint
+        no_kp_gen: if True, do not save data to files
+        """
+        self.robot = robot
+
         rospy.init_node('image_pix_gen', anonymous=True)
 
-        rospy.Subscriber(joint_states_topic, JointState,
+        rospy.Subscriber(self.robot.joint_states_topic, JointState,
                          self.world_coords_tf, queue_size=1)
         rospy.Subscriber(
             "/camera/color/image_raw", Image, self.get_image, queue_size=1)
@@ -145,21 +76,31 @@ class KpDetection():
             queue_size=1)
         self.tf_listener = tf.TransformListener()
 
-        self.kinematics = Kinematics(DH_params_home, joint_types, mdh=mdh)
-        self.num_joints = len(DH_params_home)
+        # Communication with workspace_publisher
+        rospy.Subscriber('/workspace_publisher/movement_done', Bool,
+                         self.wsp_movement_done, queue_size=1)
+        rospy.Subscriber('/workspace_publisher/completed', Bool,
+                         self.wsp_completed, queue_size=1)
+
+        self.movement_done = True
+        self.completed = False
+
         # camera extrinsics
         self.camera_ext = None
         self.camera_ext_trans = None
         self.camera_ext_rot = None
 
         self.iterations = iterations  # number of tests
-        self.func_init = func_init  # Runs once before tests
-        self.func_pre = func_pre  # Runs before every test
-        self.func_post = func_post  # Runs after every test
-        self.func_end = func_end  # Runs once after all tests
 
         self.ready = False  # Ready for next test
         self.world_coords_trig = False  # Determine if there is new data
+
+        self.remove_dup = remove_dup
+        self.screen_output = screen_output
+        self.sync = sync
+        self.rate = rate
+
+        self.no_kp_gen = no_kp_gen
 
         # From original kp_detection.py
         self.bridge = CvBridge()
@@ -179,12 +120,10 @@ class KpDetection():
         self.joint_angle = joints.position
         self.joint_vel = joints.velocity
 
-        # panda
-        ht_list = self.kinematics.forward(self.joint_angle[2:])
-        # scara
-        # ht_list = self.kinematics.forward(self.joint_angle)
+        ht_list = self.robot.forward(self.joint_angle)
 
         tmp = np.transpose([0, 0, 0, 1])
+        # Using local variable to prevent shared data bug
         world_coords = [np.dot(np.eye(4), tmp)]
         world_coords.extend([np.dot(ht, tmp) for ht in ht_list])
         self.world_coords = world_coords
@@ -192,9 +131,6 @@ class KpDetection():
         # Synchronize - unset flag to signal new data
         if self.world_coords_trig and self.ros_img is not None:
             self.world_coords_trig = False
-
-        if len(self.world_coords) < self.num_joints:
-            rospy.logerr('Invalid length of [self.world_coords]')
 
     def kp_gen(self, flag, img: Image, id):
         """
@@ -219,8 +155,9 @@ class KpDetection():
                     self.image_pix[i][1]-10,
                     self.image_pix[i][0]+10,
                     self.image_pix[i][1]+10
-                ]
-                for i in range(len(self.image_pix))
+                ] for i in range(len(self.image_pix))
+                if not self.remove_dup or
+                    (self.remove_dup and i not in self.robot.duplicated_joints)
             ],
             "keypoints": [
                 [
@@ -229,10 +166,14 @@ class KpDetection():
                         self.image_pix[i][1],
                         1
                     ]
-                ]
-                for i in range(len(self.image_pix))
+                ] for i in range(len(self.image_pix))
+                if not self.remove_dup or
+                    (self.remove_dup and i not in self.robot.duplicated_joints)
             ],
         }
+
+        # if len(data["bboxes"]) < self.robot.num_joints:
+        #     rospy.logerr('Invalid length of [data]')
 
         # save [data] to json file
         json_obj = json.dumps(data, indent=4)
@@ -240,6 +181,10 @@ class KpDetection():
         with open(filename, "w") as outfile:
             outfile.write(json_obj)
         rospy.loginfo(f'kp_gen(): Saved json {filename}')
+
+        if self.screen_output:
+            visualize(cv_img, data['keypoints'], data['bboxes'],
+                      int(1/self.rate*0.75*1000))  # wait time = 0.75 * 1/rate
 
     def camera_intrinsics(self, camera_info: CameraInfo):
         """
@@ -262,7 +207,7 @@ class KpDetection():
         """
         (self.camera_ext_trans, self.camera_ext_rot) = \
             self.tf_listener.lookupTransform(
-                '/camera_optical_link', base_link, rospy.Time())
+                '/camera_optical_link', self.robot.base_link, rospy.Time())
         self.camera_ext = transform(self.camera_ext_trans, self.camera_ext_rot)
 
     def image_pixels(self, camera_ext, world_coords):
@@ -296,6 +241,12 @@ class KpDetection():
             self.camera_extrinsics()
             self.ros_img = image
 
+    def wsp_movement_done(self, msg: Bool):
+        self.movement_done = msg.data
+
+    def wsp_completed(self, msg: Bool):
+        self.completed = msg.data
+
     def run(self):
         """
         Runs [self.iterations] tests
@@ -313,25 +264,32 @@ class KpDetection():
         iterations_str = self.iterations if self.iterations is not None \
             else 'inf'
 
+        rate = rospy.Rate(self.rate)
+
         # Runs init function
-        if self.func_init is not None:
+        if self.robot.func_init is not None:
             rospy.loginfo('Running func_init()')
-            self.func_init()
+            self.robot.func_init()
             rospy.loginfo('func_init() completed')
 
         # for t in range(self.iterations):
         t = 0
-        rate = rospy.Rate(5)
         while not rospy.is_shutdown() and \
-                (self.iterations is None or t < self.iterations):
+                ((self.iterations is None and not self.completed) or
+                 (self.iterations is not None and t < self.iterations)):
 
             rospy.loginfo(f'Running test #{t+1}/{iterations_str}')
 
-            # Runs [self.func_pre] before each test
-            if self.func_pre is not None:
+            # Runs [robot.func_pre] before each test
+            if self.robot.func_pre is not None:
                 rospy.loginfo('Running func_pre()')
-                self.func_pre()
+                self.robot.func_pre()
                 rospy.loginfo('func_pre() completed')
+
+            # Wait until all robot movements done
+            while self.sync and not self.movement_done:
+                pass
+            self.movement_done = False
 
             # Initialize new test
             self.ros_img = None
@@ -341,37 +299,51 @@ class KpDetection():
             while self.ros_img is None:
                 pass
             # Wait until get new world_coord:
-            while self.world_coords_trig:
+            while not self.no_kp_gen and self.world_coords_trig:
                 pass
 
             rospy.loginfo('Generating keypoints')
 
             # Generates keypoints
-            self.image_pix = self.image_pixels(
+            if not self.no_kp_gen:
+                self.image_pix = self.image_pixels(
                     self.camera_ext, self.world_coords)
-            self.kp_gen(self.control_flag, self.ros_img, t)
+                self.kp_gen(self.control_flag, self.ros_img, t)
 
-            # Runs [self.func_post] after each test
-            if self.func_post is not None:
+            # Runs [robot.func_post] after each test
+            if self.robot.func_post is not None:
                 rospy.loginfo('Running func_post()')
-                self.func_post()
+                self.robot.func_post()
                 rospy.loginfo('func_post() completed')
 
-            rate.sleep()
+            if not self.sync:
+                rate.sleep()
             t += 1
 
         # Runs end function
-        if self.func_end is not None:
+        if self.robot.func_end is not None:
             rospy.loginfo('Running func_end()')
-            self.func_end()
+            self.robot.func_end()
             rospy.loginfo('func_end() completed')
 
         rospy.spin()
 
 
 if __name__ == '__main__':
-    KpDetection(iterations=100, func_pre=func_pre_panda_vel,
-                func_post=func_post_panda_vel,
-                func_end=func_pre_panda_vel) \
-        .run()
-    # KpDetection(10, func_post=func_post_scara).run()
+    # Create folder if not exists
+    if not os.path.exists(file_path):
+        rospy.logwarn('Data folder not found. Creating one...')
+        os.mkdir(file_path)
+
+    # Run tests
+
+    # KpDetection(PandaTest(), iterations=100).run()
+    # KpDetection(PandaTest(), remove_dup=True).run()
+
+    # robot = UR5Test()
+    # kp = KpDetection(robot, sync=True)
+    # robot.tf_listener = tf.TransformListener()
+    # kp.run()
+    KpDetection(UR5Test(), screen_output=False, no_kp_gen=True).run()
+
+    # KpDetection(ScaraTest(), iterations=100).run()
