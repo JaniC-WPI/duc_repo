@@ -2,7 +2,9 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="panda">
   <xacro:macro name="panda_arm" params="arm_id:='panda' description_pkg:='panda_test' connected_to:='' xyz:='0 0 0' rpy:='0 0 0'">
 
-
+    <gazebo>
+      <self_collide>1</self_collide>
+    </gazebo>
 
     <xacro:unless value="${not connected_to}">
       <joint name="${arm_id}_joint_${connected_to}" type="fixed">

@@ -7,16 +7,19 @@ class Kinematics():
 
     def __init__(self, DH_params_home, joint_var_types, mdh=False):
         """
-        DH_params_home
+        DH_params_home: DH parameters at home configuration
         joints_var_types: List of joint types from base to end-effector
             'theta': revolute joint
             'd': prismatic joint
             'alpha'
             'a'
+        mdh: Modified DH or Standard DH
         """
         self.DH_params_home = np.array(deepcopy(DH_params_home))
         self.mdh = mdh  # Modified DH
+        self.joint_var_types = joint_var_types
         self.joint_mat = []
+        self.require_joint_padding = False  # Whether using intermediate frames
         # add joints' values to the DH table
         for j in joint_var_types:
             if j == 'theta':
@@ -25,10 +28,26 @@ class Kinematics():
                 self.joint_mat.append([0, 1, 0, 0])
             else:
                 self.joint_mat.append([0, 0, 0, 0])
+                self.require_joint_padding = True
         self.joint_mat = np.array(self.joint_mat)
 
     def forward(self, joint_vars):
+        """
+        Forward kinematics.
+        """
         T_old = np.eye(4)
+        # joint_vars_padded = []
+        # if not self.require_joint_padding:
+        #     joint_vars_padded = joint_vars
+        # else:
+        #     j = 0  # index of joint_vars
+        #     for i in range(len(self.joint_var_types)):
+        #         if self.joint_var_types[i] not in ['theta', 'd']:
+        #             joint_vars_padded.append(0)
+        #         else:
+        #             joint_vars_padded.append(joint_vars[j])
+        #             j += 1
+        #
         DH_params = self.DH_params_home + \
             (np.diag(joint_vars) @ self.joint_mat)
 
@@ -53,6 +72,9 @@ class Kinematics():
         return T_cumulative
 
     def t_matrix(self, joint_params):
+        """
+        Calculates transformation matrix from joint parameters.
+        """
         a, d, alpha, theta = joint_params
         ct = math.cos(theta)
         st = math.sin(theta)

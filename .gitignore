@@ -2,3 +2,4 @@ src/panda_test/data
 build
 devel
 __pycache__
+.ipynb_checkpoints

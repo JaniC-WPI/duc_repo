@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 import rospy
+import tf
 import numpy as np
 from std_msgs.msg import Bool, Float64
+from Robot import RobotTest, UR5Test, PandaTest2D
 
 
 class WorkspacePublisher:
@@ -10,19 +12,25 @@ class WorkspacePublisher:
     Cover the workspace of a robot using velocity control.
     """
 
-    def __init__(self, resolutions, joint_limits, v_max, timestep):
+    def __init__(self, robot, resolutions, joint_limits, v_max, timesteps,
+                 sync=True):
         """
+        robot: A RobotTest object
         resolutions: List of data intervals per joint (i.e. num_data_points-1)
         joint_limits: List of tuples representing lower and upper
             joint limits. E.g. [(min1, max1), (min2, max2), ...].
         v_max: Maximum velocity of each joint
-        timestep: Default, will be used if not exceeding velocity limit.
+        timesteps: Default, will be used if not exceeding velocity limit.
+
+        sync: Synchronize with image-taking code (such as kp_gen_test.py)
 
         Joint order is taken into account for resolutions and joint_limits.
         The last joint is assumed to be the fastest.
         """
+        self.robot = robot
         self.resolutions = np.array(resolutions)
         self.joint_limits = joint_limits
+        self.sync = sync
 
         self.num_joints = len(self.resolutions)
 
@@ -32,15 +40,15 @@ class WorkspacePublisher:
 
         # Determine velocities for joints 1..n
         #       v = q * data_rate / resolution
+        if self.robot.initial_vel_sign is None:
+            ivs = np.ones(self.robot.ws_get_num_joints())
+        else:
+            ivs = self.robot.initial_vel_sign
         self.velocities = np.minimum(
-            self.motion_ranges / self.resolutions / timestep,
-            v_max)
+            self.motion_ranges / self.resolutions / timesteps,
+            v_max) * ivs
         self.time_steps = \
             self.motion_ranges / self.resolutions / self.velocities
-
-        print(self.motion_ranges)
-        print(self.time_steps)
-        print(self.velocities)
 
         rospy.init_node('workspace_publisher', anonymous=True)
 
@@ -56,15 +64,9 @@ class WorkspacePublisher:
         self.completed_pub = rospy.Publisher(
             '/workspace_publisher/completed', Bool, queue_size=1)
 
-        self.pubs = [
-            rospy.Publisher(
-                f'/panda/joint{i*2}_velocity_controller/command',
-                Float64, queue_size=1)
-            for i in range(1, 4)
-        ]
-
-        self.counters = np.array([-1, -1, -1])
-        self.counters_next = np.array([-1, -1, 0])
+        self.counters = np.array([-1] * self.robot.ws_get_num_joints())
+        self.counters_next = np.array([-1] * self.robot.ws_get_num_joints())
+        self.counters_next[-1] = 0
 
         rospy.sleep(2)
 
@@ -73,13 +75,16 @@ class WorkspacePublisher:
             self.triggered = msg.data
 
     def run(self):
+        """
+        Runs the workspace publisher.
+        """
         done = False
         rospy.loginfo('Workspace publisher running...')
         t = 1  # Iteration counter
         while not rospy.is_shutdown() and not done:
             rospy.loginfo(f'Iteration {t}')
             # Wait for trigger from kp_gen
-            while not self.triggered:
+            while self.sync and not self.triggered:
                 pass
             self.triggered = False
             # Decide which joint to move this iteration
@@ -94,18 +99,20 @@ class WorkspacePublisher:
                 f'Counters {self.counters}\tNext Counters {self.counters_next}')
 
             # Move the joint 1 step
-            self.pubs[i].publish(Float64(self.velocities[i]))
+            # self.pubs[i].publish(Float64(self.velocities[i]))
+            self.robot.ws_publish_joint(i, self.velocities[i])
             rospy.sleep(self.time_steps[i])
-            self.pubs[i].publish(Float64(0))
+            # self.pubs[i].publish(Float64(0))
+            self.robot.ws_publish_joint(i, 0)
             rospy.sleep(0.1)
             # Signal kp_gen node
             self.movement_done_pub.publish(Bool(True))
 
             # Increment counters
-            # For resolutions R, the counter system is similar to 
+            # For resolutions R, the counter system is similar to
             # base-R number system.
             self.counters[i] = self.counters_next[i]
-            if i == self.num_joints - 1:
+            if i == self.num_joints - 1:  # When 
                 self.counters_next[i] += 1
             for j in range(i, -1, -1):
                 if self.counters_next[j] >= self.resolutions[j]:
@@ -128,11 +135,26 @@ class WorkspacePublisher:
 
 
 if __name__ == '__main__':
-    # Test
-    resolutions = [5] * 3
-    joint_limits = [(-1.7628, 1.7628),
+    # # Panda Test
+    robot = PandaTest2D()
+    # resolutions = [4, 4, 3, 3, 3, 3]
+    resolutions = [5, 5, 1]
+    joint_limits = [(-1.7628, 1.2),
                     (-2.754, -0.075),
-                    (-0.0175, 2.053)]
-    v_max = [2.1, 2.1, 2.58]
-    timestep = 0.2
-    WorkspacePublisher(resolutions, joint_limits, v_max, timestep).run()
+                    (-0.0175, 1.7)]
+    # joint_limits = PandaTest.joint_limits[:-1]
+    v_max = [0.1, 0.1, 0.1]
+    # v_max = [2.1, 2.1, 2.1, 2.1, 2.5, 2.5]
+    # timesteps = 0.2
+    timesteps = np.array([8, 6, 5])
+    WorkspacePublisher(robot, resolutions, joint_limits, v_max, timesteps, sync=False).run()
+
+    # UR5 Test
+    # robot = UR5Test()
+    # resolutions = [10] * 3
+    # joint_limits = [UR5Test.joint_limits[2],
+    #                 UR5Test.joint_limits[3],
+    #                 UR5Test.joint_limits[4]]
+    # v_max = [3] * 3
+    # timesteps = 0.2
+    # WorkspacePublisher(robot, resolutions, joint_limits, v_max, timesteps, sync=False).run()
