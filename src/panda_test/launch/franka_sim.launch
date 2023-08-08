@@ -17,6 +17,7 @@
 
     <!-- <param name="robot_description" command="$(find xacro)/xacro $(find active_vision)/desc/franka_camera.xacro" /> -->
     <rosparam file="$(find panda_test)/config/encoderless_control.yaml" command="load" />
+    <rosparam file="$(find panda_test)/config/franka_dl_config.yaml" command="load" />
 
     <!-- Launch controllers -->
     <node name="stopped_panda_arm_controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
@@ -32,6 +33,11 @@
     <!-- <node name="kinematics_test" pkg="panda_test" type="kinematics_test.py" output="screen"/> -->
     <!-- <node name="kp_gen_test" pkg="panda_test" type="kp_gen_test.py" output="screen"/> -->
     <!-- <node name="workspace_pub" pkg="panda_test" type="workspace_control.py" output="screen"/> -->
+<<<<<<< HEAD
+=======
+    <node name="update_pose" pkg="panda_test" type="start_goal_pos.py" output="screen"/>
+
+>>>>>>> d624ee8b78dc245be28a1357aa85b5715b08f4fc
   
     <!-- Launch controller for robot joints -->
     <!-- <rosparam file="$(find active_vision)/config/panda_control.yaml" command="load"/> -->

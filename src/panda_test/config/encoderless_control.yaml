@@ -51,34 +51,34 @@ panda:                    #useful if you use a namespace for the robot
     joint1_position_controller:
         type: velocity_controllers/JointPositionController
         joint: panda_joint1
-        pid: {p: 6000.0, i: 0.00, d: 50}
+        pid: {p: 100000.0, i: 0.00, d: 50}
 
     joint2_position_controller:
         type: velocity_controllers/JointPositionController
         joint: panda_joint2
-        pid: {p: 6000.0, i: 0.00, d: 50}
+        pid: {p: 100000.0, i: 0.00, d: 50}
         
     joint3_position_controller:
         type: velocity_controllers/JointPositionController
         joint: panda_joint3
-        pid: {p: 6000.0, i: 0.00, d: 50}
+        pid: {p: 100000.0, i: 0.00, d: 50}
 
     joint4_position_controller:
         type: velocity_controllers/JointPositionController
         joint: panda_joint4
-        pid: {p: 6000.0, i: 0.00, d: 50}
+        pid: {p: 100000.0, i: 0.00, d: 50}
     
     joint5_position_controller:
         type: velocity_controllers/JointPositionController
         joint: panda_joint5
-        pid: {p: 6000.0, i: 0.00, d: 50}
+        pid: {p: 100000.0, i: 0.00, d: 50}
 
     joint6_position_controller:
         type: velocity_controllers/JointPositionController
         joint: panda_joint6
-        pid: {p: 6000.0, i: 0.00, d: 50}
+        pid: {p: 100000.0, i: 0.00, d: 50}
         
     joint7_position_controller:
         type: velocity_controllers/JointPositionController
         joint: panda_joint7
-        pid: {p: 6000.0, i: 0.00, d: 50}            
+        pid: {p: 100000.0, i: 0.00, d: 50}            
