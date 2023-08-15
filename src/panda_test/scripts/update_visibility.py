@@ -26,7 +26,7 @@ def update_visibility(image, keypoints):
             keypoints[i][0][2] = 1
         else:
             keypoints[i][0][2] = 0
-        return keypoints
+        print(image[v,u])
 
 
 if __name__ == '__main__':
@@ -36,15 +36,17 @@ if __name__ == '__main__':
     json_files = sorted([f for f in data_files if f.endswith('.json')])
 
     # use cv2 to plot each image with keypoints and bounding boxes
-    for j in range(len(json_files)):
+    for json_file in json_files:
         # process file names
-        new_stream = int_stream[0:-len(str(j))]
-        json_path = os.path.join(data_dir, new_stream + str(j) + '.json')
+        # new_stream = int_stream[0:-len(str(j))]
+        # json_path = os.path.join(data_dir, new_stream + str(j) + '.json')
+        json_path = os.path.join(data_dir, json_file)
 
         with open(json_path, 'r') as f_json:
             data = json.load(f_json)
             image = cv2.imread(os.path.join(data_dir, data['image_rgb']))
-            data['keypoints'] = update_visibility(image, data['keypoints'])
+            update_visibility(image, data['keypoints'])
+            print(f'Updated visibility for file {json_file}')
 
         with open(json_path, 'w') as f_json:
             json_obj = json.dumps(data, indent=4)

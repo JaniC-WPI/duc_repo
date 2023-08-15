@@ -38,15 +38,19 @@ if __name__ == '__main__':
     json_files = sorted([f for f in data_files if f.endswith('.json')])
 
     # use cv2 to plot each image with keypoints and bounding boxes
-    for j in range(len(json_files)):
+    for json_file in json_files:
         # process file names
-        new_stream = int_stream[0:-len(str(j))]
-        json_path = os.path.join(data_dir, new_stream + str(j) + '.json')
+        # new_stream = int_stream[0:-len(str(j))]
+        # json_path = os.path.join(data_dir, new_stream + str(j) + '.json')
+        json_path = os.path.join(data_dir, json_file)
 
         with open(json_path, 'r') as f_json:
             data = json.load(f_json)
             image = cv2.imread(os.path.join(data_dir, data['image_rgb']))
+            # print kp visibility
+            kp_vis = [kp[0][2] for kp in data['keypoints']]
+            print(kp_vis)
 
-            visualize(image, data['keypoints'], data['bboxes'], 0, f'image{j}')
-            cv2.destroyWindow(f'image{j}')
+            visualize(image, data['keypoints'], data['bboxes'], 0, json_file)
+            cv2.destroyWindow(json_file)
     cv2.destroyAllWindows()

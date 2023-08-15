@@ -11,7 +11,7 @@ int_stream = '000000'
 folder = 9
 # data_dir = f'/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/kp_test_images/{folder}/'
 # data_dir = f'/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/sim_marker/raw_mask/'
-data_dir = '/home/duk3/Workspace/WPI/Summer2023/ws/lama/predict_data/07_26_2023/tmp'
+data_dir = '/home/duk3/Workspace/WPI/Summer2023/ws/lama/predict_data/08_11_2023/raw_and_mask/'
 
 
 if __name__ == '__main__':

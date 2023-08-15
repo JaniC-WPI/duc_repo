@@ -200,10 +200,11 @@ def main():
     # Increase the occlusion size
     min_occlusion_size = 20
     max_occlusion_size = 80
-    num_occlusions = 3
+    num_occlusions = 2
+    v = 2
 
     input_folder = '/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/kp_test_images/8/'
-    output_folder = f'/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/occluded_results_mi{min_occlusion_size}_ma{max_occlusion_size}_n{num_occlusions}/'
+    output_folder = f'/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/occluded_results_mi{min_occlusion_size}_ma{max_occlusion_size}_n{num_occlusions}_{v}/'
 
     images, filenames, all_keypoints = load_images(input_folder)
 
