@@ -10,22 +10,26 @@ import cv2
 import json
 import os
 
-src_dirs = [
-    '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train1/raw',
-    '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train2/raw',
-    '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train3/raw',
-    '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train4/raw',
-    '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train5/raw',
-    '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train6/raw',
-    '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train7/raw',
-    '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train8/raw',
-    '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train9/raw',
-    '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train10/raw',
-]
-dest_dir = '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train/'
-
-
 if __name__ == '__main__':
+    # src_dirs = [
+    #     '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train1/raw',
+    #     '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train2/raw',
+    #     '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train3/raw',
+    #     '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train4/raw',
+    #     '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train5/raw',
+    #     '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train6/raw',
+    #     '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train7/raw',
+    #     '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train8/raw',
+    #     '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train9/raw',
+    #     '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train10/raw',
+    # ]
+
+    # Combine all folders in root_src_dir:
+    root_src_dir = ''
+    src_dirs = [os.path.join(root_src_dir, d) for d in os.listdir(root_src_dir)]
+    src_dirs = [d for d in src_dirs if os.path.isdir(d)]
+    dest_dir = '/home/duk3/Workspace/WPI/Summer2023/ws/lama/raw_robot/dataset/train/train/'
+
     for src_dir in src_dirs:
         print(f'Processing src_dir: {src_dir}')
         src_data_files = os.listdir(src_dir)  # all files in the data folder
