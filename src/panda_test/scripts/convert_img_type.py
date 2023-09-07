@@ -7,13 +7,13 @@ import os
 
 int_stream = '000000'
 folder = 9
-data_dir = '/home/duk3/Workspace/WPI/Summer2023/ws/lama/predict_data/08_11_2023/raw_and_mask'
+data_dir = '/home/jc-merlab/lama/results/08_22_2023/rcnn'
 
 
 if __name__ == '__main__':
     data_files = os.listdir(data_dir)  # all files in the data folder
     # Ending with...
-    in_files = sorted([f for f in data_files if f.endswith('.jpg')])
+    in_files = sorted([f for f in data_files if f.endswith('.png')])
 
     for f in in_files:
         # process file names
@@ -21,11 +21,11 @@ if __name__ == '__main__':
         name, ext = os.path.splitext(f)
 
         # To .png
-        new_img_filename = name + '.png'
+        # new_img_filename = name + '.png'
         # To .jpg
         # new_img_filename = name + '.jpg'
         # To .rgb.jpg
-        # new_img_filename = name[:-4] + '.jpg'
+        new_img_filename = name[:-5] + '.jpg'
 
         print(f'Renaming {f} to {new_img_filename}')
         image = Image.open(os.path.join(data_dir, f))
