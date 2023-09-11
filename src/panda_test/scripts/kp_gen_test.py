@@ -13,15 +13,16 @@ import cv2
 from cv_bridge import CvBridge
 import json
 import os
-from Robot import RobotTest, PandaTest, ScaraTest, UR5Test
+from Robot import RobotTest, PandaReal2D
 from visualize_kp import visualize
+from datetime import datetime
 
 
 # prefix to the image and json files names
 int_stream = '000000'
 folder = 9
 # folder for main dataset
-file_path = f'/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/kp_test_images/{folder}/'
+root_data_dir = '/home/jc-merlab/Pictures/panda_data'
 
 
 # homogenous tranformation from 4X1 translation and
@@ -38,32 +39,35 @@ def transform(tvec, quat):
 
 
 class KpDetection():
-    """
-    Generates data for keypoint detection application.
-    This class only records data (images and keypoints) but not move the robot.
-    Therefore, a separate code, such as workspace_control.py, is needed to move
-    the robot to different configurations.
-
-    This class allow both synchronous and asynchronous data recording. In sync
-    mode, KpDetection class will sync with the movement code.
-    """
 
     def __init__(self, robot: RobotTest,
+                 save_dir: str = None,
                  iterations=None, sync=True, rate=10,
                  remove_dup=False,
                  screen_output=False,
                  no_kp_gen=False):
         """
-        robot: a RobotTest object
-        iterations: Initializes test object that runs for [iterations] tests.
-            If [iterations] is not provided, run indefinitely.
-        sync: if True, this class will synchronize with movement code.
-        rate: data taking rate in Hz
-        remove_dup: if True, skip keypoints that are at the same position
-        screen_output: if True, display the image with keypoint
-        no_kp_gen: if True, do not save data to files
+        Initializes test object that runs for [iterations] tests.
+        If [iterations] is not provided, run indefinitely.
         """
         self.robot = robot
+
+        self.save_dir = save_dir
+
+        # camera extrinsics
+        self.camera_ext = None
+        self.camera_ext_trans = None
+        self.camera_ext_rot = None
+
+        self.iterations = iterations  # number of tests
+
+        self.ready = False  # Ready for next test
+        self.world_coords_trig = False  # Determine if there is new data
+
+        self.remove_dup = remove_dup
+        self.screen_output = screen_output
+        self.sync = sync
+        self.rate = rate
 
         rospy.init_node('image_pix_gen', anonymous=True)
 
@@ -85,21 +89,6 @@ class KpDetection():
         self.movement_done = True
         self.completed = False
 
-        # camera extrinsics
-        self.camera_ext = None
-        self.camera_ext_trans = None
-        self.camera_ext_rot = None
-
-        self.iterations = iterations  # number of tests
-
-        self.ready = False  # Ready for next test
-        self.world_coords_trig = False  # Determine if there is new data
-
-        self.remove_dup = remove_dup
-        self.screen_output = screen_output
-        self.sync = sync
-        self.rate = rate
-
         self.no_kp_gen = no_kp_gen
 
         # From original kp_detection.py
@@ -112,6 +101,8 @@ class KpDetection():
         self.control_flag = None
         self.ros_img = None  # image in processing
         self.status = None
+
+        rospy.sleep(2)
 
     def world_coords_tf(self, joints: JointState):
         """
@@ -137,50 +128,51 @@ class KpDetection():
         Saves image and json file containing keypoints.
         """
         # save the image with name being [id]
-        cv_img = self.bridge.imgmsg_to_cv2(img, "rgb8")
+        cv_img = self.bridge.imgmsg_to_cv2(img, "bgr8")
 
         # process file name
         new_stream = int_stream[0:-len(str(id))]
-        image_file = new_stream + str(id) + ".rgb.jpg"
-        cv2.imwrite(file_path + image_file, cv_img)
-        rospy.loginfo(f'kp_gen(): Saved image {file_path + image_file}')
+        image_file = new_stream + str(id) + ".jpg"
+        cv2.imwrite(os.path.join(self.save_dir, image_file), cv_img)
+        rospy.loginfo(f'kp_gen(): Saved image {self.save_dir + image_file}')
 
-        # keypoint json
-        data = {
-            "id": id,
-            "image_rgb": image_file,
-            "bboxes": [
-                [
-                    self.image_pix[i][0]-10,
-                    self.image_pix[i][1]-10,
-                    self.image_pix[i][0]+10,
-                    self.image_pix[i][1]+10
-                ] for i in range(len(self.image_pix))
-                if not self.remove_dup or
-                    (self.remove_dup and i not in self.robot.duplicated_joints)
-            ],
-            "keypoints": [
-                [
+        if not self.no_kp_gen:
+            # keypoint json
+            data = {
+                "id": id,
+                "image_rgb": image_file,
+                "bboxes": [
                     [
-                        self.image_pix[i][0],
-                        self.image_pix[i][1],
-                        1
-                    ]
-                ] for i in range(len(self.image_pix))
-                if not self.remove_dup or
-                    (self.remove_dup and i not in self.robot.duplicated_joints)
-            ],
-        }
+                        self.image_pix[i][0]-10,
+                        self.image_pix[i][1]-10,
+                        self.image_pix[i][0]+10,
+                        self.image_pix[i][1]+10
+                    ] for i in range(len(self.image_pix))
+                    if not self.remove_dup or
+                        (self.remove_dup and i not in self.robot.duplicated_joints)
+                ],
+                "keypoints": [
+                    [
+                        [
+                            self.image_pix[i][0],
+                            self.image_pix[i][1],
+                            1
+                        ]
+                    ] for i in range(len(self.image_pix))
+                    if not self.remove_dup or
+                        (self.remove_dup and i not in self.robot.duplicated_joints)
+                ],
+            }
 
-        # if len(data["bboxes"]) < self.robot.num_joints:
-        #     rospy.logerr('Invalid length of [data]')
+            # if len(data["bboxes"]) < self.robot.num_joints:
+            #     rospy.logerr('Invalid length of [data]')
 
-        # save [data] to json file
-        json_obj = json.dumps(data, indent=4)
-        filename = file_path + new_stream + str(id)+".json"
-        with open(filename, "w") as outfile:
-            outfile.write(json_obj)
-        rospy.loginfo(f'kp_gen(): Saved json {filename}')
+            # save [data] to json file
+            json_obj = json.dumps(data, indent=4)
+            filename = os.path.join(self.save_dir, new_stream + str(id)+".json")
+            with open(filename, "w") as outfile:
+                outfile.write(json_obj)
+            rospy.loginfo(f'kp_gen(): Saved json {filename}')
 
         if self.screen_output:
             visualize(cv_img, data['keypoints'], data['bboxes'],
@@ -205,30 +197,33 @@ class KpDetection():
         """
         Updates camera extrinsics matrices.
         """
-        (self.camera_ext_trans, self.camera_ext_rot) = \
-            self.tf_listener.lookupTransform(
-                '/camera_optical_link', self.robot.base_link, rospy.Time())
-        self.camera_ext = transform(self.camera_ext_trans, self.camera_ext_rot)
+        if not self.no_kp_gen:
+            (self.camera_ext_trans, self.camera_ext_rot) = \
+                self.tf_listener.lookupTransform(
+                    '/camera_optical_link', self.robot.base_link, rospy.Time())
+            self.camera_ext = transform(self.camera_ext_trans, self.camera_ext_rot)
 
     def image_pixels(self, camera_ext, world_coords):
         """
         Calculates pixel coordinates of the keypoints given extrinsics and
         keypoints' positions in world frame.
         """
-        proj_model = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]]
-        # make intrinsics matrix 4x4
-        camera_K_4 = np.dot(self.camera_K, proj_model)
-        # raw (unscaled) keypoint pixels
-        image_pixs = [
-            np.dot(camera_K_4, np.dot(camera_ext, world_coords[i]))
-            for i in range(len(world_coords))]
-        # scale the pixel coordinates
-        img_pixels = [
-            (
-                image_pixs[i][0]/image_pixs[i][2],  # u
-                image_pixs[i][1]/image_pixs[i][2],  # v
-            ) for i in range(len(world_coords))]
-        return img_pixels
+        if not self.no_kp_gen:
+            proj_model = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]]
+            # make intrinsics matrix 4x4
+            camera_K_4 = np.dot(self.camera_K, proj_model)
+            # raw (unscaled) keypoint pixels
+            image_pixs = [
+                np.dot(camera_K_4, np.dot(camera_ext, world_coords[i]))
+                for i in range(len(world_coords))]
+            # scale the pixel coordinates
+            img_pixels = [
+                (
+                    image_pixs[i][0]/image_pixs[i][2],  # u
+                    image_pixs[i][1]/image_pixs[i][2],  # v
+                ) for i in range(len(world_coords))]
+            return img_pixels
+        return None
 
     def get_image(self, image: Image):
         """
@@ -253,11 +248,11 @@ class KpDetection():
         """
 
         # wait until camera intrinsics are retrieved
-        while self.camera_K is None:
+        while not self.no_kp_gen and self.camera_K is None:
             pass
         rospy.loginfo('camera_K initialized')
 
-        while self.world_coords is None:
+        while not self.no_kp_gen and self.world_coords is None:
             pass
         rospy.loginfo('world_coords initialized')
 
@@ -305,10 +300,9 @@ class KpDetection():
             rospy.loginfo('Generating keypoints')
 
             # Generates keypoints
-            if not self.no_kp_gen:
-                self.image_pix = self.image_pixels(
-                    self.camera_ext, self.world_coords)
-                self.kp_gen(self.control_flag, self.ros_img, t)
+            self.image_pix = self.image_pixels(
+                self.camera_ext, self.world_coords)
+            self.kp_gen(self.control_flag, self.ros_img, t)
 
             # Runs [robot.func_post] after each test
             if self.robot.func_post is not None:
@@ -331,9 +325,11 @@ class KpDetection():
 
 if __name__ == '__main__':
     # Create folder if not exists
-    if not os.path.exists(file_path):
-        rospy.logwarn('Data folder not found. Creating one...')
-        os.mkdir(file_path)
+    rospy.loginfo('Creating data folder...')
+    timestamp = str(datetime.now()).split('.')[0].replace(':', '_').replace(' ', '_')
+    save_path = os.path.join(root_data_dir, timestamp)
+    if not os.path.exists(save_path):
+        os.mkdir(save_path)
 
     # Run tests
 
@@ -344,6 +340,6 @@ if __name__ == '__main__':
     # kp = KpDetection(robot, sync=True)
     # robot.tf_listener = tf.TransformListener()
     # kp.run()
-    KpDetection(UR5Test(), screen_output=False, no_kp_gen=True).run()
+    KpDetection(PandaReal2D(), save_dir=save_path, rate=20, screen_output=False, sync=False, no_kp_gen=True).run()
 
     # KpDetection(ScaraTest(), iterations=100).run()
