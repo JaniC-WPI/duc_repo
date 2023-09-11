@@ -25,10 +25,10 @@ if __name__ == '__main__':
     # ]
 
     # Combine all folders in root_src_dir:
-    root_src_dir = '/home/jc-merlab/lama/train_data/origami_dataset'
+    root_src_dir = '/home/jc-merlab/lama/rcnn_test_sets/panda/2023-09-09'
     src_dirs = [os.path.join(root_src_dir, d) for d in os.listdir(root_src_dir)]
     src_dirs = [d for d in src_dirs if os.path.isdir(d)]
-    dest_dir = '/home/jc-merlab/lama/train_data/origami_dataset/raw'
+    dest_dir = '/home/jc-merlab/lama/rcnn_test_sets/panda/2023-09-09'
 
     for src_dir in src_dirs:
         print(f'Processing src_dir: {src_dir}')
