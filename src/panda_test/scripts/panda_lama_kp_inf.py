@@ -7,13 +7,13 @@ import torchvision.transforms.functional as F
 import numpy as np
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-weights_path = '/home/jc-merlab/lama/predict_data/2023-09-09/trained_models/keypointsrcnn_lama_b4_e25_v1.pth'
+weights_path = '/home/jc-merlab/Pictures/panda_data/trained_models/keypointsrcnn_lama_b4_e25_v1.pth'
 
 model = torch.load(weights_path).to(device)
 model.eval()
 
-image_folder_path = '/home/jc-merlab/lama/train_data/dataset/train/'
-output_folder_path = "/home/jc-merlab/Pictures/Data/panda_lama_output/"
+image_folder_path = '/home/jc-merlab/Pictures/panda_data/kp_poses/'
+output_folder_path = "/home/jc-merlab/Pictures/panda_data/kp_poses/kp_pose_op/"
 
 image_files = sorted(os.listdir(image_folder_path))
 # image_files.sort()
@@ -52,7 +52,7 @@ for i, img_file in enumerate(image_files):
 
 # Create a video from the saved images
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
-out = cv2.VideoWriter(os.path.join(output_folder_path, 'output_video_1.avi'), fourcc, 5.0, (img.shape[1], img.shape[0]))
+out = cv2.VideoWriter(os.path.join(output_folder_path, 'output_video.avi'), fourcc, 5.0, (img.shape[1], img.shape[0]))
 
 output_images = [img for img in sorted(os.listdir(output_folder_path)) if not img.endswith(".avi")]
 
@@ -61,6 +61,6 @@ for image_file in output_images:
     img = cv2.imread(image_path)
     out.write(img)
     # Deleting the image after it has been written to the video
-    os.remove(image_path)
+    # os.remove(image_path)
 
 out.release()
