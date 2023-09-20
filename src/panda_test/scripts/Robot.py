@@ -10,8 +10,7 @@ from sensor_msgs.msg import JointState
 
 class RobotTest:
     """
-    Base class for collection of robot-specific parameters and test functions.
-    To add support for other robots, inherit this class.
+    Collection of robot-specific parameters and test functions.
     """
 
     # TODO: Add robot name/class name
@@ -37,23 +36,16 @@ class RobotTest:
             'alpha'
             'a'
         joint_states_topic: Name of the joint_states topic
-        base_link: str: Base link name
-        target_link: str: Target link name
+        base_link: Base link name
+        target_link: Target link name
 
-        kine_init: bool : If False, do not initialize a Kinematics object
+        kine_init: Bool : If False, do not initialize a Kinematics object
 
-        frames: List[str] : List of all frames of the robot to be included in FK
+        frames: String : List of all frames of the robot to be included in FK
 
         duplicated_joints: List of joint indices (0..n-1) that duplicates (
             at the same position) with other joint(s)
 
-        # Workspace covering-related arguments
-
-        initial_vel_sign: np.array : Initial signs of velocities.
-            If left None, default to all 1's.
-
-
-        # Keypoint gen-related arguments:
         func_init: Runs once before all tests
         func_pre: Runs before every test
         func_post: Runs after every test
@@ -70,10 +62,10 @@ class RobotTest:
         self.frames = frames
         self.duplicated_joints = duplicated_joints
 
+        self.initial_vel_sign = initial_vel_sign
+
         self.fk_use_tf = fk_use_tf
         self.tf_listener = None
-
-        self.initial_vel_sign = initial_vel_sign
 
         self.func_init = func_init  # Runs once before tests
         self.func_pre = func_pre  # Runs before every test
@@ -122,9 +114,6 @@ class RobotTest:
 
 
 class PandaTest2D(RobotTest):
-    """
-    Panda 2D in simulation.
-    """
 
     DH_params_home = [
         [0,      0.333,             0,   0],
@@ -235,12 +224,11 @@ class PandaTest2D(RobotTest):
             self.pubs[i].publish(Float64(joint_vel[i]))
 
     def stop_joints(self):
-        """
-        Stops the joints
-        """
+        # stops the joints
         self.joint_vel_pub([0] * self.ws_get_num_joints())
 
     def func_init_wsp(self):
+        # TODO: fix this!!!
         # Move selected joints to lower limit positions
         self.joint_vel_pub([-1] * self.ws_get_num_joints())
         rospy.sleep(2)
@@ -251,9 +239,6 @@ class PandaTest2D(RobotTest):
 
 
 class PandaReal2D(RobotTest):
-    """
-    Panda 2D physical robot.
-    """
 
     DH_params_home = [
         [0,      0.333,             0,   0],
@@ -271,7 +256,7 @@ class PandaReal2D(RobotTest):
     target_link = '/panda_link7'
     duplicated_joints = [1, 6]
     joint_limits = [(-0, 0),
-                    (-1.1557, 0.6899),
+                    (-1.1557, 0.51),
                     (-0, 0),
                     (-1.5481, -1.2112),
                     (-0, 0),
@@ -288,8 +273,9 @@ class PandaReal2D(RobotTest):
             self.target_link,
 
             duplicated_joints=self.duplicated_joints,
+            initial_vel_sign = np.array([1, -1, -1]),
 
-            initial_vel_sign=np.ones(3),
+            kine_init=True,
 
             func_init=self.func_init_wsp,
             # func_pre=self.func_pre_panda_vel,
@@ -315,7 +301,7 @@ class PandaReal2D(RobotTest):
         ***For Workspace plotting***
         Publishes [val] to joint [i]th. (0-based)
         """
-        vel = [0] * 6
+        vel = [0] * 7
         vel[self.ws_joints[i]-1] = val
         self.joint_vel_pub(vel)
 
@@ -333,25 +319,16 @@ class PandaReal2D(RobotTest):
 
     def stop_joints(self):
         # stops the joints
-        self.joint_vel_pub([0] * self.ws_get_num_joints())
+        self.joint_vel_pub([0] * 7)
 
     def func_init_wsp(self):
-        """
-        *For workspace-covering*
-        """
         pass
 
     def func_post_wsp(self):
-        """
-        *For workspace-covering*
-        """
         self.wsp_trigger_pub.publish(Bool(True))
 
 
 class PandaTest3D(RobotTest):
-    """
-    Panda 3D in simulation.
-    """
 
     DH_params_home = [
         [0,      0.333,             0,   0],
@@ -478,10 +455,6 @@ class PandaTest3D(RobotTest):
 
 
 class ScaraTest(RobotTest):
-    """
-    Scara in simulation.
-    Repo: https://github.com/KatConroy57/scara/tree/master
-    """
 
     DH_params_home = [
         [0,       0.05, 0,        0],
@@ -523,9 +496,6 @@ class ScaraTest(RobotTest):
 
 
 class UR5Test(RobotTest):
-    """
-    UR5 in simulation.
-    """
 
     # Params from modified URDF
     # DH_params_home = [
