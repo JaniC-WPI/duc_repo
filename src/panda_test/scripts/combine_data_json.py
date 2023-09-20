@@ -13,13 +13,12 @@ int_stream = '000000'
 from_folder = 8
 to_folder = '8_10'
 # src_dir = f'/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/kp_test_images/{from_folder}/'
-# src_dir = '/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/occluded_results_mi20_ma80_n2/'
 src_dirs = [
-    '/home/jc-merlab/lama/predict_data/2023-09-09/prediction/output2',
+    '/home/jc-merlab/lama/predict_data/2023-09-13/prediction/output',
 ]
 # dest_dir = f'/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/kp_test_images/{to_folder}/'
 # dest_dir = '/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/planar_occluded/'
-dest_dir = '/home/jc-merlab/lama/predict_data/2023-09-09/prediction/output-renamed'
+dest_dir = '/home/jc-merlab/lama/predict_data/2023-09-13/prediction/output-renamed'
 
 
 if __name__ == '__main__':
