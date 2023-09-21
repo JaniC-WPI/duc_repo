@@ -22,7 +22,7 @@ from datetime import datetime
 int_stream = '000000'
 folder = 9
 # folder for main dataset
-root_data_dir = '/home/jc-merlab/Pictures/panda_data'
+root_data_dir = '/home/jc-merlab/Pictures/panda_data/ur10'
 
 
 # homogenous tranformation from 4X1 translation and
