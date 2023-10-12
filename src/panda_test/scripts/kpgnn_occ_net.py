@@ -493,14 +493,3 @@ for idx, (_, model_state) in enumerate(top_5_models):
     torch.save(model_state, f'/home/jc-merlab/Pictures/Data/trained_models/occ_gnn_model_b{batch_size}_e{num_epochs}_{idx+1}.pth')
 
 
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
