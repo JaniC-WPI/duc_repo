@@ -6,14 +6,14 @@ This version has factored out the robot-related code.
 import rospy
 import tf
 from sensor_msgs.msg import JointState, Image, CameraInfo
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Float64MultiArray
 from scipy.spatial.transform import Rotation as R
 import numpy as np
 import cv2
 from cv_bridge import CvBridge
 import json
 import os
-from Robot import RobotTest, PandaReal2D
+from Robot import RobotTest, PandaReal2D, PandaTest2D
 from visualize_kp import visualize
 from datetime import datetime
 
@@ -85,7 +85,11 @@ class KpDetection():
                          self.wsp_movement_done, queue_size=1)
         rospy.Subscriber('/workspace_publisher/completed', Bool,
                          self.wsp_completed, queue_size=1)
-
+        
+        self.current_vel = []
+        rospy.Subscriber('/workspace_publisher/current_vel', Float64MultiArray,
+                         self.update_current_vel, queue_size=1)
+        
         self.movement_done = True
         self.completed = False
 
@@ -236,6 +240,9 @@ class KpDetection():
             self.camera_extrinsics()
             self.ros_img = image
 
+    def update_current_vel(self, msg: Float64MultiArray):
+        self.current_vel = msg.data
+
     def wsp_movement_done(self, msg: Bool):
         self.movement_done = msg.data
 
@@ -304,6 +311,9 @@ class KpDetection():
                 self.camera_ext, self.world_coords)
             self.kp_gen(self.control_flag, self.ros_img, t)
 
+            #
+            print(f'Current velocity: {self.current_vel}')
+
             # Runs [robot.func_post] after each test
             if self.robot.func_post is not None:
                 rospy.loginfo('Running func_post()')
@@ -340,6 +350,6 @@ if __name__ == '__main__':
     # kp = KpDetection(robot, sync=True)
     # robot.tf_listener = tf.TransformListener()
     # kp.run()
-    KpDetection(PandaReal2D(), save_dir=save_path, rate=20, screen_output=False, sync=False, no_kp_gen=True).run()
+    KpDetection(PandaTest2D(), save_dir=save_path, rate=20, screen_output=False, sync=False, no_kp_gen=False).run()
 
     # KpDetection(ScaraTest(), iterations=100).run()

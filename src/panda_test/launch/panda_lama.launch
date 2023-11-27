@@ -1,10 +1,11 @@
 <launch>
-   <include file="$(find realsense2_camera)/launch/rs_camera.launch"/>
+   <!-- <include file="$(find realsense2_camera)/launch/rs_camera.launch"/> -->
     <!-- <include file="$(find encoderless_vs)/launch/rs_encoderless_old.launch">
         <arg name ="initial_reset" value="$(arg initial_reset)"/>
     </include> -->
 
     <!-- Load parameters -->
+    <include file="$(find panda_test)/launch/franka_sim.launch"/>
     
     <node name="set_auto_exposure_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera enable_auto_exposure False"/>
     <!-- <node name="set_white_balance_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera enable_auto_white_balance False"/> -->
@@ -18,8 +19,12 @@
     <!-- <node name="franka_velocity" pkg="encoderless_vision_dl" type="franka_vel_pub_test.py" output="screen" respawn="false" /> -->
     <!-- <node name="franka_velocity" pkg="encoderless_vision_dl" type="workspace_control.py" output="screen" respawn="false" 
     launch-prefix="bash -c 'sleep $(arg img_node_start_delay); $0 $@' "/> -->
-    <node name="record_images" pkg="panda_test" type="kp_gen_test.py" output="screen" respawn="false" 
+    <!-- <node name="record_images" pkg="panda_test" type="kp_gen_test.py" output="screen" respawn="false" 
     launch-prefix="bash -c 'sleep $(arg img_node_start_delay); $0 $@' "/>
+    <node name="ws" pkg="panda_test" type="workspace_control.py" output="screen" respawn="false" 
+    launch-prefix="bash -c 'sleep $(arg img_node_start_delay); $0 $@' "/> -->
+    <node name="record_images" pkg="panda_test" type="kp_gen_test.py" output="screen" respawn="false"/>
+    <node name="ws" pkg="panda_test" type="workspace_control.py" output="screen" respawn="false"/>
     <!-- <node name="projection_node" pkg="encoderless_vision_dl" type="kp_detection_full.py" output="screen" respawn="false" /> -->
     <!-- <node name="kalmanfilter_class" pkg="encoderless_vs" type="kalmanfilter.py" output="screen" respawn="false" /> -->
    

@@ -3,7 +3,7 @@
 import rospy
 import tf
 import numpy as np
-from std_msgs.msg import Bool, Float64
+from std_msgs.msg import Bool, Float64, Float64MultiArray
 from Robot import RobotTest, UR5Test, PandaTest2D
 
 
@@ -63,6 +63,9 @@ class WorkspacePublisher:
         # Publishes when the workspace is completed
         self.completed_pub = rospy.Publisher(
             '/workspace_publisher/completed', Bool, queue_size=1)
+        
+        self.current_vel_pub = rospy.Publisher(
+            '/workspace_publisher/current_vel', Float64MultiArray, queue_size=1)
 
         self.counters = np.array([-1] * self.robot.ws_get_num_joints())
         self.counters_next = np.array([-1] * self.robot.ws_get_num_joints())
@@ -101,6 +104,13 @@ class WorkspacePublisher:
             # Move the joint 1 step
             # self.pubs[i].publish(Float64(self.velocities[i]))
             self.robot.ws_publish_joint(i, self.velocities[i])
+
+            # Publish current vel
+            current_vel_msg = Float64MultiArray()
+            current_vel_msg.data = [0] * self.num_joints
+            current_vel_msg.data[i] = self.velocities[i]
+            self.current_vel_pub.publish(current_vel_msg)
+
             rospy.sleep(self.time_steps[i])
             # self.pubs[i].publish(Float64(0))
             self.robot.ws_publish_joint(i, 0)
@@ -143,7 +153,7 @@ if __name__ == '__main__':
                     (-2.754, -0.075),
                     (-0.0175, 1.7)]
     # joint_limits = PandaTest.joint_limits[:-1]
-    v_max = [0.1, 0.1, 0.1]
+    v_max = [0.2, 0.2, 0.2]
     # v_max = [2.1, 2.1, 2.1, 2.1, 2.5, 2.5]
     # timesteps = 0.2
     timesteps = np.array([8, 6, 5])
