@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="obs_green">
+    <!-- Green Circle Definition -->
+    <link name="green_circle">
+        <visual>
+            <geometry>
+                <cylinder length="0.01" radius="0.8"/> <!-- Adjust size as needed -->
+            </geometry>
+            <material name="green">
+                <color rgba="0 0 0 0"/> <!-- RGBA Color for Green -->
+            </material>
+        </visual>
+    </link>
+
+    <joint name="green_circle_joint" type="fixed">
+        <origin xyz="0 0 0.333" rpy="0 0 0"/> <!-- Adjust position relative to the world or robot -->
+        <parent link="world"/> <!-- or another reference link, e.g., a link of the robot -->
+        <child link="green_circle"/>
+    </joint>
+
+</robot>

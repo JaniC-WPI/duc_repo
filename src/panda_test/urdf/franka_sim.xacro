@@ -4,9 +4,8 @@
   <!-- Include xacro files -->
   <xacro:include filename="$(find panda_test)/urdf/panda_arm_hand_encoderless_vs.xacro"/>
   <xacro:include filename="$(find panda_test)/urdf/franka_depth.xacro" />
-  <!-- <xacro:include filename="$(find active_vision)/desc/depth.xacro" />   -->
-
-  
+  <!-- <xacro:include filename="$(find panda_test)/urdf/green_obs.urdf.xacro" /> -->
+  <!-- <xacro:include filename="$(find active_vision)/desc/depth.xacro" />   -->  
 
   <link name="end_effector_link" />
 

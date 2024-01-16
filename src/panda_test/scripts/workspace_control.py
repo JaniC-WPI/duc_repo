@@ -4,7 +4,7 @@ import rospy
 import tf
 import numpy as np
 from std_msgs.msg import Bool, Float64, Float64MultiArray
-from Robot import RobotTest, UR5Test, PandaTest2D
+from Robot import RobotTest, UR5Test, PandaTest2D, PandaReal2D
 
 
 class WorkspacePublisher:
@@ -146,14 +146,14 @@ class WorkspacePublisher:
 
 if __name__ == '__main__':
     # # Panda Test
-    robot = PandaTest2D()
+    robot = PandaReal2D()
     # resolutions = [4, 4, 3, 3, 3, 3]
     resolutions = [5, 5, 1]
     joint_limits = [(-1.7628, 1.2),
                     (-2.754, -0.075),
                     (-0.0175, 1.7)]
     # joint_limits = PandaTest.joint_limits[:-1]
-    v_max = [0.2, 0.2, 0.2]
+    v_max = [0.3, 0.3, 0.5]
     # v_max = [2.1, 2.1, 2.1, 2.1, 2.5, 2.5]
     # timesteps = 0.2
     timesteps = np.array([8, 6, 5])

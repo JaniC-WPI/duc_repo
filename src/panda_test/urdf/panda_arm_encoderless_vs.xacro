@@ -1,6 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="panda">
   <xacro:macro name="panda_arm" params="arm_id:='panda' description_pkg:='panda_test' connected_to:='' xyz:='0 0 0' rpy:='0 0 0'">
+  <xacro:include filename="$(find panda_test)/urdf/vsbot.gazebo" />
 
     <gazebo>
       <self_collide>1</self_collide>
@@ -15,6 +16,24 @@
     </xacro:unless>
 
     <link name="world"/>
+
+        <!-- Green Circle Definition -->
+    <link name="green_obstacle">
+        <visual>
+            <geometry>
+                <cylinder length="0.01" radius="0.2"/> <!-- Adjust size as needed -->
+            </geometry>
+            <material name="green"/>
+        </visual>
+    </link>
+
+    <joint name="green_circle_joint" type="fixed">
+        <origin xyz="0.5 0 0.5" rpy="1.57 0 0"/> <!-- Adjust position relative to the world or robot -->
+        <parent link="${arm_id}_link0"/> <!-- or another reference link, e.g., a link of the robot -->
+        <child link="green_obstacle"/>
+        <axis xyz="0 0 0"/>
+    </joint>   
+
 
     <joint name="fixed" type="fixed">
       <origin rpy="0 0 0" xyz="0.00 0.00 0.00"/>
@@ -249,9 +268,6 @@
       <child link="${arm_id}_link8"/>
       <axis xyz="0 0 0"/>
     </joint>
-
-    
-
 
     <!-- Transmissions of the robot arm - to be able to move each joint ============== -->
     <transmission name="tran1">

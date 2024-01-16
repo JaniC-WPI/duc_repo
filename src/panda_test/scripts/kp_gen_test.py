@@ -22,7 +22,7 @@ from datetime import datetime
 int_stream = '000000'
 folder = 9
 # folder for main dataset
-root_data_dir = '/home/jc-merlab/Pictures/panda_data/ur10'
+root_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel'
 
 
 # homogenous tranformation from 4X1 translation and
@@ -43,7 +43,7 @@ class KpDetection():
     def __init__(self, robot: RobotTest,
                  save_dir: str = None,
                  iterations=None, sync=True, rate=10,
-                 remove_dup=False,
+                 remove_dup=True,
                  screen_output=False,
                  no_kp_gen=False):
         """
@@ -178,6 +178,16 @@ class KpDetection():
                 outfile.write(json_obj)
             rospy.loginfo(f'kp_gen(): Saved json {filename}')
 
+            # Save the current velocity data to JSON file
+            velocity_data = {
+                "id": id,
+                "velocity": self.current_vel
+            }
+            velocity_file_name = os.path.join(self.save_dir, f"{int_stream[:len(int_stream)-len(str(id))]}{id}_vel.json")
+            with open(velocity_file_name, "w") as velocity_file:
+                json.dump(velocity_data, velocity_file, indent=4)
+            rospy.loginfo(f'kp_gen(): Saved velocity json {velocity_file_name}')
+
         if self.screen_output:
             visualize(cv_img, data['keypoints'], data['bboxes'],
                       int(1/self.rate*0.75*1000))  # wait time = 0.75 * 1/rate
@@ -201,11 +211,17 @@ class KpDetection():
         """
         Updates camera extrinsics matrices.
         """
+        # for simulation panda
+        # if not self.no_kp_gen:
+        #     (self.camera_ext_trans, self.camera_ext_rot) = \
+        #         self.tf_listener.lookupTransform(
+        #             '/camera_optical_link', self.robot.base_link, rospy.Time())
+        #     self.camera_ext = transform(self.camera_ext_trans, self.camera_ext_rot)
+
+        # for physical panda
         if not self.no_kp_gen:
-            (self.camera_ext_trans, self.camera_ext_rot) = \
-                self.tf_listener.lookupTransform(
-                    '/camera_optical_link', self.robot.base_link, rospy.Time())
-            self.camera_ext = transform(self.camera_ext_trans, self.camera_ext_rot)
+            self.camera_ext_trans = [-0.25538742,  0.51991026,  1.72206416]
+            self.camera_ext_rot = [0.68110567,  0.05897169, -0.04771332,  0.72824505]
 
     def image_pixels(self, camera_ext, world_coords):
         """
@@ -309,7 +325,7 @@ class KpDetection():
             # Generates keypoints
             self.image_pix = self.image_pixels(
                 self.camera_ext, self.world_coords)
-            self.kp_gen(self.control_flag, self.ros_img, t)
+            self.kp_gen(self.control_flag, self.ros_img, t, )
 
             #
             print(f'Current velocity: {self.current_vel}')
@@ -350,6 +366,6 @@ if __name__ == '__main__':
     # kp = KpDetection(robot, sync=True)
     # robot.tf_listener = tf.TransformListener()
     # kp.run()
-    KpDetection(PandaTest2D(), save_dir=save_path, rate=20, screen_output=False, sync=False, no_kp_gen=False).run()
+    KpDetection(PandaTest2D(), save_dir=save_path, rate=20, screen_output=False, sync=False, no_kp_gen=True).run()
 
     # KpDetection(ScaraTest(), iterations=100).run()
