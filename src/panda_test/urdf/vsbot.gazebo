@@ -91,10 +91,10 @@
     </sensor>
   </gazebo>
   
-  <gazebo reference="green_obstacle">
+  <gazebo reference="red_obstacle">
     <mu1>0.2</mu1>
     <mu2>0.2</mu2>
-    <material>Gazebo/Green</material>
+    <material>Gazebo/Red</material>
   </gazebo>
 
   <!--<gazebo reference="flatboard">

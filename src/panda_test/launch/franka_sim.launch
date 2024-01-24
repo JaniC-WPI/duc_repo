@@ -13,7 +13,8 @@
     <!-- Spawn Franka into Gazebo -->
     <param name="robot_description" command="$(find xacro)/xacro $(find panda_test)/urdf/franka_sim.xacro" />
     <!-- <param name="robot_description" command="$(find xacro)/xacro $(find active_vision)/desc/franka_camera.xacro" />  -->
-    <node name="spawn_franka_urdf" pkg="gazebo_ros" type="spawn_model" args="-param robot_description -urdf -model panda -z 1.015" />
+    <node name="spawn_franka_urdf" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" args="-param robot_description -urdf -model panda -z 1.015 -J panda_joint2 -1.57
+      -J panda_joint4 -1.8 -unpause" />
 
     <!-- <param name="robot_description" command="$(find xacro)/xacro $(find active_vision)/desc/franka_camera.xacro" /> -->
     <rosparam file="$(find panda_test)/config/encoderless_control.yaml" command="load" />

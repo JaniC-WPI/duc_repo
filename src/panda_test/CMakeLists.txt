@@ -72,6 +72,7 @@ franka_cp_goal.srv
 # dream_img.srv
 dl_goal_img.srv
 dl_img.srv
+dl_sim_img.srv
 vel_start.srv
 )
 
@@ -200,13 +201,25 @@ add_executable(franka_dl_controller_node src/franka_dl_vs.cpp)
 add_dependencies(franka_dl_controller_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(franka_dl_controller_node ${catkin_LIBRARIES})
 
+add_executable(franka_sim_controller_node src/franka_sim_vs.cpp)
+add_dependencies(franka_sim_controller_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(franka_sim_controller_node ${catkin_LIBRARIES})
+
 add_executable(franka_dl_energy_func_node src/franka_dl_compute_energy_functional.cpp)
 add_dependencies(franka_dl_energy_func_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(franka_dl_energy_func_node ${catkin_LIBRARIES})
 
+add_executable(franka_sim_energy_func_node src/franka_sim_compute_energy_functional.cpp)
+add_dependencies(franka_sim_energy_func_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(franka_sim_energy_func_node ${catkin_LIBRARIES})
+
 add_executable(franka_dl_record_node src/franka_dl_vs_recorder.cpp)
 add_dependencies(franka_dl_record_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(franka_dl_record_node ${catkin_LIBRARIES})
+
+add_executable(franka_sim_record_node src/franka_sim_vs_recorder.cpp)
+add_dependencies(franka_sim_record_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(franka_sim_record_node ${catkin_LIBRARIES})
 
 # add_executable(franka_multiref_shape_vs_node src/franka_multiref_shape_vs.cpp)
 # add_dependencies(franka_multiref_shape_vs_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})

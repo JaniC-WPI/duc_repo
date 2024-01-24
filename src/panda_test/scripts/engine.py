@@ -49,19 +49,19 @@ from coco_utils import get_coco_api_from_dataset
 
 #     return batch_loss
 
-# def match_keypoints(pred_keypoints, gt_keypoints):
-#     # Ensure pred_keypoints is not empty
-#     if len(pred_keypoints) == 0:
-#         return gt_keypoints.clone()
+def match_keypoints(pred_keypoints, gt_keypoints):
+    # Ensure pred_keypoints is not empty
+    if len(pred_keypoints) == 0:
+        return gt_keypoints.clone()
     
-#     # If number of predicted keypoints is less than ground truth keypoints
-#     while len(pred_keypoints) < len(gt_keypoints):
-#         pred_keypoints = torch.cat([pred_keypoints, pred_keypoints], dim=0)
+    # If number of predicted keypoints is less than ground truth keypoints
+    while len(pred_keypoints) < len(gt_keypoints):
+        pred_keypoints = torch.cat([pred_keypoints, pred_keypoints], dim=0)
     
-#     # If number of predicted keypoints is more than ground truth keypoints
-#     pred_keypoints = pred_keypoints[:len(gt_keypoints)]
+    # If number of predicted keypoints is more than ground truth keypoints
+    pred_keypoints = pred_keypoints[:len(gt_keypoints)]
     
-#     return pred_keypoints
+    return pred_keypoints
 
 def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
     model.train()

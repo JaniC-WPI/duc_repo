@@ -5,38 +5,27 @@ import numpy as np
 import cv2
 import heapq
 import os
-import networkx as nx
+import torch
 
+SAFE_DISTANCE = 20
 
-# Parameters
-IMAGE_WIDTH, IMAGE_HEIGHT = 640, 480
-SAFE_DISTANCE = 30  # Safe distance from the obstacle
-
-# Load keypoints from JSON files in a given directory
-def load_keypoints_from_json(directory):
-    configurations = []
+# load transition data from a direcoty in device
+def load_transition_data(directory):
+    transitions = {}
     for filename in os.listdir(directory):
-        if filename.endswith('.json'):
+        if filename.endswith('_combined.json'):
             with open(os.path.join(directory, filename), 'r') as file:
                 data = json.load(file)
-                # Convert keypoints to integers
-                keypoints = [np.array(point[0][:2], dtype=int) for point in data['keypoints']]  # Extracting x, y coordinates
-                configurations.append(np.array(keypoints))
-    # print(configurations)
-    return configurations
 
-def load_and_sample_configurations(directory, num_samples):
-    # Load configurations from JSON files
-    configurations = load_keypoints_from_json(directory)
+                # Extract the x, y coordinates and convert to tuples
+                start_kp = tuple(tuple(kp[0][:2] for kp in data['start_kp']))
+                next_kp = tuple(tuple(kp[0][:2] for kp in data['next_kp']))
+                velocity = data['velocity']  # Keep velocity as floating-point
 
-    # If there are more configurations than needed, sample a subset
-    if len(configurations) > num_samples:
-        sampled_indices = np.random.choice(len(configurations), size=num_samples, replace=False)
-        sampled_configurations = [configurations[i] for i in sampled_indices]
-    else:
-        sampled_configurations = configurations
-
-    return sampled_configurations
+                if start_kp not in transitions:
+                    transitions[start_kp] = []
+                transitions[start_kp].append((next_kp, velocity))
+    return transitions
 
 # Detect a red ball in an image
 def detect_red_ball(image_path):
@@ -109,39 +98,50 @@ def is_collision_free(configuration, obstacle_center, safe_distance):
             return False
     return True
 
-def build_roadmap(configurations, start_config, goal_config, k, obstacle_center, safe_distance):
-    G = nx.Graph()
-    
-    # Add start and goal configurations to the roadmap
-    G.add_node(tuple(map(tuple, start_config)))
-    G.add_node(tuple(map(tuple, goal_config)))
+# Heuristic function for the A* algorithm
+def heuristic(a, b):
+    return np.linalg.norm(np.array(a) - np.array(b))
 
-    # Add sampled configurations
-    for config in configurations:
-        G.add_node(tuple(map(tuple, config)))
+def a_star(start, goal, transitions, obstacle_center, safe_distance):
+    # Convert start and goal configurations to match the format in transitions
+    start = tuple(tuple(p[:2]) for p in start)
+    goal = tuple(tuple(p[:2]) for p in goal)
 
-    # Connect each node to its k-nearest neighbors
-    all_configs = [start_config, goal_config] + configurations
-    for config1 in all_configs:
-        distances = [np.linalg.norm(config1 - config2) for config2 in all_configs]
-        nearest_indices = np.argsort(distances)[1:k+1]
-        for j in nearest_indices:
-            config2 = all_configs[j]
-            if is_collision_free(np.vstack([config1, config2]), obstacle_center, safe_distance):
-                G.add_edge(tuple(map(tuple, config1)), tuple(map(tuple, config2)), weight=distances[j])
+    open_set = []
+    heapq.heappush(open_set, (0, start))
+    came_from = {}
+    g_score = {start: 0}
+    f_score = {start: heuristic(start, goal)}
 
-    return G
+    while open_set:
+        current = heapq.heappop(open_set)[1]
 
-def find_path_prm(graph, start_config, goal_config):
-    # Convert configurations to tuple for graph compatibility
-    start = tuple(map(tuple, start_config))
-    goal = tuple(map(tuple, goal_config))
+        # if current == goal:  # Check if goal is reached
+        #     return reconstruct_path(came_from, current)
 
-    try:
-        path = nx.astar_path(graph, start, goal)
-        return path
-    except nx.NetworkXNoPath:
-        return None
+        # Check if goal is "close enough" to the current position
+        if np.allclose(np.array(current), np.array(goal), atol=1e-6):
+            return reconstruct_path(came_from, current)
+
+        for next_kp, _ in transitions.get(current, []):
+            next_kp = tuple(tuple(p) for p in next_kp)
+            tentative_g_score = g_score[current] + heuristic(current, next_kp)
+
+            if next_kp not in g_score or tentative_g_score < g_score[next_kp]:
+                came_from[next_kp] = current
+                g_score[next_kp] = tentative_g_score
+                f_score[next_kp] = tentative_g_score + heuristic(next_kp, goal)
+                if next_kp not in open_set and is_collision_free(np.array(next_kp), obstacle_center, safe_distance):
+                    heapq.heappush(open_set, (f_score[next_kp], next_kp))
+
+    return None
+
+def reconstruct_path(came_from, current):
+    total_path = [current]
+    while current in came_from:
+        current = came_from[current]
+        total_path.append(current)
+    return total_path[::-1]
 
 def plot_path_on_image_dir(image_path, path, start_config, goal_config, output_directory):
     # Ensure the output directory exists
@@ -177,18 +177,20 @@ def plot_path_on_image_dir(image_path, path, start_config, goal_config, output_d
 # Main execution
 if __name__ == "__main__":
     # Define the start and goal configurations (generalized for n keypoints)
-    start_config = np.array([[257, 366], [257, 283], [179, 297], [175, 276], [175, 177], [197, 181]])  
-    goal_config = np.array([[257, 366], [257, 283], [303, 217], [320, 229], [403, 283], [389, 297]])  
-    # goal_config = np.array([[257, 366], [257, 283], [183, 254], [191, 234], [287, 212], [309, 216]])
+    start_config = np.array([[257.95220042652915, 366.9198630617724], [257.95973939799904, 283.013113744617], 
+                             [179.53457014392896, 297.13509063783573], [175.87658469885523, 276.66301779791337], 
+                             [175.30964903682178, 177.73791800590934], [197.5608564429075, 181.2016105905464]])  
+    # goal_config = np.array([[257.95220042652915, 366.9198630617724], [257.95973939799904, 283.013113744617], 
+    #                         [303.0927220551031, 217.43165270791394], [320.21581019993806, 229.21361657394115],  
+    #                         [403.5322106093911, 283.0647464931091], [389.2718701618588, 297.7476490616017]])
+    goal_config = np.array([[257.95220042652915, 366.9198630617724], [257.95973939799904, 283.013113744617], 
+                            [183.54445371948276, 254.32856622097543], [191.0549620237761, 234.91962096219095], 
+                            [287.4736733202998, 212.0599437741952], [309.0946027096692, 216.72953260678656]])
 
     # Load configurations from JSON files
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/kprcnn_sim_latest/'  # Replace with the path to your JSON files
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/vel_reg_sim_test/'  # Replace with the path to your JSON files
     # configurations = load_keypoints_from_json(directory)
-
-    # Load and sample configurations from JSON files
-    num_samples = 300 # Adjust as needed
-    configurations = load_and_sample_configurations(directory, num_samples)
-
+    transitions = load_transition_data(directory)
 
     # Detect the obstacle (red ball)
     image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/rrt_test_image/red_ball_image_1_goal.jpg'  # Replace with the path to your image file
@@ -199,17 +201,11 @@ if __name__ == "__main__":
         print("No red ball detected in the image.")
         obstacle_center, obstacle_radius = None, None
 
-    # Parameters for PRM
-    num_neighbors = 50  # Number of neighbors for each node in the roadmap
-
-    # Build the roadmap
-    roadmap = build_roadmap(configurations, start_config, goal_config, num_neighbors, obstacle_center, SAFE_DISTANCE)
-
-    # Find the path
-    path = find_path_prm(roadmap, start_config, goal_config)
+    # Run the path planning
+    path = a_star(start_config, goal_config, transitions, obstacle_center, SAFE_DISTANCE)
 
     # path directory
-    output_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/rrt_test_image/paths/path_prm/path_11_prm'
+    output_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/rrt_test_image/paths/path_1_tran_a_astar'
 
     # Plotting the path if found
     if path:
