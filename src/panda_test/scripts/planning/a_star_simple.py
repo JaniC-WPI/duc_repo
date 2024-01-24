@@ -29,6 +29,7 @@ def astar(maze, start, end):
     # Loop until the end is reached
     while len(open_list) > 0:
         # Get the current node (node with the lowest f score)
+        # current_node = open_list[0]
         current_node = min(open_list, key=lambda node: node.f)
         open_list.remove(current_node)
         closed_list.append(current_node)
