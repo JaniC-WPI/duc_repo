@@ -8,10 +8,11 @@ import os
 import numpy as np
 import torch
 from regression_model import KeypointRegressionNet
+import heapq
 
 # Parameters
 IMAGE_WIDTH, IMAGE_HEIGHT = 640, 480
-SAFE_DISTANCE = 20  # Safe distance from the obstacle
+SAFE_DISTANCE = 30  # Safe distance from the obstacle
 
 def load_velocities_from_directory(directory):
     velocities = []
@@ -129,7 +130,7 @@ class Node:
     def __eq__(self, other):
         return np.array_equal(self.configuration, other.configuration)
     
-    def is_similar(self, other_node, threshold=1):
+    def is_similar(self, other_node, threshold=5):
         """Check if the configurations of two nodes are similar within a given threshold."""
         diff = np.abs(self.configuration - other_node.configuration)
         # Check if all x and y values of keypoints are within the threshold
@@ -140,38 +141,32 @@ def heuristic(config1, config2):
     return config_distance(config1, config2)
 
 def a_star_search(start_config, goal_config, model_path, velocities, obstacle_center, obstacle_radius):
-    # Load the regression model for inference
     model = load_model_for_inference(model_path)
 
-    # Initialize start and end nodes
     start_node = Node(np.array(start_config), g=0, h=heuristic(start_config, goal_config))
     end_node = Node(np.array(goal_config))
 
-    open_list = [start_node]
+    open_list = []
+    heapq.heappush(open_list, (start_node.f, start_node))
     closed_list = []
 
     while open_list:
-        current_node = min(open_list, key=lambda node: node.f)
-        open_list.remove(current_node)
-        closed_list.append(current_node)
-
-        # Check if goal is reached
-        if current_node.is_similar(end_node, threshold=3):
+        current_node = heapq.heappop(open_list)[1]
+        # Modified goal-checking logic
+        if current_node.is_similar(end_node, threshold=5):
             path = []
             while current_node is not None:
                 path.append(current_node.configuration)
                 current_node = current_node.parent
             return path[::-1]
 
-        # Generate children
         for velocity in velocities:
             print("Current Node", current_node.configuration)
-            new_config = predict_next_configuration(current_node.configuration, velocity, model)            
+            new_config = predict_next_configuration(current_node.configuration, velocity, model)
+
             print("for veloctiy", velocity, "New Config", new_config)
             
-            # Check for collision with obstacle
             if obstacle_center and is_configuration_too_close_to_obstacle(new_config, obstacle_center, obstacle_radius + SAFE_DISTANCE):
-                print("configuration too close")
                 continue
 
             distance = config_distance(current_node.configuration, new_config)
@@ -180,19 +175,21 @@ def a_star_search(start_config, goal_config, model_path, velocities, obstacle_ce
 
             print("Child node", child_node.configuration)
 
+            # Check if similar node is already in open list
+            if any(child_node.is_similar(open_node[1]) for open_node in open_list):
+                print("node is in open list")
+                continue
+
             # Check if child is in closed list or similar to any node in the closed list
-            if any(child_node.is_similar(closed_node, threshold=1) for closed_node in closed_list):
+            if any(child_node.is_similar(closed_node, threshold=5) for closed_node in closed_list):
                 print("node is in closed list")
                 continue
 
-            # Check if similar node is already in open list
-            if any(child_node.is_similar(open_node) and child_node.g > open_node.g for open_node in open_list):
-                print("child is in open list but with lower g value")
-                continue
+            heapq.heappush(open_list, (child_node.f, child_node))
 
-            open_list.append(child_node)
+        closed_list.append(current_node)
 
-    return None  # No path found
+    return None
 
 # Function to predict next configuration using the regression model
 # def predict_next_configuration(current_config, velocity, model):
@@ -225,10 +222,6 @@ def plot_path_on_image_dir(image_path, path, start_config, goal_config, output_d
     # Base image
     base_image = cv2.imread(image_path)
 
-    # Function to generate a color
-    def path_color():
-        return (255, 0, 0)  # Blue color for path
-
     # Draw start and goal keypoints
     for point in start_config:
         cv2.circle(base_image, tuple(point.astype(int)), radius=5, color=(0, 0, 255), thickness=-1)  # Red for start
@@ -239,9 +232,9 @@ def plot_path_on_image_dir(image_path, path, start_config, goal_config, output_d
     for idx, config in enumerate(path):
         image = base_image.copy()  # Copy the base image
         for i in range(len(config) - 1):
-            cv2.line(image, tuple(config[i].astype(int)), tuple(config[i+1].astype(int)), path_color(), 2)
+            cv2.line(image, tuple(config[i].astype(int)), tuple(config[i+1].astype(int)), (255, 0, 0), 2)
         for point in config:
-            cv2.circle(image, tuple(point.astype(int)), radius=3, color=path_color(), thickness=-1)
+            cv2.circle(image, tuple(point.astype(int)), radius=3, color=(255, 0, 0), thickness=-1)
         
         # Save the image
         cv2.imwrite(os.path.join(output_directory, f'path_{idx}.jpg'), image)
@@ -252,7 +245,7 @@ if __name__ == '__main__':
     # goal_config = np.array([[257, 366], [257, 283], [303, 217], [320, 229], [403, 283], [389, 297]])   # Replace with your actual goal configuration
     goal_config = np.array([[257, 366], [257, 283], [183, 254], [191, 234], [287, 212], [309, 216]])
 
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/vel_reg_sim_test_2/unique_vel/'
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/vel_reg_sim_test/unique_vel/'
     velocities = load_velocities_from_directory(directory)
     model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_nkp_b128_e300_v1.pth'
 
