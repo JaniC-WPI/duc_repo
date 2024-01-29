@@ -9,7 +9,9 @@ import sys
 
 int_stream = '000000'
 folder = 8
-default_data_dir = f'/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/kp_test_images/{folder}/'
+# default_data_dir = f'/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/kp_test_images/{folder}/'
+default_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/kprcnn_sim_latest/'
+output_dir = 
 
 
 def visualize(image, keypoints, bboxes, wait, window_name='Default'):

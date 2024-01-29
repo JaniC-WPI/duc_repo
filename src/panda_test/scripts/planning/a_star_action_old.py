@@ -7,9 +7,7 @@ import heapq
 import os
 import numpy as np
 import torch
-from regression_path_planning import KeypointRegressionNet
-import time
-import csv
+from regression_model import KeypointRegressionNet
 
 # Parameters
 IMAGE_WIDTH, IMAGE_HEIGHT = 640, 480
@@ -114,20 +112,16 @@ def load_model_for_inference(model_path):
 
 # Euclidean distance between configurations
 def config_distance(config1, config2):
-    distances = [np.linalg.norm(p1 - p2) for p1, p2 in zip(config1, config2)]
-    # print("distances", distances)
-    avg_cost = sum(distances)/len(distances)
-    return avg_cost
-    # return max(np.linalg.norm(p1 - p2) for p1, p2 in zip(config1, config2))
+    return max(np.linalg.norm(p1 - p2) for p1, p2 in zip(config1, config2))
 
 # Node class for creating the tree for A* search
 class Node:
-    def __init__(self, configuration, parent=None):
+    def __init__(self, configuration, parent=None, g=0, h=0):
         self.configuration = configuration
         self.parent = parent
-        self.g = 0
-        self.h = 0
-        self.f = 0
+        self.g = g
+        self.h = h
+        self.f = g + h
 
     def __lt__(self, other):
         return self.f < other.f
@@ -135,22 +129,14 @@ class Node:
     def __eq__(self, other):
         return np.array_equal(self.configuration, other.configuration)
     
-    # def is_similar(self, other_node, threshold=2):
-    #     """Check if the configurations of two nodes are similar within a given threshold."""
-    #     diff = np.abs(self.configuration - other_node.configuration)
-    #     # Check if all x and y values of keypoints are within the threshold
-    #     return np.all(diff <= threshold)
-
     def is_similar(self, other_node, threshold=2):
-        """Check if the overall configurations are similar within a given threshold."""
-        # Calculate the Euclidean distance between corresponding keypoints
-        distance = np.linalg.norm(self.configuration - other_node.configuration)
-        print("distance threshold", distance)
-        return distance <= threshold
+        """Check if the configurations of two nodes are similar within a given threshold."""
+        diff = np.abs(self.configuration - other_node.configuration)
+        # Check if all x and y values of keypoints are within the threshold
+        return np.all(diff <= threshold)
 
 def heuristic(config1, config2):
     # Define your heuristic function here (e.g., Euclidean distance)
-    # return np.linalg.norm(config1 - config2)
     return config_distance(config1, config2)
 
 def a_star_search(start_config, goal_config, model_path, velocities, obstacle_center, obstacle_radius):
@@ -158,97 +144,78 @@ def a_star_search(start_config, goal_config, model_path, velocities, obstacle_ce
     model = load_model_for_inference(model_path)
 
     # Initialize start and end nodes
-    start_node = Node(np.array(start_config)) #g=0, h=heuristic(start_config, goal_config))
-    start_node.g = start_node.h = start_node.f = 0
+    start_node = Node(np.array(start_config), g=0, h=heuristic(start_config, goal_config))
     end_node = Node(np.array(goal_config))
-    end_node.g = end_node.h = end_node.f = 0
 
     open_list = [start_node]
     closed_list = []
 
-    # Open a CSV file to write the data
-    with open('/home/jc-merlab/Pictures/panda_data/panda_sim_vel/csv/path_predictions.csv', mode='w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(['Iteration', 'Velocity', 'Input Config', 'Predicted Config'])  # Header
+    iteration = 0
+    max_iterations = 1000
 
-        iteration = 0
-        max_iterations = 1000
+    while open_list and iteration < max_iterations:
+        current_node = min(open_list, key=lambda node: node.f)
+        open_list.remove(current_node)
+        closed_list.append(current_node)
 
-        while len(open_list) > 0 and iteration < max_iterations:
-            # current_node = min(open_list, key=lambda node: node.f)
-            current_node =  open_list[0]
-            current_index =  0
-            for index, item in enumerate(open_list):
-                if item.f < current_node.f:
-                    current_node = item
-                    current_index = index
-    
-            open_list.pop(current_index)
-            closed_list.append(current_node)
-    
-            # Check if goal is reached
-            if current_node.is_similar(end_node, threshold=2):
-                path = []
-                current = current_node
-                while current is not None:
-                    path.append(current.configuration)
-                    current = current.parent
-                return path[::-1]
-    
-            children = []
-            # Generate children
-            for velocity in velocities:
-                # print("Open List", [node.configuration for node in open_list])
-                # print("Closed List", [node.configuration for node in closed_list])
-                # print("Current Node", current_node.configuration)
-                new_config = predict_next_configuration(current_node.configuration, velocity, model)            
-                # print("for veloctiy", velocity, "New Config", new_config)
+        # Check if goal is reached
+        if current_node.is_similar(end_node, threshold=3):
+            path = []
+            current = current_node
+            while current is not None:
+                path.append(current.configuration)
+                current = current.parent
+            return path[::-1]
 
-                # Write iteration, velocity, and new configuration to CSV
-                writer.writerow([iteration, velocity, current_node.configuration.tolist(), new_config.tolist()])
-                
-                # Check for collision with obstacle
-                if obstacle_center and is_configuration_too_close_to_obstacle(new_config, obstacle_center, obstacle_radius + SAFE_DISTANCE):
-                    print("configuration too close")
-                    continue
-                else:
-                    print("clear for planning")
-                
-                distance = config_distance(current_node.configuration, new_config)
-    
-                new_node =  Node(new_config, current_node)
-    
-                children.append(new_node)
-    
-            print("Children nodes", [node.configuration for node in children])
-    
-            for child_node in children:
-                # Check if child is in closed list or similar to any node in the closed list
-                if any(child_node.is_similar(closed_node, threshold=2) for closed_node in closed_list):
-                    print("child is in closed list")
-                    continue
-                else:
-                    print("Child is not in Closed List")
-                
-                child_node.g = current_node.g + distance
-                child_node.h = heuristic(child_node.configuration, goal_config)
-                child_node.f = child_node.g + child_node.h
-    
-                # # Check if similar node is already in open list
-                if any(child_node.is_similar(open_node) and child_node.g > open_node.g for open_node in open_list):
-                    print("child is in open list but with higher cost")
-                    continue
-                else:
-                    print("Child is in open list with lower cost")
-                
-                open_list.append(child_node)
+        # Generate children
+        for velocity in velocities:
+            print("Open List", open_list)
+            print("Closed List", closed_list)
+            print("Current Node", current_node.configuration)
+            new_config = predict_next_configuration(current_node.configuration, velocity, model)            
+            print("for veloctiy", velocity, "New Config", new_config)
             
-            iteration += 1
+            # Check for collision with obstacle
+            if obstacle_center and is_configuration_too_close_to_obstacle(new_config, obstacle_center, obstacle_radius + SAFE_DISTANCE):
+                print("configuration too close")
+                continue
+
+            distance = config_distance(current_node.configuration, new_config)
+
+            child_node = Node(new_config, parent=current_node, g=current_node.g + distance, h=heuristic(new_config, goal_config))
+
+            print("Child node", child_node.configuration)
+
+            # Check if child is in closed list or similar to any node in the closed list
+            if any(child_node.is_similar(closed_node, threshold=1) for closed_node in closed_list):
+                print("node is in closed list")
+                continue
+
+            # Check if similar node is already in open list
+            if any(child_node.is_similar(open_node) and child_node.g > open_node.g for open_node in open_list):
+                print("child is in open list but with lower g value")
+                continue
+
+            open_list.append(child_node)
+        
+        iteration += 1
+
 
     if iteration >= max_iterations:
         print("Reached maximum iterations without finding a path.")
 
     return None  # No path found
+
+# Function to predict next configuration using the regression model
+# def predict_next_configuration(current_config, velocity, model):
+#     # Prepare the input for the model
+#     start_kp_flat = torch.tensor(current_config.flatten(), dtype=torch.float)
+#     velocity = torch.tensor(velocity, dtype=torch.float)
+    
+#     # Predict the next configuration
+#     with torch.no_grad():
+#         next_kp_flat = model(start_kp_flat, velocity).numpy()
+#     return next_kp_flat.reshape(-1, 2)  # Reshape to the original configuration format
 
 def predict_next_configuration(current_config, velocity, model):
     # Convert to 2D tensors if necessary
@@ -297,9 +264,9 @@ if __name__ == '__main__':
     # goal_config = np.array([[257, 366], [257, 283], [303, 217], [320, 229], [403, 283], [389, 297]])   # Replace with your actual goal configuration
     goal_config = np.array([[257, 366], [257, 283], [183, 254], [191, 234], [287, 212], [309, 216]])
 
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/vel_reg_sim_test_2/unique_vel_plan/'
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/vel_reg_sim_test_2/unique_vel/'
     velocities = load_velocities_from_directory(directory)
-    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_nkp_b128_e300_v1_l5.pth'
+    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_nkp_b128_e300_v1.pth'
 
     # Detect the obstacle (red ball)
     image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/rrt_test_image/red_ball_image_1_goal.jpg'  # Replace with the path to your image file

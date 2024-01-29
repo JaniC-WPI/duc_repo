@@ -12,7 +12,7 @@ from sklearn.neighbors import KDTree
 
 # Parameters
 IMAGE_WIDTH, IMAGE_HEIGHT = 640, 480
-SAFE_DISTANCE = 50  # Safe distance from the obstacle
+SAFE_DISTANCE = 20  # Safe distance from the obstacle
 
 # Load keypoints from JSON files in a given directory
 def load_keypoints_from_json(directory):
@@ -26,6 +26,19 @@ def load_keypoints_from_json(directory):
                 configurations.append(np.array(keypoints))
     # print(configurations)
     return configurations
+
+def load_and_sample_configurations(directory, num_samples):
+    # Load configurations from JSON files
+    configurations = load_keypoints_from_json(directory)
+
+    # If there are more configurations than needed, sample a subset
+    if len(configurations) > num_samples:
+        sampled_indices = np.random.choice(len(configurations), size=num_samples, replace=False)
+        sampled_configurations = [configurations[i] for i in sampled_indices]
+    else:
+        sampled_configurations = configurations
+
+    return sampled_configurations
 
 # Detect a red ball in an image
 def detect_red_ball(image_path):
@@ -98,11 +111,35 @@ def is_collision_free(configuration, obstacle_center, safe_distance):
             return False
     return True
 
+# def is_collision_free_line_check(configuration, obstacle_center, safe_distance):
+#     # Define a function to check for collision along a line segment
+#     def is_line_colliding(p1, p2, obstacle_center, safe_distance):
+#         # Check for collision at regular intervals along the line
+#         num_checks = int(np.linalg.norm(np.array(p2) - np.array(p1)) / safe_distance)
+#         for i in range(num_checks + 1):
+#             point = np.array(p1) + (np.array(p2) - np.array(p1)) * i / num_checks
+#             if np.linalg.norm(point - np.array(obstacle_center)) < safe_distance:
+#                 return True
+#         return False
+
+#     for i in range(len(configuration) - 1):
+#         if is_line_colliding(configuration[i], configuration[i + 1], obstacle_center, safe_distance):
+#             return False
+#     return True
+
 def is_collision_free_line_check(configuration, obstacle_center, safe_distance):
     # Define a function to check for collision along a line segment
     def is_line_colliding(p1, p2, obstacle_center, safe_distance):
+        # Check if the line segment is effectively a point
+        if np.allclose(p1, p2):
+            return np.linalg.norm(np.array(p1) - np.array(obstacle_center)) < safe_distance
+
         # Check for collision at regular intervals along the line
         num_checks = int(np.linalg.norm(np.array(p2) - np.array(p1)) / safe_distance)
+        if num_checks == 0:
+            # Avoid division by zero if points are extremely close
+            return False
+
         for i in range(num_checks + 1):
             point = np.array(p1) + (np.array(p2) - np.array(p1)) * i / num_checks
             if np.linalg.norm(point - np.array(obstacle_center)) < safe_distance:
@@ -115,27 +152,27 @@ def is_collision_free_line_check(configuration, obstacle_center, safe_distance):
     return True
 
 
-def sample_configurations(num_samples, image_width, image_height, obstacle_center, safe_distance):
-    configurations = []
-    while len(configurations) < num_samples:
-        config = np.random.uniform(low=[0, 0], high=[image_width, image_height], size=(6, 2)).astype(int)
-        if is_collision_free(config, obstacle_center, safe_distance):
-            configurations.append(config)
-    return configurations
-
-def build_roadmap(configurations, k, obstacle_center, safe_distance):
+def build_roadmap(configurations, start_config, goal_config, k, obstacle_center, safe_distance):
     G = nx.Graph()
+    
+    # Add start and goal configurations to the roadmap
+    G.add_node(tuple(map(tuple, start_config)))
+    G.add_node(tuple(map(tuple, goal_config)))
+
+    # Add sampled configurations
     for config in configurations:
         G.add_node(tuple(map(tuple, config)))
 
-    for i, config1 in enumerate(configurations):
-        # Connect to k-nearest neighbors
-        distances = [np.linalg.norm(config1 - config2) for config2 in configurations]
+    # Connect each node to its k-nearest neighbors
+    all_configs = [start_config, goal_config] + configurations
+    for config1 in all_configs:
+        distances = [np.linalg.norm(config1 - config2) for config2 in all_configs]
         nearest_indices = np.argsort(distances)[1:k+1]
         for j in nearest_indices:
-            config2 = configurations[j]
+            config2 = all_configs[j]
             if is_collision_free(np.vstack([config1, config2]), obstacle_center, safe_distance):
                 G.add_edge(tuple(map(tuple, config1)), tuple(map(tuple, config2)), weight=distances[j])
+
     return G
 
 def build_roadmap_kd_tree(configurations, start_config, goal_config, k, obstacle_center, safe_distance):
@@ -158,7 +195,6 @@ def build_roadmap_kd_tree(configurations, start_config, goal_config, k, obstacle
                 G.add_edge(tuple(map(tuple, config)), tuple(map(tuple, neighbor_config)), weight=distances[0][j])
 
     return G
-
 
 def find_path_prm(graph, start_config, goal_config):
     # Convert configurations to tuple for graph compatibility
@@ -196,14 +232,14 @@ def plot_path_on_image_dir(image_path, path, start_config, goal_config, output_d
         for i in range(len(config) - 1):
             cv2.line(image, tuple(config[i].astype(int)), tuple(config[i+1].astype(int)), path_color(), 2)
         for point in config:
-            cv2.circle(image, tuple(point.astype(int)), radius=3, color=path_color(), thickness=-1)
-        
+            cv2.circle(image, tuple(point.astype(int)), radius=3, color=path_color(), thickness=-1)        
         
         # Save the image
         cv2.imwrite(os.path.join(output_directory, f'path_{idx}.jpg'), image)
 
 # Main execution
 if __name__ == "__main__":
+    # start_time = time.time()
     # Define the start and goal configurations (generalized for n keypoints)
     start_config = np.array([[257, 366], [257, 283], [179, 297], [175, 276], [175, 177], [197, 181]])  
     goal_config = np.array([[257, 366], [257, 283], [303, 217], [320, 229], [403, 283], [389, 297]])  
@@ -211,7 +247,12 @@ if __name__ == "__main__":
 
     # Load configurations from JSON files
     directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/kprcnn_sim_latest/'  # Replace with the path to your JSON files
-    configurations = load_keypoints_from_json(directory)
+    # configurations = load_keypoints_from_json(directory)
+
+    # Load and sample configurations from JSON files
+    num_samples = 500 # Adjust as needed
+    configurations = load_and_sample_configurations(directory, num_samples)
+
 
     # Detect the obstacle (red ball)
     image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/rrt_test_image/red_ball_image_1_goal.jpg'  # Replace with the path to your image file
@@ -223,20 +264,19 @@ if __name__ == "__main__":
         obstacle_center, obstacle_radius = None, None
 
     # Parameters for PRM
-    num_neighbors = 50  # Number of neighbors for each node in the roadmap
-
-    start_time = time.time()   
+    num_neighbors = 30  # Number of neighbors for each node in the roadmap
+    start_time = time.time()
     # Build the roadmap
-    roadmap = build_roadmap_kd_tree(configurations, start_config, goal_config, num_neighbors, obstacle_center, SAFE_DISTANCE)
+    roadmap = build_roadmap_kd_tree(configurations, start_config, goal_config, num_neighbors, obstacle_center, (SAFE_DISTANCE + obstacle_radius))
     end_time = time.time()
-    
-    print("time taken to build roadmap", end_time - start_time)
+
+    print("time taken to plan path", end_time - start_time)
 
     # Find the path
     path = find_path_prm(roadmap, start_config, goal_config)
 
     # path directory
-    output_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/rrt_test_image/paths/path_3_prm'
+    output_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/rrt_test_image/paths/path_prm/path_12_prm'
 
     # Plotting the path if found
     if path:
@@ -245,48 +285,7 @@ if __name__ == "__main__":
     else:
         print("No path found")
 
+    # end_time = time.time()
 
-# [
-#                 257.95220042652915,
-#                 366.9198630617724,
-#                 1
-#             ]
-#         ],
-#         [
-#             [
-#                 257.95973939799904,
-#                 283.013113744617,
-#                 1
-#             ]
-#         ],
-#         [
-#             [
-#                 212.68375962913188,
-#                 217.47046343476333,
-#                 1
-#             ]
-#         ],
-#         [
-#             [
-#                 229.81850714994908,
-#                 205.66649652451525,
-#                 1
-#             ]
-#         ],
-#         [
-#             [
-#                 327.56421488703063,
-#                 190.11205592376203,
-#                 1
-#             ]
-#         ],
-#         [
-#             [
-#                 349.5370638862348,
-#                 192.6387930737868,
-#                 1
-#             ]
-#         ]
-
-
+    print("time taken to plan path", end_time - start_time)
 
