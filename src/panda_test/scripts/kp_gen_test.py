@@ -212,16 +212,17 @@ class KpDetection():
         Updates camera extrinsics matrices.
         """
         # for simulation panda
-        # if not self.no_kp_gen:
-        #     (self.camera_ext_trans, self.camera_ext_rot) = \
-        #         self.tf_listener.lookupTransform(
-        #             '/camera_optical_link', self.robot.base_link, rospy.Time())
-        #     self.camera_ext = transform(self.camera_ext_trans, self.camera_ext_rot)
+        if not self.no_kp_gen:
+            (self.camera_ext_trans, self.camera_ext_rot) = \
+                self.tf_listener.lookupTransform(
+                    '/camera_optical_link', self.robot.base_link, rospy.Time())
+            self.camera_ext = transform(self.camera_ext_trans, self.camera_ext_rot)
 
         # for physical panda
-        if not self.no_kp_gen:
-            self.camera_ext_trans = [-0.25538742,  0.51991026,  1.72206416]
-            self.camera_ext_rot = [0.68110567,  0.05897169, -0.04771332,  0.72824505]
+        # if not self.no_kp_gen:
+        #     self.camera_ext_trans = [-0.25538742,  0.51991026,  1.72206416]
+        #     self.camera_ext_rot = [0.68110567,  0.05897169, -0.04771332,  0.72824505]
+        #     self.camera_ext = transform(self.camera_ext_trans, self.camera_ext_rot)
 
     def image_pixels(self, camera_ext, world_coords):
         """
@@ -366,6 +367,6 @@ if __name__ == '__main__':
     # kp = KpDetection(robot, sync=True)
     # robot.tf_listener = tf.TransformListener()
     # kp.run()
-    KpDetection(PandaTest2D(), save_dir=save_path, rate=20, screen_output=False, sync=False, no_kp_gen=True).run()
+    KpDetection(PandaTest2D(), save_dir=save_path, rate=20, screen_output=False, sync=False, no_kp_gen=False).run()
 
     # KpDetection(ScaraTest(), iterations=100).run()

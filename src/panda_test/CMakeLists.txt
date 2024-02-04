@@ -71,6 +71,7 @@ franka_cp_goal.srv
 # dream_kp.srv
 # dream_img.srv
 dl_goal_img.srv
+dl_plan_sim_img.srv
 dl_img.srv
 dl_sim_img.srv
 vel_start.srv

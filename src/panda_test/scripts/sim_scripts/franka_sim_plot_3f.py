@@ -42,9 +42,7 @@ def main(args):
     ax1 = axes[0]
     ax2 = axes[1]
     fig.tight_layout(pad=4.0)
-
-    
-
+  
     # Plot error norm   
     ax1.plot(err_norm, 'b',linewidth=1.5)
     ax1.margins(x = 0.0, y=0.0)

@@ -5,9 +5,9 @@ import os
 from collections import defaultdict
 
 # Directory containing your JSON files
-input_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/vel_reg_sim_test/'
+input_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_planning_panda/'
 # Directory to store unique velocities
-output_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/vel_reg_sim_test/unique_vel_2/'
+output_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/unique_vel_planning/2/'
 
 # Check if output directory exists, if not, create it
 if not os.path.exists(output_dir):

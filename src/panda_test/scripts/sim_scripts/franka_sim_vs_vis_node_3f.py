@@ -256,7 +256,7 @@ def main(args):
     img_sub = rospy.Subscriber("camera/color/image_raw", Image, visCallback, queue_size = 1)
     # ee_sub = rospy.Subscriber("marker_segmentation", Float64MultiArray, eePosCallback, queue_size=1)
     status_sub = rospy.Subscriber("vsbot/status", Int32, statusCallback, queue_size = 1)
-    # goal_sub = rospy.Subscriber("franka/dl_goal_image",Image, goalImgCallback, queue_size=1)
+    goal_sub = rospy.Subscriber("franka/sim_goal_image",Image, goalImgCallback, queue_size=1)
     cp_sub = rospy.Subscriber("vsbot/control_points", Float64MultiArray, controlPointCallback)
     r = rospy.get_param("vsbot/estimation/rate")
     # publish robot trajectory

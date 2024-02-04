@@ -3,6 +3,7 @@
 #include <math.h>
 #include <iostream>
 #include <vector>
+#include <numeric>  // For std::inner_product
 
 // #include "encoderless_vs/control_points.h"
 #include "panda_test/energyFuncMsg.h"
@@ -15,6 +16,7 @@
 #include "std_msgs/Float64MultiArray.h"
 #include "std_msgs/Int32.h"
 #include "std_msgs/Bool.h"
+
 
 
 // Status List - 
@@ -75,6 +77,8 @@ int main(int argc, char **argv){
     ros::Publisher err_pub = n.advertise<std_msgs::Float64MultiArray>("servoing_error", 1);
     ros::Publisher status_pub = n.advertise<std_msgs::Int32>("vsbot/status", 1);
     ros::Publisher cp_pub = n.advertise<std_msgs::Float64MultiArray>("vsbot/control_points", 1);
+    // Declaring a publisher for the current goal set
+    ros::Publisher current_goal_set_pub = n.advertise<std_msgs::Int32>("current_goal_set", 1);
     // std::cout << "Initialized Publishers" <<std::endl;
 
     // Initializing ROS subscribers
@@ -93,22 +97,22 @@ int main(int argc, char **argv){
     
     // Initializing service clients
     ros::service::waitForService("computeEnergyFunc",1000);
-    std::cout<<"Compute Energy Func is waited"<<std::endl;
+    // std::cout<<"Compute Energy Func is waited"<<std::endl;
     // ros::service::waitForService("franka_control_service", 1000);       
                                 // this service generates control points
     ros::service::waitForService("franka_kp_dl_service", 1000);  
-    std::cout<<"franka_kp_service is waited"<<std::endl;
+    // std::cout<<"franka_kp_service is waited"<<std::endl;
                                 // this service genarates key_points for dream
 
     // ros::service::waitForService("binary_image_output", 1000);
 
     ros::ServiceClient energyClient = n.serviceClient<panda_test::energyFuncMsg>("computeEnergyFunc");
-    std::cout<<"Compute Energy func is getting called ?"<<std::endl;
+    // std::cout<<"Compute Energy func is getting called ?"<<std::endl;
     // ros::ServiceClient cp_client = n.serviceClient<encoderless_vs::franka_control_points>("franka_control_service");
 
     // Added client for dream kp generation
     ros::ServiceClient kp_client = n.serviceClient<panda_test::dl_sim_img>("franka_kp_dl_service");
-    std::cout<<"franka kp service is getting called ?"<<std::endl;
+    // std::cout<<"franka kp service is getting called ?"<<std::endl;
 
     // Initializing status msg
     std_msgs::Int32 status;
@@ -446,7 +450,10 @@ int main(int argc, char **argv){
 // ----------------------------- Start Servoing ---------------------------------- 
     // err = thresh; // set error norm to threshold to start control loop
     std::cout<<"Entering control loop"<<std::endl;
-    
+    // Initialize the first goal set
+    std::vector<float> goal = goal_features[0]; // Start with the first goal set
+    int current_goal_set = 0; // Index of the current goal feature set
+
     // Switching to control loop rate
     t = 1/rate;
     ros::Rate control_r{rate};
@@ -460,15 +467,15 @@ int main(int argc, char **argv){
 
 
     // ----------------------- Control Loop for Servoing -----------------------------
-    int current_goal_set = 0; // Index of the current goal feature set
+    std_msgs::Int32 current_goal_set_msg; // Message for publishing current goal set index
     while(ros::ok() && !end_flag && current_goal_set < num_goal_sets){    // convergence condition
         // error norm "err" is always positive
-        std::vector<float> cur_goal = goal_features[current_goal_set];
+        // std::vector<float> cur_goal = goal_features[current_goal_set];
         // compute current error & norm
         // print_fvector(cur_features);
         // print_fvector(goal);
         for(int i = 0; i < no_of_features; i++){
-            error[i] = cur_features[i] - cur_goal[i];
+            error[i] = cur_features[i] - goal[i];
         }
     
         float err_acc = 0; // accumulator vairable for computing error norm
@@ -527,13 +534,13 @@ int main(int argc, char **argv){
         // IBVS control law (Velocity generator)
         //  With Berk 
         // P Control 
-        std::cout<<"Qhat_inv: "<<Qhat_inv<<std::endl;
-        std::cout<<"error_vec: "<<error_vec<<std::endl;
-        std::cout<<"gains: "<<lam<<std::endl;
+        // std::cout<<"Qhat_inv: "<<Qhat_inv<<std::endl;
+        // std::cout<<"error_vec: "<<error_vec<<std::endl;
+        // std::cout<<"gains: "<<lam<<std::endl;
         joint_vel = lam*(Qhat_inv)*(error_vec);
         // joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
-        std::cout<<"joint_vel_1: "<<joint_vel[0]<<std::endl;
-        std::cout<<"joint_vel_2: "<<joint_vel[1]<<std::endl;
+        // std::cout<<"joint_vel_1: "<<joint_vel[0]<<std::endl;
+        // std::cout<<"joint_vel_2: "<<joint_vel[1]<<std::endl;
         // std::cout<<"joint_vel_3: "<<joint_vel[2]<<std::endl; //uncomment - possible change for 3 joints
         // end of with Berk
         
@@ -615,15 +622,38 @@ End of working velocity scaling*/
         float ds_norm = sqrt(ds_accumulator);
 
         float err = sqrt(std::inner_product(error.begin(), error.end(), error.begin(), 0.0));
-        if (err < thresh) {
-            ++current_goal_set; // Move to the next set of goal features
-            if (current_goal_set < num_goal_sets) {
-                old_features = cur_features;
+        // if (err < thresh) {
+        //     ++current_goal_set; // Move to the next set of goal features
+        //     // Publish the updated current goal set index
+        //     current_goal_set_msg.data = current_goal_set;
+        //     current_goal_set_pub.publish(current_goal_set_msg);
+        //     if (current_goal_set < num_goal_sets) {
+        //         old_features = cur_features;
 
+        //         // Resetting change in joint angles and shape change vectors for the new goal
+        //         std::fill(dSinitial.begin(), dSinitial.end(), 0);
+        //         std::fill(dRinitial.begin(), dRinitial.end(), 0);
+        //     }
+        // }
+        if (err < thresh) {
+            std::cout << "Goal " << current_goal_set << " reached. Moving to next goal." << std::endl;
+            if (current_goal_set < num_goal_sets - 1) {
+                ++current_goal_set; // Move to the next set of goal features
+                goal = goal_features[current_goal_set]; // Update the goal to the next set
+                // Logging
+                std::cout << "Switching to goal set " << current_goal_set << std::endl;
                 // Resetting change in joint angles and shape change vectors for the new goal
                 std::fill(dSinitial.begin(), dSinitial.end(), 0);
                 std::fill(dRinitial.begin(), dRinitial.end(), 0);
+                std::cout << "Switched to goal set " << current_goal_set << std::endl;
+            } else {
+                // All goals reached
+                std::cout << "All goals reached" << std::endl;
+                break;
             }
+            // Publish the updated current goal set index
+            current_goal_set_msg.data = current_goal_set;
+            current_goal_set_pub.publish(current_goal_set_msg);
         }
         else{         
                     // could change ds_norm to error_norm and stop updating near goal

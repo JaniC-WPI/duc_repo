@@ -40,7 +40,7 @@ vsbot :
     rate: 10 # initialization loop rate
 
   control:
-    saturation: 40       # 2 joints
+    saturation: 10       # 2 joints
     # saturation: 10   # 3 joints
     # no_of_actuators: 2
     # no_of_features: 2
@@ -51,7 +51,7 @@ vsbot :
     goal_pos_y: 206
     # window: 20 # window size
     # lam: -10.0e-4 # servoing gain
-    lam: -0.3 # for 2 joints
+    lam: -0.2 # for 2 joints
     jacobian: [7,13,-21,17,19,-23,11,-29,31,11,3,17]
     # gains: [-0.3, -0.3, -0.3, -0.3, -0.3, -0.3] # for 2 joints
     # gains: [-1.0, -1.0, 1.0, 1.0, -0.5, -0.5, -0.6, -0.6, -0.3, -0.3, -0.3, -0.3] # for 3 joints

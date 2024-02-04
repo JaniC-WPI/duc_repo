@@ -6,7 +6,7 @@ This version has factored out the robot-related code.
 import rospy
 import tf
 from sensor_msgs.msg import JointState, Image, CameraInfo
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Float64MultiArray
 from scipy.spatial.transform import Rotation as R
 import numpy as np
 import cv2
@@ -85,6 +85,10 @@ class KpDetection():
                          self.wsp_movement_done, queue_size=1)
         rospy.Subscriber('/workspace_publisher/completed', Bool,
                          self.wsp_completed, queue_size=1)
+        
+        self.current_vel = []
+        rospy.Subscriber('/workspace_publisher/current_vel', Float64MultiArray,
+                         self.update_current_vel, queue_size=1)
 
         self.movement_done = True
         self.completed = False
@@ -101,7 +105,7 @@ class KpDetection():
         self.control_flag = None
         self.ros_img = None  # image in processing
         self.status = None
-
+        
         rospy.sleep(2)
 
     def world_coords_tf(self, joints: JointState):
@@ -174,6 +178,16 @@ class KpDetection():
                 outfile.write(json_obj)
             rospy.loginfo(f'kp_gen(): Saved json {filename}')
 
+            # Save the current velocity data to JSON file
+            velocity_data = {
+                "id": id,
+                "velocity": self.current_vel
+            }
+            velocity_file_name = os.path.join(self.save_dir, f"{int_stream[:len(int_stream)-len(str(id))]}{id}_vel.json")
+            with open(velocity_file_name, "w") as velocity_file:
+                json.dump(velocity_data, velocity_file, indent=4)
+            rospy.loginfo(f'kp_gen(): Saved velocity json {velocity_file_name}')
+
         if self.screen_output:
             visualize(cv_img, data['keypoints'], data['bboxes'],
                       int(1/self.rate*0.75*1000))  # wait time = 0.75 * 1/rate
@@ -204,8 +218,8 @@ class KpDetection():
         #     self.camera_ext = transform(self.camera_ext_trans, self.camera_ext_rot)
         # for physical panda
         if not self.no_kp_gen:
-            self.camera_ext_trans = [-0.25538742,  0.51991026,  1.72206416]
-            self.camera_ext_rot = [0.68110567,  0.05897169, -0.04771332,  0.72824505]
+            self.camera_ext_trans = [-0.08295237, 0.5408504, 1.68615688]
+            self.camera_ext_rot = [0.67391664, 0.0431504, -0.04033552, 0.73644243]
             self.camera_ext = transform(self.camera_ext_trans, self.camera_ext_rot)
 
     def image_pixels(self, camera_ext, world_coords):
@@ -241,6 +255,9 @@ class KpDetection():
             self.camera_extrinsics()
             self.ros_img = image
 
+    def update_current_vel(self, msg: Float64MultiArray):
+        self.current_vel = msg.data
+
     def wsp_movement_done(self, msg: Bool):
         self.movement_done = msg.data
 
@@ -251,7 +268,7 @@ class KpDetection():
         """
         Runs [self.iterations] tests
         """
-
+        print("is run in kp_gen running!")
         # wait until camera intrinsics are retrieved
         while not self.no_kp_gen and self.camera_K is None:
             pass

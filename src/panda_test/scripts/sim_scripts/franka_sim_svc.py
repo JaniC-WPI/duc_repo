@@ -246,8 +246,8 @@ class VideoInference:
                 # print("self.updated when True", self.updated)
                 self.measured5_list = np.append(self.updated5, self.measured5_list) 
             elif self.marker_flag[4] == False:
-                print("is update function getting called for 5th point")
-                print("update output before False", self.measured5_list[0], self.measured5_list[1], self.measured5_list[2], self.measured5_list[3])
+                # print("is update function getting called for 5th point")
+                # print("update output before False", self.measured5_list[0], self.measured5_list[1], self.measured5_list[2], self.measured5_list[3])
                 # rospy.sleep(2)
                 new_measured5 = np.array([[np.float32(self.measured5_list[0])], [np.float32(self.measured5_list[1])], [np.float32(self.measured5_list[2])], [np.float32(self.measured5_list[3])]])
                 self.updated5 = np.asarray(kf5.update(new_measured5))
@@ -510,7 +510,7 @@ class VideoInference:
         # uncomment the next line for 4 feature points
         # indices = [2,3,4,5,6,8]
         # uncomment the next line 3 feature points
-        indices = [0,1,2,4,5]
+        indices = [0,1,3,4,5]
         keypoints_ = [keypoints_[i] for i in indices]
 
         # print(keypoints)
@@ -553,7 +553,7 @@ class VideoInference:
            kp.append(kp_x[i+2]) 
            kp.append(kp_y[i+2])
 
-        print("current keuypoints", kp)
+        print("current keypoints", kp)
 
         # Uncomment the next block for 4 features
         # for i in range(len(kp_x)):
@@ -574,7 +574,7 @@ class VideoInference:
 def main():
     # Initialize the node
     rospy.init_node('kp_inference_gen')
-    print("is main getting called")
+    # print("is main getting called")
 
     # Declaring the keypoints service
     

@@ -2,7 +2,7 @@ import json
 import os
 
 # Directory containing your JSON files
-data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/2023-11-27_18_34_10/'
+data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/regression_dataset_panda/'
 
 # Get the list of JSON files (excluding velocity files)
 keypoint_files = sorted([f for f in os.listdir(data_dir) if f.endswith('.json') and not f.endswith('_vel.json')])

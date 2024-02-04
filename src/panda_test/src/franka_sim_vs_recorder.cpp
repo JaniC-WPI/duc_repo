@@ -9,10 +9,27 @@
 #include "std_msgs/Float64MultiArray.h"
 
 int status = 0;
+int current_goal_set = 0;
 
 
 void statusCallback(const std_msgs::Int32 &status_msg){
     status = status_msg.data;
+}
+
+// void updateGoalSetIndex(const std::vector<float>& error) {
+//     // Implement logic to determine if the goal set should be updated
+//     // This might be based on the error magnitude or some other criteria
+//     // For example:
+//     float error_norm = std::sqrt(std::inner_product(error.begin(), error.end(), error.begin(), 0.0));
+//     if (error_norm < ) {
+//         current_goal_set++;
+//         // Reset or adjust other relevant variables if needed
+//     }
+// }
+
+void currentGoalSetCallback(const std_msgs::Int32 &msg) {
+    current_goal_set = msg.data;
+    // Additional processing if needed
 }
 
 
@@ -90,12 +107,30 @@ void velCallback(const std_msgs::Float64MultiArray &msg){
 
 
 //  Uncomment the next block for 3f 2j
-void errCallback(const std_msgs::Float64MultiArray &msg){
-    if(status>1){
+// void errCallback(const std_msgs::Float64MultiArray &msg){
+//     if(status>1){
+//         std::ofstream err_plotdata("err.csv", std::ios::app);
+//         err_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","
+//                     <<msg.data.at(2)<<","<<msg.data.at(3)<<","
+//                     <<msg.data.at(4)<<","<<msg.data.at(5)<<"\n";
+//         err_plotdata.close();
+//     }
+// }
+
+
+// Uncomment for multiple goals
+void errCallback(const std_msgs::Float64MultiArray &msg) {
+    if (status > 1) {
+        std::vector<float> error(msg.data.begin(), msg.data.end());
+        // updateGoalSetIndex(error);
+
         std::ofstream err_plotdata("err.csv", std::ios::app);
-        err_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","
-                    <<msg.data.at(2)<<","<<msg.data.at(3)<<","
-                    <<msg.data.at(4)<<","<<msg.data.at(5)<<"\n";
+        // Add the current goal set index as the first column
+        err_plotdata << current_goal_set << ",";
+        for (const auto& e : error) {
+            err_plotdata << e << ",";
+        }
+        err_plotdata << "\n";
         err_plotdata.close();
     }
 }
@@ -206,6 +241,9 @@ int main(int argc, char **argv){
     ros::Subscriber status_sub = n.subscribe("vsbot/status", 1, statusCallback);
     ros::Subscriber cp_sub = n.subscribe("vsbot/control_points", 1, cpCallback);
                                     // This is for storing feature trajectories 
+                                    // Subscriber for current goal set
+    ros::Subscriber current_goal_set_sub = n.subscribe("current_goal_set_topic", 1, currentGoalSetCallback);
+
 
     // Also add subs for Jacobian and Jacobian update
 

@@ -19,21 +19,21 @@
     <link name="world"/>
 
         <!-- Red Circle Definition -->
-    <link name="red_obstacle">
+    <!-- <link name="red_obstacle">
         <visual>
             <geometry>
-                <cylinder length="0.01" radius="0.1"/> <!-- Adjust size as needed -->
+                <cylinder length="0.01" radius="0.1"/>
             </geometry>
             <material name="red"/>
         </visual>
-    </link>
+    </link> -->
 
-    <joint name="red_circle_joint" type="fixed">
-        <origin xyz="0.5 0 0.5" rpy="1.57 0 0"/> <!-- Adjust position relative to the world or robot -->
-        <parent link="${arm_id}_link0"/> <!-- or another reference link, e.g., a link of the robot -->
+    <!-- <joint name="red_circle_joint" type="fixed">
+        <origin xyz="0.25 0 0.9" rpy="1.57 0 0"/> 
+        <parent link="${arm_id}_link0"/> 
         <child link="red_obstacle"/>
         <axis xyz="0 0 0"/>
-    </joint>   
+    </joint>    -->
 
 
     <joint name="fixed" type="fixed">

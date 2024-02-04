@@ -18,7 +18,8 @@ SAFE_DISTANCE = 20  # Safe distance from the obstacle
 def load_keypoints_from_json(directory):
     configurations = []
     for filename in os.listdir(directory):
-        if filename.endswith('.json'):
+        # if filename.endswith('.json'):
+        if filename.endswith('.json') and not filename.endswith('_combined.json') and not filename.endswith('_vel.json'):
             with open(os.path.join(directory, filename), 'r') as file:
                 data = json.load(file)
                 # Convert keypoints to integers
@@ -173,12 +174,24 @@ def build_roadmap(configurations, start_config, goal_config, k, obstacle_center,
             if is_collision_free(np.vstack([config1, config2]), obstacle_center, safe_distance):
                 G.add_edge(tuple(map(tuple, config1)), tuple(map(tuple, config2)), weight=distances[j])
 
+    print(G.has_node(start_config), G.has_node(goal_config))            
+
     return G
 
 def build_roadmap_kd_tree(configurations, start_config, goal_config, k, obstacle_center, safe_distance):
     G = nx.Graph()
+    # print(start_config, goal_config)
     all_configs = [start_config, goal_config] + configurations
+    # print(all_configs[0])
     all_configs_np = np.array([c.flatten() for c in all_configs])
+
+    # Add start and goal configurations to the graph
+    G.add_node(tuple(map(tuple, start_config)))
+    G.add_node(tuple(map(tuple, goal_config)))
+
+    # Check if the start and goal nodes are in the graph
+    print("Start node in graph:", G.has_node(tuple(map(tuple, start_config))))
+    print("Goal node in graph:", G.has_node(tuple(map(tuple, goal_config))))
 
     # Create KDTree for efficient nearest neighbor search
     tree = KDTree(all_configs_np)
@@ -194,12 +207,15 @@ def build_roadmap_kd_tree(configurations, start_config, goal_config, k, obstacle
             if is_collision_free_line_check(np.vstack([config, neighbor_config]), obstacle_center, safe_distance):
                 G.add_edge(tuple(map(tuple, config)), tuple(map(tuple, neighbor_config)), weight=distances[0][j])
 
+    print("Final check - Start node in graph:", G.has_node(tuple(map(tuple, start_config))))
+    print("Final check - Goal node in graph:", G.has_node(tuple(map(tuple, goal_config))))
     return G
 
 def find_path_prm(graph, start_config, goal_config):
+    print(graph.has_node(start_config), graph.has_node(goal_config))
     # Convert configurations to tuple for graph compatibility
     start = tuple(map(tuple, start_config))
-    goal = tuple(map(tuple, goal_config))
+    goal = tuple(map(tuple, goal_config))    
 
     try:
         path = nx.astar_path(graph, start, goal)
@@ -241,12 +257,15 @@ def plot_path_on_image_dir(image_path, path, start_config, goal_config, output_d
 if __name__ == "__main__":
     # start_time = time.time()
     # Define the start and goal configurations (generalized for n keypoints)
-    start_config = np.array([[257, 366], [257, 283], [179, 297], [175, 276], [175, 177], [197, 181]])  
-    goal_config = np.array([[257, 366], [257, 283], [303, 217], [320, 229], [403, 283], [389, 297]])  
+    # start_config = np.array([[258, 367], [258, 282], [179, 297], [175, 276], [175, 177], [197, 181]])
+    start_config = np.array([[258, 367], [258, 282], [178, 282], [177, 262], [179, 164], [200, 164]])
+    # goal_config = np.array ([[258, 367], [258, 282], [191, 240], [202, 223], [291, 178], [298, 196]])
+    goal_config = np.array([[258, 366], [258, 281], [298, 214], [315, 224], [398, 276], [388, 292]])
+    # goal_config = np.array([[258, 367], [258, 282], [303, 217], [320, 229], [403, 283], [389, 297]])  
     # goal_config = np.array([[257, 366], [257, 283], [183, 254], [191, 234], [287, 212], [309, 216]])
 
     # Load configurations from JSON files
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/kprcnn_sim_latest/'  # Replace with the path to your JSON files
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_planning_combined/'  # Replace with the path to your JSON files
     # configurations = load_keypoints_from_json(directory)
 
     # Load and sample configurations from JSON files
@@ -255,16 +274,19 @@ if __name__ == "__main__":
 
 
     # Detect the obstacle (red ball)
-    image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/rrt_test_image/red_ball_image_1_goal.jpg'  # Replace with the path to your image file
-    obstacle_info = detect_red_ball(image_path)
-    if obstacle_info is not None:
-        obstacle_center, obstacle_radius = obstacle_info[:2], obstacle_info[2]
-    else:
-        print("No red ball detected in the image.")
-        obstacle_center, obstacle_radius = None, None
+    # image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/rrt_test_image/red_ball_image_1_goal.jpg'  # Replace with the path to your image file
+    # obstacle_info = detect_red_ball(image_path)
+    # if obstacle_info is not None:
+    #     obstacle_center, obstacle_radius = obstacle_info[:2], obstacle_info[2]
+    # else:
+    #     print("No red ball detected in the image.")
+    #     obstacle_center, obstacle_radius = None, None
+
+    obstacle_center = (319, 138)
+    obstacle_radius = 25
 
     # Parameters for PRM
-    num_neighbors = 30  # Number of neighbors for each node in the roadmap
+    num_neighbors = 50  # Number of neighbors for each node in the roadmap
     start_time = time.time()
     # Build the roadmap
     roadmap = build_roadmap_kd_tree(configurations, start_config, goal_config, num_neighbors, obstacle_center, (SAFE_DISTANCE + obstacle_radius))
@@ -287,5 +309,4 @@ if __name__ == "__main__":
 
     # end_time = time.time()
 
-    print("time taken to plan path", end_time - start_time)
 

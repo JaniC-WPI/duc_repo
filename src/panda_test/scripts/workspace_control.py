@@ -146,17 +146,21 @@ class WorkspacePublisher:
 
 if __name__ == '__main__':
     # # Panda Test
-    robot = PandaReal2D()
+    robot = PandaTest2D()
     # resolutions = [4, 4, 3, 3, 3, 3]
-    resolutions = [5, 5, 1]
+    # resolutions = [5, 5, 1]
+    resolutions = [2,2,1]
     joint_limits = [(-1.7628, 1.2),
                     (-2.754, -0.075),
                     (-0.0175, 1.7)]
     # joint_limits = PandaTest.joint_limits[:-1]
+    # joint_limits = np.array(PandaTest2D.joint_limits)[[1, 3, 5]]
+
     v_max = [0.3, 0.3, 0.5]
     # v_max = [2.1, 2.1, 2.1, 2.1, 2.5, 2.5]
     # timesteps = 0.2
-    timesteps = np.array([8, 6, 5])
+    # timesteps = np.array([8, 6, 5])
+    timesteps = np.array([4, 3, 2])
     WorkspacePublisher(robot, resolutions, joint_limits, v_max, timesteps, sync=False).run()
 
     # UR5 Test

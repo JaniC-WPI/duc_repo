@@ -55,43 +55,43 @@ def detect_red_ball(image_path):
         return (int(x), int(y), int(radius))
     return None
 
-def line_points(p1, p2):
-    """Return all the points on the line segment from p1 to p2 using Bresenham's Line Algorithm."""
-    x1, y1 = p1
-    x2, y2 = p2
-    points = []
-    dx = abs(x2 - x1)
-    dy = abs(y2 - y1)
-    x, y = x1, y1
-    sx = 1 if x1 < x2 else -1
-    sy = 1 if y1 < y2 else -1
-    if dx > dy:
-        err = dx / 2.0
-        while x != x2:
-            points.append((x, y))
-            err -= dy
-            if err < 0:
-                y += sy
-                err += dx
-            x += sx
-    else:
-        err = dy / 2.0
-        while y != y2:
-            points.append((x, y))
-            err -= dx
-            if err < 0:
-                x += sx
-                err += dy
-            y += sy
-    points.append((x, y))
-    return points
+# def line_points(p1, p2):
+#     """Return all the points on the line segment from p1 to p2 using Bresenham's Line Algorithm."""
+#     x1, y1 = p1
+#     x2, y2 = p2
+#     points = []
+#     dx = abs(x2 - x1)
+#     dy = abs(y2 - y1)
+#     x, y = x1, y1
+#     sx = 1 if x1 < x2 else -1
+#     sy = 1 if y1 < y2 else -1
+#     if dx > dy:
+#         err = dx / 2.0
+#         while x != x2:
+#             points.append((x, y))
+#             err -= dy
+#             if err < 0:
+#                 y += sy
+#                 err += dx
+#             x += sx
+#     else:
+#         err = dy / 2.0
+#         while y != y2:
+#             points.append((x, y))
+#             err -= dx
+#             if err < 0:
+#                 x += sx
+#                 err += dy
+#             y += sy
+#     points.append((x, y))
+#     return points
 
-def is_line_too_close_to_obstacle(p1, p2, obstacle_center, safe_distance):
-    """Check if a line segment between p1 and p2 is too close to the obstacle."""
-    for point in line_points(p1, p2):
-        if np.linalg.norm(np.array(point) - np.array(obstacle_center)) < safe_distance:
-            return True
-    return False
+# def is_line_too_close_to_obstacle(p1, p2, obstacle_center, safe_distance):
+#     """Check if a line segment between p1 and p2 is too close to the obstacle."""
+#     for point in line_points(p1, p2):
+#         if np.linalg.norm(np.array(point) - np.array(obstacle_center)) < safe_distance:
+#             return True
+#     return False
 
 def is_configuration_too_close_to_obstacle(configuration, obstacle_center, safe_distance):
     """Check if any part of the robot configuration is too close to the obstacle."""
@@ -99,6 +99,38 @@ def is_configuration_too_close_to_obstacle(configuration, obstacle_center, safe_
         if is_line_too_close_to_obstacle(configuration[i], configuration[i+1], obstacle_center, safe_distance):
             return True
     return False
+
+def point_to_line_distance(point, line_start, line_end):
+    """Calculate the distance from a point to a line segment."""
+    # Line segment vector
+    line_vec = line_end - line_start
+    # Vector from line start to the point
+    point_vec = point - line_start
+
+    # Calculate the projection of the point vector onto the line segment vector
+    line_len = np.linalg.norm(line_vec)
+    projection = np.dot(point_vec, line_vec) / line_len**2
+
+    # Check where the projection lies
+    if projection < 0.0:
+        closest_point = line_start
+    elif projection > 1.0:
+        closest_point = line_end
+    else:
+        closest_point = line_start + projection * line_vec
+
+    # Distance from the closest point on the line segment to the point
+    return np.linalg.norm(closest_point - point)
+
+def is_line_too_close_to_obstacle(p1, p2, obstacle_center, safe_distance):
+    """Check if a line segment between p1 and p2 is too close to the obstacle."""
+    p1 = np.array(p1)
+    p2 = np.array(p2)
+    obstacle_center = np.array(obstacle_center)
+
+    distance = point_to_line_distance(obstacle_center, p1, p2)
+    return distance <= safe_distance
+
 
 # load the regression model next keypoints detection        
 def load_model_for_inference(model_path):
@@ -141,7 +173,7 @@ class Node:
     #     # Check if all x and y values of keypoints are within the threshold
     #     return np.all(diff <= threshold)
 
-    def is_similar(self, other_node, threshold=2):
+    def is_similar(self, other_node, threshold=4):
         """Check if the overall configurations are similar within a given threshold."""
         # Calculate the Euclidean distance between corresponding keypoints
         distance = np.linalg.norm(self.configuration - other_node.configuration)
@@ -187,7 +219,7 @@ def a_star_search(start_config, goal_config, model_path, velocities, obstacle_ce
             closed_list.append(current_node)
     
             # Check if goal is reached
-            if current_node.is_similar(end_node, threshold=2):
+            if current_node.is_similar(end_node):
                 path = []
                 current = current_node
                 while current is not None:
@@ -220,11 +252,11 @@ def a_star_search(start_config, goal_config, model_path, velocities, obstacle_ce
     
                 children.append(new_node)
     
-            print("Children nodes", [node.configuration for node in children])
+            # print("Children nodes", [node.configuration for node in children])
     
             for child_node in children:
                 # Check if child is in closed list or similar to any node in the closed list
-                if any(child_node.is_similar(closed_node, threshold=2) for closed_node in closed_list):
+                if any(child_node.is_similar(closed_node) for closed_node in closed_list):
                     print("child is in closed list")
                     continue
                 else:
@@ -235,11 +267,11 @@ def a_star_search(start_config, goal_config, model_path, velocities, obstacle_ce
                 child_node.f = child_node.g + child_node.h
     
                 # # Check if similar node is already in open list
-                if any(child_node.is_similar(open_node) and child_node.g > open_node.g for open_node in open_list):
-                    print("child is in open list but with higher cost")
-                    continue
-                else:
-                    print("Child is in open list with lower cost")
+                # if any(child_node.is_similar(open_node) and child_node.g > open_node.g for open_node in open_list):
+                #     print("child is in open list but with higher cost")
+                #     continue
+                # else:
+                #     print("Child is in open list with lower cost")
                 
                 open_list.append(child_node)
             
@@ -297,9 +329,9 @@ if __name__ == '__main__':
     # goal_config = np.array([[257, 366], [257, 283], [303, 217], [320, 229], [403, 283], [389, 297]])   # Replace with your actual goal configuration
     goal_config = np.array([[257, 366], [257, 283], [183, 254], [191, 234], [287, 212], [309, 216]])
 
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/vel_reg_sim_test_2/unique_vel_plan/'
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/unique_vel_planning/1/'
     velocities = load_velocities_from_directory(directory)
-    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_nkp_b128_e300_v1_l5.pth'
+    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_nkp_b64_e500_v1_l5.pth'
 
     # Detect the obstacle (red ball)
     image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/rrt_test_image/red_ball_image_1_goal.jpg'  # Replace with the path to your image file
