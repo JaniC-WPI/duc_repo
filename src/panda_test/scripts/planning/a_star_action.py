@@ -325,9 +325,14 @@ def plot_path_on_image_dir(image_path, path, start_config, goal_config, output_d
 
 if __name__ == '__main__':
     # Define the start and goal configurations (generalized for n keypoints)
-    start_config = np.array([[257, 366], [257, 283], [179, 297], [175, 276], [175, 177], [197, 181]])  # Replace with your actual start configuration
+    # start_config = np.array([[257, 366], [257, 283], [179, 297], [175, 276], [175, 177], [197, 181]])  # Replace with your actual start configuration
     # goal_config = np.array([[257, 366], [257, 283], [303, 217], [320, 229], [403, 283], [389, 297]])   # Replace with your actual goal configuration
-    goal_config = np.array([[257, 366], [257, 283], [183, 254], [191, 234], [287, 212], [309, 216]])
+    # goal_config = np.array([[257, 366], [257, 283], [183, 254], [191, 234], [287, 212], [309, 216]])
+    start_config = np.array([[291.3727, 425.9008], [292.9618, 305.4389], [186.7145, 290.6239], [190.7097,
+        262.4118], [240.0366, 390.2596], [211.3978, 398.0443]])
+    
+    goal_config = np.array([[291.3727, 425.9008], [292.9618, 305.4389], [185.5897, 311.7277], [184.3402,
+        283.1863], [317.4286, 268.2987], [312.1099, 292.2249]])
 
     directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/unique_vel_planning/1/'
     velocities = load_velocities_from_directory(directory)
