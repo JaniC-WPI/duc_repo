@@ -101,10 +101,10 @@ def main(args):
             j2_vel.append(row)
 
     # # with open('/home/jc-merlab/Pictures/Dl_Exps/dl_vs/servoing/exps/5/j3vel.csv','r') as csvfile:
-    # with open('j3vel.csv','r') as csvfile:
-    #     plots = csv.reader(csvfile, delimiter = ',')
-    #     for row in plots:
-    #         j3_vel.append(row)
+    with open('j3vel.csv','r') as csvfile:
+        plots = csv.reader(csvfile, delimiter = ',')
+        for row in plots:
+            j3_vel.append(row)
 
     # Post process the list
     model_error = model_error[1:]
@@ -119,9 +119,9 @@ def main(args):
     j2_vel = [list( map(float,i) ) for i in j2_vel]
     j2_vel = np.array(j2_vel)
 
-    # j3_vel = j3_vel[1:]
-    # j3_vel = [list( map(float,i) ) for i in j3_vel]
-    # j3_vel = np.array(j3_vel)
+    j3_vel = j3_vel[1:]
+    j3_vel = [list( map(float,i) ) for i in j3_vel]
+    j3_vel = np.array(j3_vel)
 
     # Create axes for plots
     fig, axes = plt.subplots(nrows=1, ncols=1)

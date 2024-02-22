@@ -74,19 +74,6 @@ void JCallback(const std_msgs::Float32 &msg){
 // }
 
 // Uncomment - this block is to save data for 2 joints
-void velCallback(const std_msgs::Float64MultiArray &msg){
-    if(status>0){
-        std::ofstream j1vel_plotdata("j1vel.csv",std::ios::app);
-        j1vel_plotdata<<msg.data.at(0)<<"\n";
-        j1vel_plotdata.close();
-
-        std::ofstream j2vel_plotdata("j2vel.csv",std::ios::app);
-        j2vel_plotdata<<msg.data.at(1)<<"\n";
-        j2vel_plotdata.close();
-    }
-}
-
-// Unomment - this block is to save data for 3 joints
 // void velCallback(const std_msgs::Float64MultiArray &msg){
 //     if(status>0){
 //         std::ofstream j1vel_plotdata("j1vel.csv",std::ios::app);
@@ -96,14 +83,27 @@ void velCallback(const std_msgs::Float64MultiArray &msg){
 //         std::ofstream j2vel_plotdata("j2vel.csv",std::ios::app);
 //         j2vel_plotdata<<msg.data.at(1)<<"\n";
 //         j2vel_plotdata.close();
-        
-//         std::ofstream j3vel_plotdata("j3vel.csv",std::ios::app);
-//         j3vel_plotdata<<msg.data.at(1)<<"\n";
-//         j3vel_plotdata.close();
-
-
 //     }
 // }
+
+// Unomment - this block is to save data for 3 joints
+void velCallback(const std_msgs::Float64MultiArray &msg){
+    if(status>0){
+        std::ofstream j1vel_plotdata("j1vel.csv",std::ios::app);
+        j1vel_plotdata<<msg.data.at(0)<<"\n";
+        j1vel_plotdata.close();
+
+        std::ofstream j2vel_plotdata("j2vel.csv",std::ios::app);
+        j2vel_plotdata<<msg.data.at(1)<<"\n";
+        j2vel_plotdata.close();
+        
+        std::ofstream j3vel_plotdata("j3vel.csv",std::ios::app);
+        j3vel_plotdata<<msg.data.at(1)<<"\n";
+        j3vel_plotdata.close();
+
+
+    }
+}
 
 
 //  Uncomment the next block for 3f 2j
@@ -184,7 +184,7 @@ int main(int argc, char **argv){
     std::ofstream dr_plot("dr.csv");
     std::ofstream j1vel_plot("j1vel.csv");
     std::ofstream j2vel_plot("j2vel.csv");
-    // std::ofstream j3vel_plot("j3vel.csv"); // comment/uncomment on the basis of joint numbers
+    std::ofstream j3vel_plot("j3vel.csv"); // comment/uncomment on the basis of joint numbers
     std::ofstream err_plot("err.csv");
     std::ofstream cp_plot("cp.csv");
 
@@ -202,8 +202,8 @@ int main(int argc, char **argv){
     j1vel_plot.close();
     j2vel_plot <<"Joint 2" <<"\n";
     j2vel_plot.close();
-    // j3vel_plot <<"Joint 3" <<"\n";
-    // j3vel_plot.close();
+    j3vel_plot <<"Joint 3" <<"\n";
+    j3vel_plot.close();
     err_plot <<"Err_cp2_x"<<","<<"Err_cp2_y"<<","<<"Err_cp3_x"<<","<<"Err_cp3_y"
              << ","<<"Err_cp4_x"<<","<<"Err_cp4_y"<<"\n";
     err_plot.close();

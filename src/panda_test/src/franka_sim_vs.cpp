@@ -8,7 +8,7 @@
 // #include "encoderless_vs/control_points.h"
 #include "panda_test/energyFuncMsg.h"
 // #include "encoderless_vs/franka_control_points.h"
-#include "panda_test/dl_sim_img.h"
+#include "panda_test/dl_img.h"
 #include "panda_test/vel_start.h"
 
 #include "std_msgs/Float32.h"
@@ -111,7 +111,7 @@ int main(int argc, char **argv){
     // ros::ServiceClient cp_client = n.serviceClient<encoderless_vs::franka_control_points>("franka_control_service");
 
     // Added client for dream kp generation
-    ros::ServiceClient kp_client = n.serviceClient<panda_test::dl_sim_img>("franka_kp_dl_service");
+    ros::ServiceClient kp_client = n.serviceClient<panda_test::dl_img>("franka_kp_dl_service");
     // std::cout<<"franka kp service is getting called ?"<<std::endl;
 
     // Initializing status msg
@@ -218,7 +218,7 @@ int main(int argc, char **argv){
 
     // Declaring msg for control points service call
     // encoderless_vs::franka_control_points cp_msg;
-    panda_test::dl_sim_img cp_msg;
+    panda_test::dl_img cp_msg;
     cp_msg.request.input = 1;
 
     float t = 1/rate; // time in seconds, used for integrating angular velocity
@@ -226,10 +226,10 @@ int main(int argc, char **argv){
 
     // uncomment next block for 3D motions
     // Convert gains to Eigen vector
-    // Eigen::VectorXf K(no_of_features);
-    // for(int i=0; i<no_of_features; i++){
-    //     K[i] = gains[i];
-    // }
+    Eigen::VectorXf K(no_of_features);
+    for(int i=0; i<no_of_features; i++){
+        K[i] = gains[i];
+    }
 
 
 // --------------------------- Initial Estimation -----------------------------    
@@ -263,11 +263,11 @@ int main(int argc, char **argv){
     while (it < window){
 
         // Publish sin vel to both joints
-        // float j1_vel = amplitude*(cos(param)+sin(param));
-        // float j2_vel = amplitude*sin(param);
-        // float j3_vel = amplitude*cos(param);  // comment out when 3rd joint not in use
-        float j1_vel = amplitude*sin(param);
-        float j2_vel = amplitude*cos(param); 
+        float j1_vel = amplitude*(cos(param)+sin(param));
+        float j2_vel = amplitude*sin(param);
+        float j3_vel = amplitude*cos(param);  // comment out when 3rd joint not in use
+        // float j1_vel = amplitude*sin(param);
+        // float j2_vel = amplitude*cos(param); 
         
         param = param + 0.1;
         
@@ -278,7 +278,7 @@ int main(int argc, char **argv){
         j_vel.data.clear();
         j_vel.data.push_back(j1_vel);
         j_vel.data.push_back(j2_vel);
-        // j_vel.data.push_back(j3_vel); // comment out when 3rd joint not in use
+        j_vel.data.push_back(j3_vel); // comment out when 3rd joint not in use
 
         j_pub.publish(j_vel);
 
@@ -308,7 +308,7 @@ int main(int argc, char **argv){
         dr.clear();
         dr.push_back((j1_vel*t));
         dr.push_back((j2_vel*t));
-        // dr.push_back((j3_vel*t)); // comment out when 3rd joint not in use
+        dr.push_back((j3_vel*t)); // comment out when 3rd joint not in use
 
         // Update dSinitial and dRinitial
         for(int i = 0; i < no_of_features; i++){
@@ -360,7 +360,7 @@ int main(int argc, char **argv){
     j_vel.data.clear();
     j_vel.data.push_back(0.0);
     j_vel.data.push_back(0.0);
-    // j_vel.data.push_back(0.0); //comment/uncomment depending on number of joints
+    j_vel.data.push_back(0.0); //comment/uncomment depending on number of joints
 
     j_pub.publish(j_vel);
 
@@ -515,9 +515,9 @@ int main(int argc, char **argv){
         }
 
         // joint velocity Eigen::vector
-        Eigen::Vector2f joint_vel; // uncomment for 2 joints
+        // Eigen::Vector2f joint_vel; // uncomment for 2 joints
 
-        // Eigen::Vector3f joint_vel;  // uncomment for 3 joints
+        Eigen::Vector3f joint_vel;  // uncomment for 3 joints
 
         // std::cout<<"Jacobian: \n"<<Qhat<<std::endl;
 
@@ -537,8 +537,8 @@ int main(int argc, char **argv){
         // std::cout<<"Qhat_inv: "<<Qhat_inv<<std::endl;
         // std::cout<<"error_vec: "<<error_vec<<std::endl;
         // std::cout<<"gains: "<<lam<<std::endl;
-        joint_vel = lam*(Qhat_inv)*(error_vec);
-        // joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
+        // joint_vel = lam*(Qhat_inv)*(error_vec);
+        joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
         // std::cout<<"joint_vel_1: "<<joint_vel[0]<<std::endl;
         // std::cout<<"joint_vel_2: "<<joint_vel[1]<<std::endl;
         // std::cout<<"joint_vel_3: "<<joint_vel[2]<<std::endl; //uncomment - possible change for 3 joints
@@ -588,7 +588,7 @@ End of working velocity scaling*/
         j_vel.data.clear();
         j_vel.data.push_back(joint_vel[0]);
         j_vel.data.push_back(joint_vel[1]);
-        // j_vel.data.push_back(joint_vel[2]); //comment/uncomment depending on # of joints
+        j_vel.data.push_back(joint_vel[2]); //comment/uncomment depending on # of joints
 
         j_pub.publish(j_vel);
         
@@ -612,7 +612,7 @@ End of working velocity scaling*/
         // Do not loose your mind every time you see this!
         dr[0] += joint_vel[0]*t;
         dr[1] += joint_vel[1]*t;
-        // dr[2] += joint_vel[2]*t; //comment/uncomment
+        dr[2] += joint_vel[2]*t; //comment/uncomment
     
         // Compute shape change magnitude
         float ds_accumulator = 0;
@@ -646,6 +646,9 @@ End of working velocity scaling*/
                 std::fill(dSinitial.begin(), dSinitial.end(), 0);
                 std::fill(dRinitial.begin(), dRinitial.end(), 0);
                 std::cout << "Switched to goal set " << current_goal_set << std::endl;
+
+                // Pause for 2 seconds before continuing to the next goal
+                ros::Duration(2).sleep();
             } else {
                 // All goals reached
                 std::cout << "All goals reached" << std::endl;
@@ -759,7 +762,7 @@ End of working velocity scaling*/
     j_vel.data.clear();
     j_vel.data.push_back(0.0);
     j_vel.data.push_back(0.0);
-    // j_vel.data.push_back(0.0); // comment/ uncomment on the basis of joints
+    j_vel.data.push_back(0.0); // comment/ uncomment on the basis of joints
 
     j_pub.publish(j_vel);
 

@@ -113,6 +113,8 @@ class WorkspacePublisher:
             current_vel_msg.data[i] = self.velocities[i]
             self.current_vel_pub.publish(current_vel_msg)
 
+            print("Debug vel", current_vel_msg)
+
             rospy.sleep(self.time_steps[i])
             # self.pubs[i].publish(Float64(0))
             self.robot.ws_publish_joint(i, 0)
@@ -144,14 +146,14 @@ class WorkspacePublisher:
         self.completed_pub.publish(Bool(True))
         rospy.loginfo('Workspace publisher completed...')
         rospy.spin()
-
-
+    
+    
 if __name__ == '__main__':
     # # Panda Test
     print("is main getting called")
     robot = PandaReal2D()
     # resolutions = [4, 4, 3, 3, 3, 3]
-    resolutions = [4, 4, 1]
+    resolutions = [3, 3, 1]
     # joint_limits = [(-1.7628, 1.2),
     #                 (-2.754, -0.075),
     #                 (-0.0175, 1.7)]
@@ -159,5 +161,5 @@ if __name__ == '__main__':
     v_max = [0.3, 0.3, 0.3]
     # v_max = [2.1, 2.1, 2.1, 2.1, 2.5, 2.5]
     # timesteps = 0.2
-    timesteps = np.array([4, 4, 1])
+    timesteps = np.array([2, 2, 1])
     WorkspacePublisher(robot, resolutions, joint_limits, v_max, timesteps, sync=False).run()

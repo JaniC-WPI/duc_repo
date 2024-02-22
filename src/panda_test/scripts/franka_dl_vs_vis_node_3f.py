@@ -62,20 +62,28 @@ def controlPointCallback(cp_msg):
         traj_cp2_x, traj_cp2_y, traj_cp3_x, traj_cp3_y
             # traj_cp4_x, traj_cp4_y
     
-    cp1x = cp_msg.data[0]
-    cp1y = cp_msg.data[1]
+    # cp1x = cp_msg.data[0]
+    # cp1y = cp_msg.data[1]
     
-    cp2x = cp_msg.data[2]
-    cp2y = cp_msg.data[3]
+    # cp2x = cp_msg.data[2]
+    # cp2y = cp_msg.data[3]
 
-    cp3x = cp_msg.data[4]
-    cp3y = cp_msg.data[5]
+    # cp3x = cp_msg.data[4]
+    # cp3y = cp_msg.data[5]
 
     # cp4x = cp_msg.data[6]
     # cp4y = cp_msg.data[7]
 
     # cp5x = cp_msg.data[8]
     # cp5y = cp_msg.data[9]
+    cp1x = cp_msg.data[2]
+    cp1y = cp_msg.data[3]
+    
+    cp2x = cp_msg.data[4]
+    cp2y = cp_msg.data[5]
+
+    cp3x = cp_msg.data[6]
+    cp3y = cp_msg.data[7]
 
     if status == 2:
         traj_cp1_x.append(cp1x)

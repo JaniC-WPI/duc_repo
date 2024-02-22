@@ -94,14 +94,14 @@ if __name__ == "__main__":
     # start_time = time.time()
     # Define the start and goal configurations (generalized for n keypoints)
     # start_config = np.array([[258, 367], [258, 282], [179, 297], [175, 276], [175, 177], [197, 181]])
-    start_config = np.array([[258, 367], [258, 282], [178, 282], [177, 262], [179, 164], [200, 164]])
+    start_config = np.array([[274, 430], [274, 312], [198, 239], [217, 220], [303, 123], [317, 95]])
     # goal_config = np.array ([[258, 367], [258, 282], [191, 240], [202, 223], [291, 178], [298, 196]])
-    goal_config = np.array([[258, 366], [258, 281], [298, 214], [315, 224], [398, 276], [388, 292]])
+    goal_config = np.array([[274, 430], [274, 312], [246, 210], [272, 202], [393, 257], [421, 241]])
     # goal_config = np.array([[258, 367], [258, 282], [303, 217], [320, 229], [403, 283], [389, 297]])  
     # goal_config = np.array([[257, 366], [257, 283], [183, 254], [191, 234], [287, 212], [309, 216]])
 
     # Load configurations from JSON files
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_planning_combined/'  # Replace with the path to your JSON files
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_planning_panda_regression/'  # Replace with the path to your JSON files
     # configurations = load_keypoints_from_json(directory)
 
     # Load and sample configurations from JSON files

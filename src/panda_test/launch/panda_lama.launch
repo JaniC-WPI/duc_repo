@@ -1,5 +1,5 @@
 <launch>
-   <include file="$(find realsense2_camera)/launch/rs_aligned_depth.launch"/>
+   <include file="$(find realsense2_camera)/launch/rs_camera.launch"/>
     <!-- <include file="$(find encoderless_vs)/launch/rs_encoderless_old.launch">
         <arg name ="initial_reset" value="$(arg initial_reset)"/>
     </include> -->
@@ -13,20 +13,18 @@
     <!-- <node name="set_auto_exposure_depth" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/stereo_module enable_auto_exposure False"/> -->
 
     <!-- Delay starting nodes to ensure camera is ready -->
-    <arg name="img_node_start_delay" default="10.0" />
+    <arg name="img_node_start_delay" default="15.0" />
 
     <!-- Node to move the joints in different angles -->
     <node name="image_capture" pkg="panda_test" type="image_capture.py" output="screen" respawn="false" />
-    <!-- <node name="franka_velocity" pkg="encoderless_vision_dl" type="workspace_control.py" output="screen" respawn="false" 
-    launch-prefix="bash -c 'sleep $(arg img_node_start_delay); $0 $@' "/> -->
-    <!-- <node name="record_images" pkg="panda_test" type="kp_gen_phys.py" output="screen" respawn="false" 
+    
+    <node name="record_images" pkg="panda_test" type="kp_gen_phys.py" output="screen" respawn="false" 
     launch-prefix="bash -c 'sleep $(arg img_node_start_delay); $0 $@' "/>
-    <node name="ws" pkg="panda_test" type="workspace_control_phys.py" output="screen" respawn="false" 
+    <!-- <node name="ws" pkg="panda_test" type="workspace_control_phys.py" output="screen" respawn="false" 
     launch-prefix="bash -c 'sleep $(arg img_node_start_delay); $0 $@' "/> -->
     <!-- <node name="record_images" pkg="panda_test" type="kp_gen_test.py" output="screen" respawn="false"/>
     <node name="ws" pkg="panda_test" type="workspace_control.py" output="screen" respawn="false"/> -->
-    <!-- <node name="projection_node" pkg="encoderless_vision_dl" type="kp_detection_full.py" output="screen" respawn="false" /> -->
-    <!-- <node name="kalmanfilter_class" pkg="encoderless_vs" type="kalmanfilter.py" output="screen" respawn="false" /> -->
+   
    
 
     <node name="image_view" pkg="image_view" type="image_view" respawn="false" output="screen">

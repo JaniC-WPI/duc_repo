@@ -14,7 +14,7 @@ from cv_bridge import CvBridge
 import json
 import os
 from Robot import RobotTest, PandaReal2D
-from visualize_kp import visualize
+# from visualize_kp import visualize
 from datetime import datetime
 
 
@@ -22,7 +22,7 @@ from datetime import datetime
 int_stream = '000000'
 folder = 9
 # folder for main dataset
-root_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel'
+root_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/'
 
 
 # homogenous tranformation from 4X1 translation and
@@ -188,9 +188,9 @@ class KpDetection():
                 json.dump(velocity_data, velocity_file, indent=4)
             rospy.loginfo(f'kp_gen(): Saved velocity json {velocity_file_name}')
 
-        if self.screen_output:
-            visualize(cv_img, data['keypoints'], data['bboxes'],
-                      int(1/self.rate*0.75*1000))  # wait time = 0.75 * 1/rate
+        # if self.screen_output:
+        #     visualize(cv_img, data['keypoints'], data['bboxes'],
+        #               int(1/self.rate*0.75*1000))  # wait time = 0.75 * 1/rate
 
     def camera_intrinsics(self, camera_info: CameraInfo):
         """
@@ -218,8 +218,8 @@ class KpDetection():
         #     self.camera_ext = transform(self.camera_ext_trans, self.camera_ext_rot)
         # for physical panda
         if not self.no_kp_gen:
-            self.camera_ext_trans = [-0.08295237, 0.5408504, 1.68615688]
-            self.camera_ext_rot = [0.67391664, 0.0431504, -0.04033552, 0.73644243]
+            self.camera_ext_trans = [-0.13678923,  0.5030209,   1.68181415]#[-0.1406737, 0.51277635, 1.82787528]
+            self.camera_ext_rot =  [0.69260481, 0.07556831, -0.0967956, 0.71078732] #[0.69402915, -0.17008132,  0.15281551,  0.68267365]
             self.camera_ext = transform(self.camera_ext_trans, self.camera_ext_rot)
 
     def image_pixels(self, camera_ext, world_coords):
@@ -325,6 +325,8 @@ class KpDetection():
             self.image_pix = self.image_pixels(
                 self.camera_ext, self.world_coords)
             self.kp_gen(self.control_flag, self.ros_img, t)
+
+            print(f'Current velocity: {self.current_vel}')
 
             # Runs [robot.func_post] after each test
             if self.robot.func_post is not None:

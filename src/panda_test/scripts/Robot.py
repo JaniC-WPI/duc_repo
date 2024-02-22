@@ -297,7 +297,7 @@ class PandaReal2D(RobotTest):
             '/workspace_publisher/trigger', Bool, queue_size=1)
 
     def process_joint_pos(self, joint_pos):
-        return joint_pos[2:]
+        return joint_pos[:-2]
 
     def ws_publish_joint(self, i, val):
         """

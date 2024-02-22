@@ -326,7 +326,7 @@ class KpDetection():
             # Generates keypoints
             self.image_pix = self.image_pixels(
                 self.camera_ext, self.world_coords)
-            self.kp_gen(self.control_flag, self.ros_img, t, )
+            self.kp_gen(self.control_flag, self.ros_img, t)
 
             #
             print(f'Current velocity: {self.current_vel}')

@@ -249,11 +249,11 @@ int main(int argc, char **argv){
     while (it < window){
 
         // Publish sin vel to both joints
-        // float j1_vel = amplitude*(cos(param)+sin(param));
-        // float j2_vel = amplitude*sin(param);
-        // float j3_vel = amplitude*cos(param);  // comment out when 3rd joint not in use
-        float j1_vel = amplitude*sin(param);
-        float j2_vel = amplitude*cos(param); 
+        float j1_vel = amplitude*(cos(param)+sin(param));
+        float j2_vel = amplitude*sin(param);
+        float j3_vel = amplitude*cos(param);  // comment out when 3rd joint not in use
+        // float j1_vel = amplitude*sin(param);
+        // float j2_vel = amplitude*cos(param); 
         
         param = param + 0.1;
         
@@ -264,7 +264,7 @@ int main(int argc, char **argv){
         j_vel.data.clear();
         j_vel.data.push_back(j1_vel);
         j_vel.data.push_back(j2_vel);
-        // j_vel.data.push_back(j3_vel); // comment out when 3rd joint not in use
+        j_vel.data.push_back(j3_vel); // comment out when 3rd joint not in use
 
         j_pub.publish(j_vel);
 
@@ -294,7 +294,7 @@ int main(int argc, char **argv){
         dr.clear();
         dr.push_back((j1_vel*t));
         dr.push_back((j2_vel*t));
-        // dr.push_back((j3_vel*t)); // comment out when 3rd joint not in use
+        dr.push_back((j3_vel*t)); // comment out when 3rd joint not in use
 
         // Update dSinitial and dRinitial
         for(int i = 0; i < no_of_features; i++){
@@ -346,7 +346,7 @@ int main(int argc, char **argv){
     j_vel.data.clear();
     j_vel.data.push_back(0.0);
     j_vel.data.push_back(0.0);
-    // j_vel.data.push_back(0.0); //comment/uncomment depending on number of joints
+    j_vel.data.push_back(0.0); //comment/uncomment depending on number of joints
 
     j_pub.publish(j_vel);
 
@@ -497,9 +497,9 @@ int main(int argc, char **argv){
         }
 
         // joint velocity Eigen::vector
-        Eigen::Vector2f joint_vel; // uncomment for 2 joints
+        // Eigen::Vector2f joint_vel; // uncomment for 2 joints
 
-        // Eigen::Vector3f joint_vel;  // uncomment for 3 joints
+        Eigen::Vector3f joint_vel;  // uncomment for 3 joints
 
         // std::cout<<"Jacobian: \n"<<Qhat<<std::endl;
 
@@ -523,7 +523,7 @@ int main(int argc, char **argv){
         // joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
         std::cout<<"joint_vel_1: "<<joint_vel[0]<<std::endl;
         std::cout<<"joint_vel_2: "<<joint_vel[1]<<std::endl;
-        // std::cout<<"joint_vel_3: "<<joint_vel[2]<<std::endl; //uncomment - possible change for 3 joints
+        std::cout<<"joint_vel_3: "<<joint_vel[2]<<std::endl; //uncomment - possible change for 3 joints
         // end of with Berk
         
         
@@ -570,7 +570,7 @@ End of working velocity scaling*/
         j_vel.data.clear();
         j_vel.data.push_back(joint_vel[0]);
         j_vel.data.push_back(joint_vel[1]);
-        // j_vel.data.push_back(joint_vel[2]); //comment/uncomment depending on # of joints
+        j_vel.data.push_back(joint_vel[2]); //comment/uncomment depending on # of joints
 
         j_pub.publish(j_vel);
         
@@ -594,7 +594,7 @@ End of working velocity scaling*/
         // Do not loose your mind every time you see this!
         dr[0] += joint_vel[0]*t;
         dr[1] += joint_vel[1]*t;
-        // dr[2] += joint_vel[2]*t; //comment/uncomment
+        dr[2] += joint_vel[2]*t; //comment/uncomment
     
         // Compute shape change magnitude
         float ds_accumulator = 0;
@@ -707,7 +707,7 @@ End of working velocity scaling*/
     j_vel.data.clear();
     j_vel.data.push_back(0.0);
     j_vel.data.push_back(0.0);
-    // j_vel.data.push_back(0.0); // comment/ uncomment on the basis of joints
+    j_vel.data.push_back(0.0); // comment/ uncomment on the basis of joints
 
     j_pub.publish(j_vel);
 

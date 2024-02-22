@@ -2,11 +2,12 @@
     <!-- <arg name="initial_reset" default="true"/> -->
      <!-- Launch camera -->
    <!-- <include file="$(find encoderless_vs)/launch/rs_encoderless.launch"/> -->
-    <!-- <include file="$(find panda_test)/launch/rs_origami.launch"/> -->
+    <include file="$(find realsense2_camera)/launch/rs_aligned_depth.launch"/>
     <!-- <include file="$(find panda_test)/launch/rs_origami.launch"> -->
         <!-- <arg name ="initial_reset" value="$(arg initial_reset)"/>
     </include> -->
     <!-- Load parameters -->
+
     <rosparam file="$(find panda_test)/config/franka_dl_config.yaml" command="load"/>
     
     <!-- Launch binary image -->
@@ -15,9 +16,9 @@
     <!-- client node to test the pipeline -->
     <node name="goal_keypoints_gen_client" pkg="panda_test" type="franka_goal_dl_client.py" respawn="false" output="log" required="true"/>
 
-    <!-- <node name="set_auto_exposure_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera enable_auto_exposure False"/> -->
+    <node name="set_auto_exposure_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera enable_auto_exposure False"/>
 
-    <!-- <node name="goal_franka_goal_vis_node" pkg="encoderless_vs" type="franka_goal_img_pub.py" output="screen" /> -->
+    <!-- <node name="goal_franka_goal_vis_node" pkg="panda_test" type="franka_goal_img_pub.py" output="screen" /> -->
     
     <!-- Save images -->
     <node name="image_writer" pkg="panda_test" type="img_write.py" output="screen" respawn="false" />

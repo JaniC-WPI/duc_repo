@@ -1,0 +1,4 @@
+dl_controller:
+  num_goal_sets: 2
+  goal_features1: [193.0,256.0,325.0,275.0,314.0,297.0]
+  goal_features2: [198.0,229.0,232.0,106.0,230.0,72.0]

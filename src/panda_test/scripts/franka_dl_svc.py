@@ -246,8 +246,8 @@ class VideoInference:
                 # print("self.updated when True", self.updated)
                 self.measured5_list = np.append(self.updated5, self.measured5_list) 
             elif self.marker_flag[4] == False:
-                print("is update function getting called for 5th point")
-                print("update output before False", self.measured5_list[0], self.measured5_list[1], self.measured5_list[2], self.measured5_list[3])
+                # print("is update function getting called for 5th point")
+                # print("update output before False", self.measured5_list[0], self.measured5_list[1], self.measured5_list[2], self.measured5_list[3])
                 # rospy.sleep(2)
                 new_measured5 = np.array([[np.float32(self.measured5_list[0])], [np.float32(self.measured5_list[1])], [np.float32(self.measured5_list[2])], [np.float32(self.measured5_list[3])]])
                 self.updated5 = np.asarray(kf5.update(new_measured5))
@@ -392,7 +392,7 @@ class VideoInference:
             cv2.imwrite("/home/jc-merlab/Pictures/Data/video_results_live_b2e25_kalman/out_image_"+str(self.j)+".jpg", img)                 
 
             self.j= self.j + 1
-            print(self.j)
+            # print(self.j)
 
             # latest_corrected_x = np.array([[self.updated1[0][0], self.updated1[1][0]], [self.updated2[0][0], self.updated2[1][0]], [self.updated3[0][0], self.updated3[1][0]], 
             #                                 [self.updated4[0][0], self.updated4[1][0]], [self.updated5[0][0], self.updated5[1][0]], [self.updated6[0][0], self.updated6[1][0]]])
@@ -403,7 +403,7 @@ class VideoInference:
 
         # runs only once, when all 5 joints are identified for the first time
     def first_input_estimate(self, img, key_points):
-            print("first filter is called")
+            # print("first filter is called")
             # print("Actual first first key points", key_points)
             self.marker_flag= [True, True, True, True, True, True]
             first_corrected_x = self.kalman_estimate(img, key_points)        
@@ -412,7 +412,7 @@ class VideoInference:
 
         # this is the function where the missing joints are identified for 
     def input_estimation(self, img, key_points, corrected_x):
-            print("filters are called")        
+            # print("filters are called")        
             # print("key points input after the first iteration", key_points)
             # print("corredtec_x after first iteration", corrected_x)
 
@@ -472,7 +472,7 @@ class VideoInference:
 
     def dl_image_service(self, img):
 
-        print("svc ros image", type(self.ros_img))
+        # print("svc ros image", type(self.ros_img))
         print("is keypoint service getting called")
         # if kp_flag:
         self.cv_img = self.bridge.imgmsg_to_cv2(self.ros_img, "bgr8")
@@ -507,15 +507,18 @@ class VideoInference:
             labels.append(label)
         keypoints_ = [x for _,x in sorted(zip(labels,keypoints))]
 
+        print("keypoints", keypoints_)
+
         # uncomment the next line for 4 feature points
         # indices = [2,3,4,5,6,8]
         # uncomment the next line 3 feature points
-        indices = [0,1,3,4,5]
-        keypoints_ = [keypoints_[i] for i in indices]
+        indices = [1,2,3,4,5]
+        print("indices", indices)
+        keypoints_ = [keypoints_[i] for i in indices]        
 
         # print(keypoints)
-        print(len(keypoints))
-        print(len(keypoints_))
+        # print(len(keypoints))
+        # print(len(keypoints_))
         bboxes = []
         for bbox in output[0]['boxes'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy():
             bboxes.append(list(map(int, bbox.tolist())))
@@ -536,7 +539,7 @@ class VideoInference:
             # print("Executed?", self.executed)               
             self.corrected_x = self.input_estimation(self.cv_img, keypoints_, self.corrected_x) 
 
-        print(self.corrected_x)
+        # print(self.corrected_x)
 
         kp_x = []
         kp_y = []
@@ -547,13 +550,13 @@ class VideoInference:
             kp_y.append(y)
 
         kp = []
+        
+        # Uncomment the next block for 4 out of 6 features
+        for i in range(len(kp_x)-1):
+           kp.append(kp_x[i+1]) 
+           kp.append(kp_y[i+1])
 
-        # Uncomment the next block for 3 features
-        for i in range(len(kp_x)-2):
-           kp.append(kp_x[i+2]) 
-           kp.append(kp_y[i+2])
-
-        print("current keuypoints", kp)
+        print("current keypoints", kp)
 
         # Uncomment the next block for 4 features
         # for i in range(len(kp_x)):
@@ -562,8 +565,8 @@ class VideoInference:
 
         kp_resp = Float64MultiArray()
         kp_resp.data = kp
-        print("keypoints", kp_resp.data)
-        print("type keypoints", type(kp_resp.data))
+        # print("keypoints", kp_resp.data)
+        # print("type keypoints", type(kp_resp.data))
 
         # cv2.imwrite("/home/jc-merlab/Pictures/Data/video_results_full_b1e30/out_image_" + str(self.i) + ".jpg", self.cv_img)        
 
