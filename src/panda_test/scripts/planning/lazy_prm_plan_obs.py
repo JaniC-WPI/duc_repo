@@ -165,7 +165,7 @@ if __name__ == "__main__":
     start_config = np.array([[271, 431], [270, 313], [194, 240], [214, 221], [300, 124], [312, 95]])
     goal_config = np.array([[271, 431], [271, 313], [243, 211], [270, 203], [389, 258], [418, 243]])
     
-    obstacle_center = (420, 133)
+    obstacle_center = (380, 133)
     half_diagonal = 20
     safe_distance = half_diagonal + SAFE_DISTANCE 
 

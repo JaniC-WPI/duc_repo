@@ -38,10 +38,11 @@ import os
 #         obstacle_center, obstacle_radius = None, None
 
 if __name__ == "__main__":
-    image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/obstacle_image_05.png'
+    image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/obstacle_image_08.png'
+     # Define start and goal configurations as numpy arrays
     start_config = np.array([[272, 437], [266, 314], [175, 261], [187, 236], [230, 108], [215, 85]]) 
-    # goal_config = np.array([[257, 366], [257, 283], [183, 254], [191, 234], [287, 212], [309, 216]])
     goal_config = np.array([[271, 436], [267, 313], [223, 213], [248, 199], [383, 169], [404, 147]]) 
+
 
     base_image = cv2.imread(image_path)
 
@@ -56,5 +57,5 @@ if __name__ == "__main__":
     for i in range(len(goal_config) - 1):
         cv2.line(base_image, tuple(goal_config[i].astype(int)), tuple(goal_config[i+1].astype(int)), (0, 255, 0), 2)
 
-    cv2.imwrite('/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/path_planning_phys_scene_05.jpg', base_image)
+    cv2.imwrite('/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/path_planning_phys_scene_08.jpg', base_image)
 

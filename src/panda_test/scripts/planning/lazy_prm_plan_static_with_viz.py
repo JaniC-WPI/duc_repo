@@ -12,12 +12,11 @@ from PIL import Image
 import torchvision.transforms as T
 import yaml
 import shapely.geometry as geom
-import scipy
-
+import matplotlib.pyplot as plt
 
 # Parameters
 IMAGE_WIDTH, IMAGE_HEIGHT = 640, 480
-SAFE_DISTANCE = 50  # Safe distance from the obstacle
+SAFE_DISTANCE = 70  # Safe distance from the obstacle
 # COCO_INSTANCE_CATEGORY_NAMES = ['__background__', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'N/A', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'N/A', 'backpack', 'umbrella', 'N/A', 'N/A', 'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard', 'tennis racket', 'bottle', 'N/A', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed', 'N/A', 'dining table', 'N/A', 'N/A', 'toilet', 'N/A', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'N/A', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush']
 
 # Load keypoints from JSON files in a given directory
@@ -32,7 +31,6 @@ def load_keypoints_from_json(directory):
                 keypoints = [np.array(point[0][:2], dtype=int) for point in data['keypoints']]  # Extracting x, y coordinates
                 configurations.append(np.array(keypoints))
     # print(configurations)
-    print("Shape of a single configuration:", configurations[0].shape)  
     return configurations
 
 def load_and_sample_configurations(directory, num_samples):
@@ -69,27 +67,51 @@ def detect_green_rectangle(image_path):
         return (int(x + w/2), int(y + h/2), int(half_diagonal))
     return None
 
-# def sum_pairwise_euclidean(config1, config2):
-#     total_distance = 0
-#     for point1, point2 in zip(config1, config2):
-#         total_distance += np.linalg.norm(point1 - point2)
-#     return total_distance
+def plot_path_and_roadmap(image_path, roadmap, start_config, goal_config, obstacle_center, safe_distance, half_diagonal, path=None):
+    
+    # Load Background Image (if available)
+    if image_path:
+        image = cv2.imread(image_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)  # Convert to RGB for Matplotlib
+    else:
+        image = None  # No background image
 
-def vectorized_sum_pairwise_euclidean(config1, config2):
-    diffs = config1 - config2  # Calculate differences directly
-    # print("Shape of diffs:", diffs.shape) # Add this line
-    distances_squared = np.sum(diffs * diffs, axis=1)  # Adjust axis for summation 
-    distances = np.sqrt(distances_squared)
-    return np.sum(distances)  
+    # Create figure
+    fig, ax = plt.subplots()
+
+    # Plot configurations
+    x_coords = [config[0] for node, config in roadmap.nodes(data='configuration')]
+    y_coords = [config[1] for node, config in roadmap.nodes(data='configuration')]
+    ax.scatter(x_coords, y_coords, s=10, color='gray')  # Configurations as gray points
+
+    # Plot edges
+    for i, edge in enumerate(roadmap.edges):
+        if i % 20 == 0: 
+            start_config = roadmap.nodes[edge[0]]['configuration']
+            end_config = roadmap.nodes[edge[1]]['configuration']
+            ax.plot([start_config[0], end_config[0]], [start_config[1], end_config[1]], color='lightgray', linewidth=0.5)
 
 
-def hausdorff_distance(config1, config2):
-    # You might need a library like SciPy for an efficient implementation
-    return scipy.spatial.distance.directed_hausdorff(config1, config2)[0] 
+    # Plot obstacle
+    obstacle = square_obstacle(obstacle_center, half_diagonal + safe_distance) # Enlarged for visualization
+    xs, ys = obstacle.exterior.xy
+    ax.fill(xs, ys, alpha=0.5, fc='r', ec='k') 
 
-def heuristic(config1, config2):
-    distance = vectorized_sum_pairwise_euclidean(config1, config2)
-    return distance * 0.8  # Slightly underestimate the distance
+    # Plot start and goal
+    ax.scatter([start_config[0]], [start_config[1]], s=50, color='green', marker='*')
+    ax.scatter([goal_config[0]], [goal_config[1]], s=50, color='blue', marker='*')
+
+    # Plot path (optional)
+    if path:
+        for i in range(len(path) - 1):
+            ax.plot([path[i][0], path[i+1][0]], [path[i][1], path[i+1][1]], color='red', linewidth=3)
+
+    # Tweak plot appearance
+    ax.set_aspect('equal')
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_title('PRM Roadmap Visualization')
+    plt.show()
 
 def build_lazy_roadmap_with_kdtree(configurations, k_neighbors):
     """
@@ -102,8 +124,6 @@ def build_lazy_roadmap_with_kdtree(configurations, k_neighbors):
     Returns:
     - G: nx.Graph, the constructed roadmap.
     """
-    print("Shape of configurations before building the roadmap:", len(configurations), configurations[0].shape)
-
     flattened_configs = np.vstack([config.flatten() for config in configurations])
     tree = KDTree(flattened_configs)
     G = nx.Graph()
@@ -115,19 +135,11 @@ def build_lazy_roadmap_with_kdtree(configurations, k_neighbors):
         _, indices = tree.query([config], k=k_neighbors + 1)  # +1 to include self in results
         for j in indices[0][1:]:  # Skip self
             G.add_edge(i, j)
-        # for j in indices[0][1:]:  # Skip self
-        #     distance = vectorized_sum_pairwise_euclidean(configurations[i], configurations[j]) # You'll need to define this distance calculation
-        #     G.add_edge(i, j, weight=distance)
             
     return G, tree
 
-def heuristic(config1, config2):
-    distance = vectorized_sum_pairwise_euclidean(config1, config2)
-    return distance * 0.8  # Slightly underestimate the distance
-
 # Function to add a configuration to the roadmap with collision checking
 def add_config_to_roadmap(config, G, tree, k_neighbors, obstacle_center, safe_distance, half_diagonal):
-    print("Shape of config being added:", config.shape)
     flattened_config = config.flatten().reshape(1, -1)
     _, indices = tree.query(flattened_config, k=k_neighbors)
     connections = 0
@@ -137,7 +149,6 @@ def add_config_to_roadmap(config, G, tree, k_neighbors, obstacle_center, safe_di
     
     for i in indices[0]:
         neighbor_config = G.nodes[i]['configuration']
-        print("Shape of neighbor_config:", neighbor_config.shape)
         # Here we need to convert configurations back to their original shape for collision checking
         if is_collision_free(np.vstack((config, neighbor_config)), obstacle_center, safe_distance, half_diagonal):
             G.add_edge(node_id, i)
@@ -175,6 +186,7 @@ def is_collision_free(configuration, obstacle_center, safe_distance, half_diagon
 
     return True  # Collision-free
 
+# Find a path between start and goal configurations
 def find_path(G, start_node, goal_node):
     """Find a path from start to goal in the roadmap G."""
     path_indices = nx.astar_path(G, source=start_node, target=goal_node)
@@ -226,25 +238,29 @@ if __name__ == "__main__":
     end_time = time.time()
 
     print("time taken to find the graph", end_time - start_time)  
-
+        
     # Define start and goal configurations as numpy arrays
     start_config = np.array([[272, 437], [266, 314], [175, 261], [187, 236], [230, 108], [215, 85]]) 
     goal_config = np.array([[271, 436], [267, 313], [223, 213], [248, 199], [383, 169], [404, 147]]) 
     
-    obstacle_center = (380, 33)
+    obstacle_center = (400, 53)
     half_diagonal = 20
     safe_distance = half_diagonal + SAFE_DISTANCE 
 
     # Add start and goal configurations to the roadmap
     start_node, tree = add_config_to_roadmap(start_config, roadmap, tree, num_neighbors, obstacle_center, safe_distance, half_diagonal)
     goal_node, tree = add_config_to_roadmap(goal_config, roadmap, tree, num_neighbors, obstacle_center, safe_distance, half_diagonal)
+
+    image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/obstacle_image_05.png'
+    # After building the roadmap
+    plot_path_and_roadmap(image_path, roadmap, start_config, goal_config, obstacle_center, safe_distance, half_diagonal)
         
     # Find and print the path from start to goal
     path = find_path(roadmap, start_node, goal_node)
 
-    output_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/phys_path_scene_11'
+    output_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/phys_path_scene_05'
 
-    image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/obstacle_image_11.png'
+    plot_path_and_roadmap(image_path, roadmap, start_config, goal_config, obstacle_center, safe_distance, half_diagonal, path=path) 
 
     if path:
         print("Path found:", path)

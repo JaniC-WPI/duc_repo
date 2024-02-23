@@ -44,10 +44,10 @@ def draw_green_rectangle(image_path, rectangle_center, half_diagonal, save_path)
 
 # Example usage
 image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/goal_image_2.png'  # Replace with your image file path
-rectangle_center = (360, 73)  # Example center position (x, y)
+rectangle_center = (380, 33)  # Example center position (x, y)
 half_diagonal = 20  # Example half diagonal length
 # save_path = '/home/jc-merlab/.ros/dl_published_goal_image.jpg'  # Replace with your save file path
-save_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/obstacle_image_05.png'
+save_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/obstacle_image_11.png'
 
 draw_green_rectangle(image_path, rectangle_center, half_diagonal, save_path)
 

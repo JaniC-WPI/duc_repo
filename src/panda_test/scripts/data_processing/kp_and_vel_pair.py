@@ -27,6 +27,7 @@ for i in range(len(keypoint_files) - 1):
     with open(os.path.join(data_dir, velocity_file), 'r') as file:
         velocity_data = json.load(file)
     velocity = velocity_data['velocity']
+    time = velocity_data['time_rate']
 
     # Combine the data
     combined_data = {

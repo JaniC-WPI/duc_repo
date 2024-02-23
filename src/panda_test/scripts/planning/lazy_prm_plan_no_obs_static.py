@@ -140,10 +140,9 @@ if __name__ == "__main__":
 
     # Define start and goal configurations as numpy arrays
     # Define start and goal configurations as numpy arrays
-    start_config = np.array([[272, 437], [266, 314], [175, 261], [187, 236], [230, 108], [215, 85]]
-) 
+    start_config = np.array([[272, 437], [266, 314], [175, 261], [187, 236], [230, 108], [215, 85]]) 
     goal_config = np.array([[271, 436], [267, 313], [223, 213], [248, 199], [383, 169], [404, 147]]) 
-    
+
     # Add start and goal configurations to the roadmap
     start_node, tree = add_config_to_roadmap(start_config, roadmap, tree, num_neighbors)
     goal_node, tree = add_config_to_roadmap(goal_config, roadmap, tree, num_neighbors)
@@ -151,9 +150,9 @@ if __name__ == "__main__":
     # Find and print the path from start to goal
     path = find_path(roadmap, start_node, goal_node)
 
-    output_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/phys_path_no_obs_scene_03'
+    output_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/phys_path_no_obs_scene_11'
 
-    image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/obstacle_image_03.png'
+    image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/obstacle_image_11.png'
 
     if path:
         print("Path found:", path)
