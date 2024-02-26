@@ -3,6 +3,8 @@
 import cv2
 import numpy as np
 
+SAFE_DISTANCE = 50
+
 def draw_red_ball(image_path, ball_position, ball_radius, save_path):
     # Read the image
     image = cv2.imread(image_path)
@@ -37,17 +39,26 @@ def draw_green_rectangle(image_path, rectangle_center, half_diagonal, save_path)
     # Draw the rectangle on the image
     cv2.rectangle(image, top_left, bottom_right, green_color, -1)
 
+    # Define the color of the circle (Red in BGR format)
+    red_color = (0, 0, 255)
+    top_left = (rectangle_center[0] - half_diagonal - SAFE_DISTANCE, 
+                rectangle_center[1] - half_diagonal - SAFE_DISTANCE)
+    bottom_right = (rectangle_center[0] + half_diagonal + SAFE_DISTANCE, 
+                    rectangle_center[1] + half_diagonal + SAFE_DISTANCE)
+    # Draw the circle around the rectangle. Set thickness to 2 (or another value) instead of -1 to not fill the circle
+    cv2.rectangle(image, top_left, bottom_right, red_color, thickness=2)
+
     # Save the new image
     cv2.imwrite(save_path, image)
 
     print(f"Image saved with a green rectangle at center {rectangle_center} to {save_path}")
 
 # Example usage
-image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/goal_image_2.png'  # Replace with your image file path
-rectangle_center = (380, 33)  # Example center position (x, y)
+image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/goal_image_1.png'  # Replace with your image file path
+rectangle_center = (420, 133)  # Example center position (x, y)
 half_diagonal = 20  # Example half diagonal length
 # save_path = '/home/jc-merlab/.ros/dl_published_goal_image.jpg'  # Replace with your save file path
-save_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/obstacle_image_11.png'
+save_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/obstacle_image_02.png'
 
 draw_green_rectangle(image_path, rectangle_center, half_diagonal, save_path)
 

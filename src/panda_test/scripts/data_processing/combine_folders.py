@@ -38,28 +38,28 @@ def process_folder(source_folder, dest_folder, start_index):
 
 # Define your source folders and destination folder
 source_folders = [
-    # '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/1/', 
-    #               '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/2/', 
-    #               '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/3/', 
-    #               '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/4/',
-    #               '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/5/',
-    #               '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/6/',
-    #               '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/7/',
-    #               '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/8/',
-    #               '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/9/',
-    #               '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/10/',
-    #               '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/11/',
-    #               '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/12/',
-    #               '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/13/',
-                  '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_planning_panda_valid/',
-                  '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_planning_panda_validity/']
+                '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/1_out/', 
+                  '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/2_out/', 
+                  '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/3_out/', 
+                  '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/4_out/',
+                  '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/5_out/',
+                  '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/6_out/',
+                  '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/7_out/',
+                  '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/8_out/',
+                  '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/9_out/',
+                  '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/10_out/',
+                  '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/11_out/',
+                  '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/12_out/',
+                  '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/13_out/',
+                  '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/14_out']
+                #   '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_planning_panda_validity/']
                 #   '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/15/',
                 #   '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/16/',
                 #   '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/17/',
                 #   '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/18/',
                 #   '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/19/']
 
-destination_folder = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_planning_panda_classification/'
+destination_folder = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/refression_corrected/'
 
 # Make sure the destination folder exists
 if not os.path.exists(destination_folder):

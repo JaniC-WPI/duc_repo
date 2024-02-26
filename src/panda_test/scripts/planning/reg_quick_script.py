@@ -9,7 +9,7 @@ def update_velocity_json(folder_path):
     - folder_path: Path to the folder containing the JSON files.
     """
     # Iterate over each file in the directory
-    for file_name in os.listdir(folder_path):
+    for file_name in sorted(os.listdir(folder_path)):
         # Check if the file is a velocity JSON file
         if file_name.endswith('_vel.json'):
             # Construct the full path to the file
@@ -80,7 +80,7 @@ import os
 import json
 import random
 
-def append_new_combined_json_to_original_set(data_dir, repetitions, last_original_file_num=9460):
+def append_new_combined_json_to_original_set(data_dir, repetitions, last_original_file_num):
     original_combined_files = [f for f in sorted(os.listdir(data_dir)) if f.endswith('_combined.json') and int(f.split('_')[0]) <= last_original_file_num]
 
     if len(original_combined_files) < 2:
@@ -89,8 +89,17 @@ def append_new_combined_json_to_original_set(data_dir, repetitions, last_origina
 
     for _ in range(repetitions):
         start_index = random.randint(0, len(original_combined_files) - 2)  # Avoid picking the last file
+        # Calculate the maximum possible index for adding numbers
+        max_add_index = len(original_combined_files) - start_index - 1
+
+        # Ensure there is a valid range for add_number
+        if max_add_index < 4:
+            print("Not enough files remaining to process after start_index.")
+            continue  # Skip to the next iteration of the loop
         # Ensure the add number is >3 and <201
-        add_number = random.randint(4, min(200, len(original_combined_files) - start_index - 1))
+        # add_number = random.randint(4, min(200, len(original_combined_files) - start_index - 1))
+
+        add_number = random.randint(4, min(200, max_add_index))
         
         end_index = min(start_index + add_number, len(original_combined_files) - 1)
         
@@ -157,6 +166,42 @@ def clean_and_renumber_json_files(folder_path):
             json.dump(data, new_file, indent=4)
         print(f"Saved {new_file_name}")
 
+import os
+import shutil
+import json
+
+def combine_and_renumber_folders(source_folders, dest_folder):
+    """
+    Combine and renumber JSON files from multiple source folders into a single destination folder,
+    ensuring sequential numbering.
+    
+    Parameters:
+    - source_folders: List of paths to the source folders.
+    - dest_folder: Path to the destination folder.
+    """
+    # Ensure the destination folder exists
+    
+    if not os.path.exists(dest_folder):
+        os.makedirs(dest_folder)
+    
+    all_files = []
+    # Collect all files from each source folder
+    for folder in source_folders:
+        folder_files = [os.path.join(folder, f) for f in sorted(os.listdir(folder)) if f.endswith('_combined.json')]
+        all_files.extend(folder_files)
+    
+    # Renumber and copy files to the destination folder
+    for i, file_path in enumerate(all_files, start=0):  # Start enumeration from 0
+        new_file_name = f"{i:06d}_combined.json"
+        new_file_path = os.path.join(dest_folder, new_file_name)
+        
+        shutil.copy(file_path, new_file_path)
+        
+        print(f"Copied {file_path} to {new_file_path}")
+
+    
+
+
 # def combine_json_with_velocity(folder_path, output_path):
 #     # Helper function to sort file names numerically
 #     if not os.path.exists(output_path):
@@ -202,11 +247,35 @@ def clean_and_renumber_json_files(folder_path):
 
 if __name__ == "__main__":
     # Load configurations from JSON files
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_planning_panda_regression/'
-    out_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/regression_combined_test_new/'
+    # directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_planning_panda_regression/'
+    # out_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/regression_combined_test_new/'
+    # directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/14/'
+    # out_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/14_out/'
 
     # update_velocity_json(directory)
     # combine_json_with_velocity(directory, out_dir)
-    clean_and_renumber_json_files(out_dir)
+    # append_new_combined_json_to_original_set(out_dir, 2000, 321)
+    # clean_and_renumber_json_files(out_dir)
+
+    # Define your source folders and destination folder
+    source_folders = [
+                    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/1_out/', 
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/2_out/', 
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/3_out/', 
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/4_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/5_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/6_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/7_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/8_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/9_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/10_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/11_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/12_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/13_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/14_out']
+
+    destination_folder = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/regression_corrected/'
+    combine_and_renumber_folders(source_folders, destination_folder)
+
 
 

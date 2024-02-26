@@ -1,0 +1,38 @@
+import cv2
+from shapely.geometry import Polygon
+import numpy as np
+
+def draw_obstacle_boundary(image_path, obstacle_boundary, save_path):
+    # Read the image
+    image = cv2.imread(image_path)
+    
+    # Convert Shapely Polygon to OpenCV polygon format
+    # Extract exterior points and round to integer. Reshape for OpenCV.
+    cv_polygon = np.array(obstacle_boundary.exterior.coords).round().astype(np.int32).reshape((-1, 1, 2))
+    
+    # Draw the polygon
+    # Note: True indicates the polygon is closed.
+    cv2.polylines(image, [cv_polygon], True, (0, 255, 0), 2)
+
+    # Save the new image
+    cv2.imwrite(save_path, image)
+
+    print(f"Image with obstacle boundary saved to {save_path}")
+
+# Example usage
+obstacle_center = (420, 133)  # Example center position (x, y)
+half_diagonal = 20  # Example half diagonal length of the square obstacle
+safe_distance = 50  # Example safe distance
+
+# Create the obstacle boundary as a Shapely Polygon
+obstacle_boundary = Polygon([
+    (obstacle_center[0] - (half_diagonal + safe_distance), obstacle_center[1] - (half_diagonal + safe_distance)),
+    (obstacle_center[0] + (half_diagonal + safe_distance), obstacle_center[1] - (half_diagonal + safe_distance)),
+    (obstacle_center[0] + (half_diagonal + safe_distance), obstacle_center[1] + (half_diagonal + safe_distance)),
+    (obstacle_center[0] - (half_diagonal + safe_distance), obstacle_center[1] + (half_diagonal + safe_distance)),
+])
+
+image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios_default/goal_image_1.png'  # Update with your image file path
+save_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/obstacle.jpg'  # Update with your save file path
+
+draw_obstacle_boundary(image_path, obstacle_boundary, save_path)
