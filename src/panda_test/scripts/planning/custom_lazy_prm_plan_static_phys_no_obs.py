@@ -212,8 +212,8 @@ if __name__ == "__main__":
     print("time taken to find the graph", end_time - start_time)  
 
     # Define start and goal configurations as numpy arrays
-    start_config = np.array([[271, 431], [270, 313], [194, 240], [214, 221], [300, 124], [312, 95]]) 
-    goal_config = np.array([[271, 431], [271, 313], [243, 211], [270, 203], [389, 258], [418, 243]]) 
+    start_config = np.array([[272, 437], [266, 314], [175, 261], [187, 236], [230, 108], [215, 85]]) 
+    goal_config = np.array([[271, 436], [267, 313], [223, 213], [248, 199], [383, 169], [404, 147]]) 
     
     # Add start and goal configurations to the roadmap
     start_node, tree = add_config_to_roadmap(start_config, roadmap, tree, num_neighbors)
@@ -224,9 +224,9 @@ if __name__ == "__main__":
     path = find_path_heuristic(roadmap, start_node, goal_node, heuristic)
     # path = find_path(roadmap, start_node, goal_node)
 
-    output_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/scenarios_custom/phys_path_no_obs_with_cost_scene_02/'
+    output_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/scenarios_custom/phys_path_no_obs_with_cost_scene_07/'
 
-    image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/obstacle_image_02.png'
+    image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/obstacle_image_07.png'
 
     if path:
         print("Path found:", path)

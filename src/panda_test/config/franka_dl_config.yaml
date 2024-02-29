@@ -60,7 +60,7 @@ vsbot :
   
   shape_control:
      
-    no_of_features: 6
+    no_of_features: 8
     no_of_actuators: 3
     num_of_segments: 2
     degree: 2

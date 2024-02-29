@@ -66,7 +66,7 @@ def main(args):
     # ax2.set_xticklabels(xtick_labels)
     ax2.set_xticks(np.arange(0, len(err_norm), 20))
     # ax2.set_yticks(np.arange(0, max(err_norm), 25))
-    ax2.legend(['x1','y1','x2','y2', 'x3', 'y3'],loc='upper center',
+    ax2.legend(['x1','y1','x2','y2', 'x3', 'y3', 'x4', 'y4'],loc='upper center',
     bbox_to_anchor=(0.5, -0.30), fancybox=True, shadow=True, ncol=len(err_data[0]), fontsize=12)
     
     plt.savefig('feature_error.png', dpi=300)
@@ -149,9 +149,10 @@ def main(args):
     plt.savefig('model_error.png', dpi=300)
     Image.open('model_error.png').convert("RGB").save('model_error.jpg','JPEG')
     
-    fig, axes = plt.subplots(nrows=2, ncols=1)
+    fig, axes = plt.subplots(nrows=3, ncols=1)
     ax2 = axes[0]
     ax3 = axes[1]
+    ax4 = axes[2]
     fig.tight_layout(pad=4.0)
     ax2.plot(j1_vel, 'b',linewidth=1.5)
     ax2.margins(x = 0.0, y=0.0)
@@ -173,13 +174,13 @@ def main(args):
     # ax3.legend(['Joint 2'], loc='upper center', bbox_to_anchor=(0.80, 0.90),
     #       fancybox=True, shadow=True, ncol=1, fontsize=11)
 
-    # ax4.plot(j3_vel, 'b',linewidth=1.5)
-    # ax4.margins(x = 0.0, y=0.0)
-    # ax4.set_ylim(-0.1,0.1)
-    # ax4.set_ylabel('Velocity (rad/s)')
-    # ax4.set_xlabel('Iteration #')
-    # ax4.grid()
-    # ax4.set_xticks(np.arange(0, len(model_error), 25))
+    ax4.plot(j3_vel, 'b',linewidth=1.5)
+    ax4.margins(x = 0.0, y=0.0)
+    ax4.set_ylim(-0.1,0.1)
+    ax4.set_ylabel('Velocity (rad/s)')
+    ax4.set_xlabel('Iteration #')
+    ax4.grid()
+    ax4.set_xticks(np.arange(0, len(model_error), 25))
     # ax4.legend(['Joint 3'], loc='upper center', bbox_to_anchor=(0.5, -.75),
     #       fancybox=True, shadow=True, ncol=1)
 

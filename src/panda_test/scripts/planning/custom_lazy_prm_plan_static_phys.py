@@ -72,32 +72,83 @@ def predict_custom_distance(current_config, next_config, model):
     distance = np.linalg.norm(output)
     return float(distance)  # Reshape to the original configuration format
 
-def visualize_interactions(configurations, obstacle_boundary):
+def visualize_interactions(config1, config2, obstacle_boundary):
     fig, ax = plt.subplots()
     # Plot obstacle boundary
-    ax.add_patch(PolygonPatch(obstacle_boundary, alpha=0.5, color="red", zorder=2))
+    obstacle_patch = PolygonPatch(obstacle_boundary, alpha=0.5, color="red", zorder=2)
+    ax.add_patch(obstacle_patch)
     
     # Set plot limits and aspect
     ax.set_xlim([0, IMAGE_WIDTH])
     ax.set_ylim([IMAGE_HEIGHT, 0])
     ax.set_aspect('equal')
 
-    # for config in configurations:
-    for i in range(len(configurations) - 1):
-        segment = [configurations[i], configurations[i + 1]]
-        line = geom.LineString(segment)
-        
-        # Draw the line segment
-        x, y = line.xy
-        ax.plot(x, y, "blue", linewidth=2, solid_capstyle='round', zorder=1)
-        
-        # Check for intersection and highlight if necessary
-        if line.intersects(obstacle_boundary):
-            ax.plot(x, y, "red", linewidth=3, solid_capstyle='round', zorder=1)
-            # print(f"Collision detected between points {segment[0]} and {segment[1]}")
-            
+    # Visualize interactions within each configuration
+    for config in [config1, config2]:
+        for i in range(len(config) - 1):
+            x_values, y_values = zip(*config[i:i+2])
+            ax.plot(x_values, y_values, "blue", linewidth=2, solid_capstyle='round', zorder=1)
+
+    # Visualize interactions between corresponding keypoints across configurations
+    for i in range(len(config1)):
+        x_values = [config1[i][0], config2[i][0]]
+        y_values = [config1[i][1], config2[i][1]]
+        ax.plot(x_values, y_values, "green", linewidth=2, linestyle="--", zorder=1)
+
     plt.show()
 
+# def visualize_interactions(configurations, obstacle_boundary):
+#     fig, ax = plt.subplots()
+#     # Plot obstacle boundary
+#     ax.add_patch(PolygonPatch(obstacle_boundary, alpha=0.5, color="red", zorder=2))
+    
+#     # Set plot limits and aspect
+#     ax.set_xlim([0, IMAGE_WIDTH])
+#     ax.set_ylim([IMAGE_HEIGHT, 0])
+#     ax.set_aspect('equal')
+
+#     # for config in configurations:
+#     for i in range(len(configurations) - 1):
+#         segment = [configurations[i], configurations[i + 1]]
+#         line = geom.LineString(segment)
+        
+#         # Draw the line segment
+#         x, y = line.xy
+#         ax.plot(x, y, "blue", linewidth=2, solid_capstyle='round', zorder=1)
+        
+#         # Check for intersection and highlight if necessary
+#         if line.intersects(obstacle_boundary):
+#             ax.plot(x, y, "red", linewidth=3, solid_capstyle='round', zorder=1)
+#             # print(f"Collision detected between points {segment[0]} and {segment[1]}")
+            
+#     plt.show()
+
+# def visualize_interactions_path(configurations, obstacle_boundary):
+#     fig, ax = plt.subplots()
+#     # Plot obstacle boundary
+#     ax.add_patch(PolygonPatch(obstacle_boundary, alpha=0.5, color="red", zorder=2))
+    
+#     # Set plot limits and aspect
+#     ax.set_xlim([0, IMAGE_WIDTH])
+#     ax.set_ylim([IMAGE_HEIGHT, 0])
+#     ax.set_aspect('equal')
+
+#     for config in configurations:
+#         for i in range(len(config) - 1):
+#             segment = [config[i], config[i + 1]]
+#             line = geom.LineString(segment)
+
+#             # Draw the line segment
+#             x, y = line.xy
+#             ax.plot(x, y, "blue", linewidth=2, solid_capstyle='round', zorder=1)
+
+#             # Check for intersection and highlight if necessary
+#             if line.intersects(obstacle_boundary):
+#                 ax.plot(x, y, "red", linewidth=3, solid_capstyle='round', zorder=1)
+#                 # print(f"Collision detected between points {segment[0]} and {segment[1]}")
+
+#     plt.show()
+    
 def visualize_interactions_path(configurations, obstacle_boundary):
     fig, ax = plt.subplots()
     # Plot obstacle boundary
@@ -108,6 +159,7 @@ def visualize_interactions_path(configurations, obstacle_boundary):
     ax.set_ylim([IMAGE_HEIGHT, 0])
     ax.set_aspect('equal')
 
+    # Visualize paths within configurations
     for config in configurations:
         for i in range(len(config) - 1):
             segment = [config[i], config[i + 1]]
@@ -117,10 +169,24 @@ def visualize_interactions_path(configurations, obstacle_boundary):
             x, y = line.xy
             ax.plot(x, y, "blue", linewidth=2, solid_capstyle='round', zorder=1)
 
-            # Check for intersection and highlight if necessary
+            # Highlight if the segment intersects the obstacle
             if line.intersects(obstacle_boundary):
                 ax.plot(x, y, "red", linewidth=3, solid_capstyle='round', zorder=1)
-                # print(f"Collision detected between points {segment[0]} and {segment[1]}")
+
+    # Visualize connections between corresponding keypoints of consecutive configurations
+    for i in range(len(configurations) - 1):
+        for k in range(len(configurations[i])):
+            start_point = configurations[i][k]
+            end_point = configurations[i + 1][k]
+            line = geom.LineString([start_point, end_point])
+
+            # Draw the connection line
+            x, y = line.xy
+            ax.plot(x, y, "green", linewidth=1, linestyle='--', zorder=1)
+
+            # Highlight if the connection intersects the obstacle
+            if line.intersects(obstacle_boundary):
+                ax.plot(x, y, "orange", linewidth=2, linestyle='--', zorder=1)
 
     plt.show()
 
@@ -216,13 +282,12 @@ def add_config_to_roadmap(config, G, tree, k_neighbors, obstacle_center, half_di
         # print("New Config:", config)
         # print("Neighbor Config:", neighbor_config)
         # print("Collision Check Result:", is_collision_free(np.vstack([config, neighbor_config]), obstacle_center, half_diagonal, safe_distance))
-        check_config = np.vstack([config, neighbor_config])
         # print("configs for collision check", type(check_config), check_config)
-        if is_collision_free(np.vstack([config, neighbor_config]), obstacle_center, half_diagonal, safe_distance):
-            # visualize_interactions(np.array(check_config), obstacle_boundary)
+        if is_collision_free(config, neighbor_config, obstacle_center, half_diagonal, safe_distance):
+            visualize_interactions(config, neighbor_config, obstacle_boundary)
             G.add_edge(node_id, i)
-        # else:
-            # visualize_interactions(np.array(check_config), obstacle_boundary)
+        else:
+            visualize_interactions(config, neighbor_config, obstacle_boundary)
 
     # if connections == 0:  # If no connections were made, remove the node
     #     print("No connections were made")
@@ -240,29 +305,8 @@ def add_config_to_roadmap(config, G, tree, k_neighbors, obstacle_center, half_di
     
     return node_id
 
-def distance_line_to_point(p1, p2, point):
-    """Calculates the distance of a point to a line segment."""
-    numerator = np.abs((p2[1] - p1[1]) * point[0] - (p2[0] - p1[0]) * point[1] + p2[0] * p1[1] - p2[1] * p1[0])
-    denominator = np.sqrt((p2[1] - p1[1]) ** 2 + (p2[0] - p1[0]) ** 2)
-    return numerator / denominator
 
-def square_obstacle(center, half_diagonal):
-    """Creates a Shapely square polygon representing the obstacle."""
-    dx = dy = half_diagonal
-    x0, y0 = center[0] - dx, center[1] - dy  # Bottom-left corner
-    return geom.Polygon(((x0, y0), (x0 + 2*dx, y0), (x0 + 2*dx, y0 + 2*dy), (x0, y0 + 2*dy)))
-
-# def is_collision_free(configuration, obstacle_center, safe_distance, half_diagonal):
-#     obstacle = square_obstacle(obstacle_center, half_diagonal + safe_distance)
-
-#     for i in range(len(configuration) - 1):
-#         line_segment = geom.LineString([configuration[i], configuration[i + 1]])
-#         if line_segment.distance(obstacle) <= 0:  # Collision! 
-#             return False
-
-#     return True  # Collision-free 
-
-def is_collision_free(configuration, obstacle_center, half_diagonal, safe_distance):
+def is_collision_free(configuration1, configuration2, obstacle_center, half_diagonal, safe_distance):
     # Define the square boundary of the obstacle including the safe distance
     obstacle_boundary = geom.Polygon([
         (obstacle_center[0] - (half_diagonal + safe_distance), obstacle_center[1] - (half_diagonal + safe_distance)),
@@ -271,16 +315,22 @@ def is_collision_free(configuration, obstacle_center, half_diagonal, safe_distan
         (obstacle_center[0] - (half_diagonal + safe_distance), obstacle_center[1] + (half_diagonal + safe_distance)),
     ])
 
-    # Check each segment of the configuration for intersection with the obstacle boundary
-    for i in range(len(configuration) - 1):
-        segment = geom.LineString([configuration[i], configuration[i + 1]])
-        print("segment by segment", segment)
+    # Check for collision between consecutive keypoints within the same configuration
+    for config in [configuration1, configuration2]:
+        for i in range(len(config) - 1):
+            segment = geom.LineString([config[i], config[i+1]])
+            if segment.intersects(obstacle_boundary):
+                print("collision detected")
+                # If any segment intersects, the configuration is not collision-free
+                return False
+        
+    for i in range(len(configuration1)):
+        segment = geom.LineString([configuration1[i], configuration2[i]])
         if segment.intersects(obstacle_boundary):
-            print("collision detected in segment")
-            # If any segment intersects, the configuration is not collision-free
+            print("edge collision detected")
             return False
-
-    # If no segments intersect, the configuration is collision-free
+        
+     # If no segments intersect, the configuration is collision-free
     return True
 
 def validate_and_remove_invalid_edges(G, obstacle_center, half_diagonal, safe_distance):
@@ -289,7 +339,7 @@ def validate_and_remove_invalid_edges(G, obstacle_center, half_diagonal, safe_di
         config_u = G.nodes[u]['configuration']
         config_v = G.nodes[v]['configuration']
         # Perform the collision check for the edge
-        if not is_collision_free(np.vstack([config_u, config_v]), obstacle_center, half_diagonal, safe_distance):
+        if not is_collision_free(config_u, config_v, obstacle_center, half_diagonal, safe_distance):
             # If the edge is not collision-free, remove it from the graph
             G.remove_edge(u, v)
             print(f"Removed invalid edge: {u} <-> {v}")
@@ -334,7 +384,7 @@ def plot_path_on_image_dir(image_path, path, start_config, goal_config, output_d
         for i in range(len(config) - 1):
             cv2.line(image, tuple(config[i].astype(int)), tuple(config[i+1].astype(int)), path_color(), 2)
         for point in config:
-            cv2.circle(image, tuple(point.astype(int)), radius=3, color=path_color(), thickness=-1)        
+            cv2.circle(image, tuple(point.astype(int)), radius=6, color=path_color(), thickness=-1)        
         
         # Save the image
         cv2.imwrite(os.path.join(output_directory, f'path_{idx}.jpg'), image)
@@ -360,12 +410,11 @@ if __name__ == "__main__":
     print("time taken to find the graph", end_time - start_time)      
 
     # Define start and goal configurations as numpy arrays
-    start_config = np.array([[271, 431], [270, 313], [194, 240], [214, 221], [300, 124], [312, 95]]) 
-    goal_config = np.array([[271, 431], [271, 313], [243, 211], [270, 203], [389, 258], [418, 243]]) 
-    
+    start_config = np.array([[272, 437], [266, 314], [175, 261], [187, 236], [230, 108], [215, 85]]) 
+    goal_config = np.array([[271, 436], [267, 313], [223, 213], [248, 199], [383, 169], [404, 147]]) 
     SAFE_ZONE = 50  # Safe distance from the obstacle
-    obstacle_center = (420, 133)
-    half_diagonal = 50
+    obstacle_center = (320, 83)
+    half_diagonal = 20
     # safe_distance = SAFE_ZONE
 
     obstacle_boundary = geom.Polygon([
@@ -386,9 +435,9 @@ if __name__ == "__main__":
     path = find_path(roadmap, start_node, goal_node)
     # path = find_path_heuristic(roadmap, start_node, goal_node, heuristic)
 
-    output_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/scenarios_custom/phys_path_no_cost_scene_02/'
+    output_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/scenarios_custom/phys_path_no_cost_scene_07/'
 
-    image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/obstacle_image_02.png'
+    image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/obstacle_image_07.png'
 
     if path:
         print("Path found:", path)

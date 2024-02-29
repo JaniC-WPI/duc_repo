@@ -124,11 +124,13 @@ int main(int argc, char **argv){
     int num_goal_sets; 
     n.getParam("dl_controller/num_goal_sets", num_goal_sets);
     goal_features.resize(num_goal_sets);
+    std::cout<<"goal feature size"<<goal_features.size()<<std::endl;
     for (int i = 0; i < num_goal_sets; ++i) {
         std::string param_name = "dl_controller/goal_features" + std::to_string(i + 1);
         n.getParam(param_name, goal_features[i]);
     }
-
+    std::cout<<"goal feature size"<<goal_features.size()<<std::endl;
+    // print_fvector(goal_features);
     // Servoing variables
     int window; // Estimation window size
     n.getParam("vsbot/estimation/window", window);
@@ -186,24 +188,6 @@ int main(int argc, char **argv){
     std::vector<float> ds; // change in key points features
     std::vector<float> dr; // change in joint angles
 
-    // std::vector<float> qhat {7,13,-21,17,19,-23,11,-29}; // ,4.7,-13,27,31}; // initial Jacobian matrix as vector
-    // std::vector<float> qhat {7,13,-21,17,19,-23,11,-29,31,11,3,17};
-                        //  12 elements in qhat(6x2) for 6 elements in features and 2 joints
-    // std::vector<float> qhat {7,13,-21,17,19,-23,11,-29,31,11,3,17,9,12,3,5,-14,20};
-                        // 18 Elements in qhat(6X3) for 6 elements in feature vector and 3 joints or actuators
-    // std::vector<float> qhat {7,13,-21,17,19,-23,11,-29,31,11,3,17,9,12,3,5,-14,20,9,20,-34,21,-6,18};
-                        // 24 Elements in qhat(8X3) for 8 elements in feature vector and 3 joints or actuators
-    // std::vector<float> qhat {7,13,-21,17,19,-23,11,-29,31,11,3,17,9,12,3,5,-14,20,9,20,-34,21,-6,18,11,-9,34,43,25,16};
-                        // 30 Elements in qhat(10X3) for 10 elements in feature vector and 3 joints or actuators
-    // std::vector<float> qhat {7,13,-21,17,19,-23,11,-29,31,11,3,17,9,12,3,5,-14,20,9,20,-34,21,-6,18,11,-9,34,43,25,16,9,65,43,-21,-8,-10};
-    // std::vector<float> qhat {7,13,-21,17,19,-23,11,-29,31,11,3,17,14,5,8,1};
-                        //  16 elements in qhat(8x2) for 6 elements in features
-    // std::vector<float> qhat {7,13,-21,17,19,-23,11,-29,31,11,3,17,14,5,8,1,19, 71};
-                        //  18 elements in qhat(8x2) for 4 points that is 8 kp elements and depth feature as the 9th element in features
-    
-    // std::vector<float> qhat {7,13,-21,17,19,-23,11,-29,31,11,3,17,1.3,0.9};
-    // std::vector<float> qhat {0.07,0.13,-0.21,0.17,0.19,-0.23,0.11,-0.29};
-    // std::vector<float> qhat {.7,1.3,-.21,.17,-0.01,-0.5,-0.2,-0.3};
     // Changed this to 8 elements since only using 4 features now
 
     std::vector<float> dSinitial; // Vector list of shape change vectors
@@ -263,9 +247,9 @@ int main(int argc, char **argv){
     while (it < window){
 
         // Publish sin vel to both joints
-        float j1_vel = amplitude*(cos(param)+sin(param));
-        float j2_vel = amplitude*sin(param);
-        float j3_vel = amplitude*cos(param);  // comment out when 3rd joint not in use
+        float j1_vel = amplitude*sin(param);
+        float j2_vel = amplitude*cos(param); 
+        float j3_vel = amplitude*(cos(param)+sin(param)); // comment out when 3rd joint not in use
         // float j1_vel = amplitude*sin(param);
         // float j2_vel = amplitude*cos(param); 
         
@@ -452,6 +436,8 @@ int main(int argc, char **argv){
     std::cout<<"Entering control loop"<<std::endl;
     // Initialize the first goal set
     std::vector<float> goal = goal_features[0]; // Start with the first goal set
+    std::cout<<"print goals"<<std::endl;
+    print_fvector(goal);
     int current_goal_set = 0; // Index of the current goal feature set
 
     // Switching to control loop rate
@@ -537,8 +523,8 @@ int main(int argc, char **argv){
         // std::cout<<"Qhat_inv: "<<Qhat_inv<<std::endl;
         // std::cout<<"error_vec: "<<error_vec<<std::endl;
         // std::cout<<"gains: "<<lam<<std::endl;
-        // joint_vel = lam*(Qhat_inv)*(error_vec);
-        joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
+        joint_vel = lam*(Qhat_inv)*(error_vec);
+        // joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
         // std::cout<<"joint_vel_1: "<<joint_vel[0]<<std::endl;
         // std::cout<<"joint_vel_2: "<<joint_vel[1]<<std::endl;
         // std::cout<<"joint_vel_3: "<<joint_vel[2]<<std::endl; //uncomment - possible change for 3 joints
@@ -639,7 +625,10 @@ End of working velocity scaling*/
             std::cout << "Goal " << current_goal_set << " reached. Moving to next goal." << std::endl;
             if (current_goal_set < num_goal_sets - 1) {
                 ++current_goal_set; // Move to the next set of goal features
+                // print_fvector(goal_features);
                 goal = goal_features[current_goal_set]; // Update the goal to the next set
+                std::cout<<"new goal is"<<std::endl;
+                print_fvector(goal);
                 // Logging
                 std::cout << "Switching to goal set " << current_goal_set << std::endl;
                 // Resetting change in joint angles and shape change vectors for the new goal
@@ -648,7 +637,7 @@ End of working velocity scaling*/
                 std::cout << "Switched to goal set " << current_goal_set << std::endl;
 
                 // Pause for 2 seconds before continuing to the next goal
-                ros::Duration(2).sleep();
+                // ros::Duration(2).sleep();
             } else {
                 // All goals reached
                 std::cout << "All goals reached" << std::endl;
@@ -746,6 +735,11 @@ End of working velocity scaling*/
 
         // Publish control points
         cp_pub.publish(control_points);
+
+        // ROS_INFO("Publishing error message");
+        // for(const auto& value : err_msg.data) {
+        //     ROS_INFO("%f", value);
+        // }
         
         err_pub.publish(err_msg);
         

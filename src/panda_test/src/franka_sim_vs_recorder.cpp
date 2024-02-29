@@ -21,7 +21,7 @@ void statusCallback(const std_msgs::Int32 &status_msg){
 //     // This might be based on the error magnitude or some other criteria
 //     // For example:
 //     float error_norm = std::sqrt(std::inner_product(error.begin(), error.end(), error.begin(), 0.0));
-//     if (error_norm < ) {
+//     if (error_norm < 30) {
 //         current_goal_set++;
 //         // Reset or adjust other relevant variables if needed
 //     }
@@ -29,7 +29,6 @@ void statusCallback(const std_msgs::Int32 &status_msg){
 
 void currentGoalSetCallback(const std_msgs::Int32 &msg) {
     current_goal_set = msg.data;
-    // Additional processing if needed
 }
 
 
@@ -119,57 +118,57 @@ void velCallback(const std_msgs::Float64MultiArray &msg){
 
 
 // Uncomment for multiple goals
-void errCallback(const std_msgs::Float64MultiArray &msg) {
-    if (status > 1) {
-        std::vector<float> error(msg.data.begin(), msg.data.end());
-        // updateGoalSetIndex(error);
+// void errCallback(const std_msgs::Float64MultiArray &msg) {
+//     if (status > 1) {
+//         std::vector<float> error(msg.data.begin(), msg.data.end());
+//         // updateGoalSetIndex(error);
 
-        std::ofstream err_plotdata("err.csv", std::ios::app);
-        // Add the current goal set index as the first column
-        err_plotdata << current_goal_set << ",";
-        for (const auto& e : error) {
-            err_plotdata << e << ",";
-        }
-        err_plotdata << "\n";
-        err_plotdata.close();
-    }
-}
-
-// Uncomment the next block for 4f 3j
-// void errCallback(const std_msgs::Float64MultiArray &msg){
-//     if(status>1){
 //         std::ofstream err_plotdata("err.csv", std::ios::app);
-//         err_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","
-//                     <<msg.data.at(2)<<","<<msg.data.at(3)<<","
-//                     <<msg.data.at(4)<<","<<msg.data.at(5)<<","
-//                     <<msg.data.at(6)<<","<<msg.data.at(7)<<","
-//                     <<msg.data.at(8)<<","<<msg.data.at(9)<<","
-//                    <<msg.data.at(10)<<","<<msg.data.at(11)<<"\n";
+//         // Add the current goal set index as the first column
+//         // err_plotdata << current_goal_set << ",";
+//         for (const auto& e : error) {
+//             err_plotdata << e << ",";
+//         }
+//         err_plotdata << "\n";
 //         err_plotdata.close();
 //     }
 // }
 
-//  Uncomment the next block for 3f 2j
-void cpCallback(const std_msgs::Float64MultiArray &msg){
-        if(status>0){
-            std::ofstream cp_plotdata("cp.csv", std::ios::app);
-            cp_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","
-            <<msg.data.at(3)<<","<<msg.data.at(4)<<","<<msg.data.at(5)<<"\n";
-            cp_plotdata.close();
-        }
+// Uncomment the next block for 4f 3j
+void errCallback(const std_msgs::Float64MultiArray &msg){
+    if(status>1){
+        std::ofstream err_plotdata("err.csv", std::ios::app);
+        err_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","
+                    <<msg.data.at(2)<<","<<msg.data.at(3)<<","
+                    <<msg.data.at(4)<<","<<msg.data.at(5)<<","
+                    <<msg.data.at(6)<<","<<msg.data.at(7)<<","
+                    <<msg.data.at(8)<<","<<msg.data.at(9)<<","
+                   <<msg.data.at(10)<<","<<msg.data.at(11)<<"\n";
+        err_plotdata.close();
+    }
 }
 
-//Uncomment the next block for 4f 3j
+//  Uncomment the next block for 3f 2j
 // void cpCallback(const std_msgs::Float64MultiArray &msg){
 //         if(status>0){
 //             std::ofstream cp_plotdata("cp.csv", std::ios::app);
 //             cp_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","
-//             <<msg.data.at(3)<<","<<msg.data.at(4)<<","<<msg.data.at(5)<<","<<msg.data.at(6)<<","
-//             <<msg.data.at(7)<<","<<msg.data.at(8)<<","<<msg.data.at(9)<<","
-//             <<msg.data.at(10)<<","<<msg.data.at(11)<<"\n";
+//             <<msg.data.at(3)<<","<<msg.data.at(4)<<","<<msg.data.at(5)<<"\n";
 //             cp_plotdata.close();
 //         }
 // }
+
+//Uncomment the next block for 4f 3j
+void cpCallback(const std_msgs::Float64MultiArray &msg){
+        if(status>0){
+            std::ofstream cp_plotdata("cp.csv", std::ios::app);
+            cp_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","
+            <<msg.data.at(3)<<","<<msg.data.at(4)<<","<<msg.data.at(5)<<","<<msg.data.at(6)<<","
+            <<msg.data.at(7)<<","<<msg.data.at(8)<<","<<msg.data.at(9)<<","
+            <<msg.data.at(10)<<","<<msg.data.at(11)<<"\n";
+            cp_plotdata.close();
+        }
+}
 
 int main(int argc, char **argv){
 
@@ -194,27 +193,9 @@ int main(int argc, char **argv){
     // ds_plot <<"ds_x"<<","<<"ds_y"<<"\n";
 
     // Uncomment the next block for 3f 2j
-    ds_plot <<"cp2 x"<<","<<"cp2 y"<< ","<<"cp3 x"<<","<<"cp3 y"<<","<<"cp4 x"<<","<<"cp4 y"<<"\n";
-    ds_plot.close();
-    dr_plot <<"dr_1"<<","<<"dr_2"<<"\n";
-    dr_plot.close();
-    j1vel_plot <<"Joint 1" <<"\n";
-    j1vel_plot.close();
-    j2vel_plot <<"Joint 2" <<"\n";
-    j2vel_plot.close();
-    j3vel_plot <<"Joint 3" <<"\n";
-    j3vel_plot.close();
-    err_plot <<"Err_cp2_x"<<","<<"Err_cp2_y"<<","<<"Err_cp3_x"<<","<<"Err_cp3_y"
-             << ","<<"Err_cp4_x"<<","<<"Err_cp4_y"<<"\n";
-    err_plot.close();
-    cp_plot <<"cp2 x"<<","<<"cp2 y"<< ","<<"cp3 x"<<","<<"cp3 y"<<","<<"cp4 x"<<","<<"cp4 y"<<"\n";
-    cp_plot.close();
-
-    // Uncomment next block for 4f 3j
-    // ds_plot <<"cp2 x"<<","<<"cp2 y"<<","<<"cp3 x"<<","<<"cp3 y"<<","<<"cp4 x"<<","<<"cp4 y"<<","
-    //             <<"cp5 x"<<","<<"cp5 y"<<","<<"cp6 x"<<","<<"cp6 y"<<"\n";
+    // ds_plot <<"cp2 x"<<","<<"cp2 y"<< ","<<"cp3 x"<<","<<"cp3 y"<<","<<"cp4 x"<<","<<"cp4 y"<<"\n";
     // ds_plot.close();
-    // dr_plot <<"dr_1"<<","<<"dr_2"<<","<<"dr_3"<<"\n";
+    // dr_plot <<"dr_1"<<","<<"dr_2"<<"\n";
     // dr_plot.close();
     // j1vel_plot <<"Joint 1" <<"\n";
     // j1vel_plot.close();
@@ -223,12 +204,30 @@ int main(int argc, char **argv){
     // j3vel_plot <<"Joint 3" <<"\n";
     // j3vel_plot.close();
     // err_plot <<"Err_cp2_x"<<","<<"Err_cp2_y"<<","<<"Err_cp3_x"<<","<<"Err_cp3_y"
-    //          <<","<<"Err_cp4_x"<<","<<"Err_cp4_y"<<","<<"Err_cp5_x"<<","<<"Err_cp5_y"<<","
-    //          <<"\n";
+    //          << ","<<"Err_cp4_x"<<","<<"Err_cp4_y"<<"\n";
     // err_plot.close();
-    // cp_plot <<"cp2 x"<<","<<"cp2 y"<<","<<"cp3 x"<<","<<"cp3 y"<<","<<"cp4 x"<<","<<"cp4 y"<<","
-    //             <<"cp5 x"<<","<<"cp5 y"<<","<<"cp6 x"<<","<<"cp6 y"<<"\n";
+    // cp_plot <<"cp2 x"<<","<<"cp2 y"<< ","<<"cp3 x"<<","<<"cp3 y"<<","<<"cp4 x"<<","<<"cp4 y"<<"\n";
     // cp_plot.close();
+
+    // Uncomment next block for 4f 3j
+    ds_plot <<"cp3 x"<<","<<"cp3 y"<<","<<"cp4 x"<<","<<"cp4 y"<<","
+                <<"cp5 x"<<","<<"cp5 y"<<","<<"cp6 x"<<","<<"cp6 y"<<"\n";
+    ds_plot.close();
+    dr_plot <<"dr_1"<<","<<"dr_2"<<","<<"dr_3"<<"\n";
+    dr_plot.close();
+    j1vel_plot <<"Joint 1" <<"\n";
+    j1vel_plot.close();
+    j2vel_plot <<"Joint 2" <<"\n";
+    j2vel_plot.close();
+    j3vel_plot <<"Joint 3" <<"\n";
+    j3vel_plot.close();
+    err_plot <<"Err_cp3_x"<<","<<"Err_cp3_y"
+             <<","<<"Err_cp4_x"<<","<<"Err_cp4_y"<<","<<"Err_cp5_x"<<","<<"Err_cp5_y"<<","<<"Err_cp6_x"<<","<<"Err_cp6_y"
+             <<"\n";
+    err_plot.close();
+    cp_plot <<"cp3 x"<<","<<"cp3 y"<<","<<"cp4 x"<<","<<"cp4 y"<<","
+                <<"cp5 x"<<","<<"cp5 y"<<","<<"cp6 x"<<","<<"cp6 y"<<"\n";
+    cp_plot.close();
 
 
 
