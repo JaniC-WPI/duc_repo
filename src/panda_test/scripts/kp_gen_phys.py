@@ -188,6 +188,18 @@ class KpDetection():
                 json.dump(velocity_data, velocity_file, indent=4)
             rospy.loginfo(f'kp_gen(): Saved velocity json {velocity_file_name}')
 
+             # Save the current joint angles to JSON file
+            # Save the specific joint angles to JSON file
+            specific_joint_angles = [self.joint_angle[i] for i in [1, 3, 5]] 
+            joint_angle_data = {
+                "id": id,
+                "joint_angles": specific_joint_angles
+            }
+            joint_angle_file_name = os.path.join(self.save_dir, f"{int_stream[:len(int_stream)-len(str(id))]}{id}_joint_angles.json")
+            with open(joint_angle_file_name, "w") as joint_angle_file:
+                json.dump(joint_angle_data, joint_angle_file, indent=4)
+            rospy.loginfo(f'kp_gen(): Saved joint angles json {joint_angle_file_name}')
+
         # if self.screen_output:
         #     visualize(cv_img, data['keypoints'], data['bboxes'],
         #               int(1/self.rate*0.75*1000))  # wait time = 0.75 * 1/rate
@@ -218,8 +230,8 @@ class KpDetection():
         #     self.camera_ext = transform(self.camera_ext_trans, self.camera_ext_rot)
         # for physical panda
         if not self.no_kp_gen:
-            self.camera_ext_trans = [-0.13678923,  0.5030209,   1.68181415]#[-0.1406737, 0.51277635, 1.82787528]
-            self.camera_ext_rot =  [0.69260481, 0.07556831, -0.0967956, 0.71078732] #[0.69402915, -0.17008132,  0.15281551,  0.68267365]
+            self.camera_ext_trans = [-0.15838935, 0.51719157,  1.74013216]#[-0.1406737, 0.51277635, 1.82787528]
+            self.camera_ext_rot =  [0.66974827,  0.04262454, -0.03845967,  0.74036563] #[0.69402915, -0.17008132,  0.15281551,  0.68267365]
             self.camera_ext = transform(self.camera_ext_trans, self.camera_ext_rot)
 
     def image_pixels(self, camera_ext, world_coords):

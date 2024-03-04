@@ -37,7 +37,7 @@ def combine_json_with_velocity(data_dir, out_dir):
         os.makedirs(out_dir)
 
     # Get the list of JSON files (excluding velocity files)
-    keypoint_files = sorted([f for f in os.listdir(data_dir) if f.endswith('.json') and not f.endswith('_vel.json') and not f.endswith('_combined.json')])
+    keypoint_files = sorted([f for f in os.listdir(data_dir) if f.endswith('.json') and not f.endswith('_vel.json') and not f.endswith('_combined.json') and not f.endswith('_joint_angles.json')])
     # Process each file (except the last one)
     for i in range(len(keypoint_files) - 1):
         current_file = keypoint_files[i]
@@ -247,14 +247,14 @@ def combine_and_renumber_folders(source_folders, dest_folder):
 
 if __name__ == "__main__":
     # Load configurations from JSON files
-    # directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_planning_panda_regression/'
-    # out_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/regression_combined_test_new/'
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/1/'
+    out_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/11_out/'
     # directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/14/'
     # out_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/14_out/'
 
     # update_velocity_json(directory)
     # combine_json_with_velocity(directory, out_dir)
-    # append_new_combined_json_to_original_set(out_dir, 2000, 321)
+    # append_new_combined_json_to_original_set(out_dir, 5000, 2212)
     # clean_and_renumber_json_files(out_dir)
 
     # Define your source folders and destination folder
@@ -269,10 +269,10 @@ if __name__ == "__main__":
                       '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/8_out/',
                       '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/9_out/',
                       '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/10_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/11_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/12_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/13_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/14_out']
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/11_out/']
+                    #   '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/12_out/',
+                    #   '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/13_out/',
+                    #   '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/14_out']
 
     destination_folder = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/regression_corrected/'
     combine_and_renumber_folders(source_folders, destination_folder)

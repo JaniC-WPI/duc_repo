@@ -412,8 +412,9 @@ if __name__ == "__main__":
     # Define start and goal configurations as numpy arrays
     start_config = np.array([[272, 437], [266, 314], [175, 261], [187, 236], [230, 108], [215, 85]]) 
     goal_config = np.array([[271, 436], [267, 313], [223, 213], [248, 199], [383, 169], [404, 147]]) 
+	
     SAFE_ZONE = 50  # Safe distance from the obstacle
-    obstacle_center = (320, 83)
+    obstacle_center = (380, 73)
     half_diagonal = 20
     # safe_distance = SAFE_ZONE
 
@@ -435,9 +436,9 @@ if __name__ == "__main__":
     path = find_path(roadmap, start_node, goal_node)
     # path = find_path_heuristic(roadmap, start_node, goal_node, heuristic)
 
-    output_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/scenarios_custom/phys_path_no_cost_scene_07/'
+    output_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/scenarios_custom/phys_path_no_cost_scene_06/'
 
-    image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/obstacle_image_07.png'
+    image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/obstacle_image_06.png'
 
     if path:
         print("Path found:", path)

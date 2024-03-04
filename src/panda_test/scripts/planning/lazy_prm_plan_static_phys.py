@@ -156,33 +156,32 @@ def add_config_to_roadmap(config, G, tree, k_neighbors, obstacle_center, half_di
     for i in indices[0]:
         neighbor_config = G.nodes[i]['configuration']
         # print("Shape of neighbor_config:", neighbor_config.shape)
-        # Here we need to convert configurations back to their original shape for collision checking
-        x1, y1 = config.T  # Extract x and y coordinates from the first configuration 
-        x2, y2 = neighbor_config.T  # Extract x and y coordinates from the second configuration 
+        # # Here we need to convert configurations back to their original shape for collision checking
+        # x1, y1 = config.T  # Extract x and y coordinates from the first configuration 
+        # x2, y2 = neighbor_config.T  # Extract x and y coordinates from the second configuration 
 
-        # Plot configurations as markers
-        plt.scatter(x1, y1,  marker='o', color='blue') 
-        plt.scatter(x2, y2,  marker='o', color='red')
+        # # Plot configurations as markers
+        # plt.scatter(x1, y1,  marker='o', color='blue') 
+        # plt.scatter(x2, y2,  marker='o', color='red')
 
-        # Plot the line segment
-        plt.plot([x1[0], x2[0]], [y1[0], y2[0]], color='red')
+        # # Plot the line segment
+        # plt.plot([x1[0], x2[0]], [y1[0], y2[0]], color='red')
 
-        # Additional settings (optional)
-        plt.xlim(0, IMAGE_WIDTH)  # Adjust based on your image dimensions
-        plt.ylim(0, IMAGE_HEIGHT)
-        plt.gca().invert_yaxis()  # To match image coordinates
-        plt.title('Potential Connection') 
-        # plt.show()
-        print("New Config:", config)
-        print("Neighbor Config:", neighbor_config)
-        print("Collision Check Result:", is_collision_free(np.vstack([config, neighbor_config]), obstacle_center, half_diagonal, safe_distance))
+        # # Additional settings (optional)
+        # plt.xlim(0, IMAGE_WIDTH)  # Adjust based on your image dimensions
+        # plt.ylim(0, IMAGE_HEIGHT)
+        # plt.gca().invert_yaxis()  # To match image coordinates
+        # plt.title('Potential Connection') 
+        # # plt.show()
+        # print("New Config:", config)
+        # print("Neighbor Config:", neighbor_config)
         # print("configs for collision check", type(check_config), check_config)
-        if is_collision_free(np.vstack([config, neighbor_config]), obstacle_center, half_diagonal, safe_distance):
-            visualize_interactions(np.vstack([config, neighbor_config]), obstacle_boundary)
+        if is_collision_free(config, neighbor_config, obstacle_center, half_diagonal, safe_distance):
+            visualize_interactions(config, neighbor_config, obstacle_boundary)
             G.add_edge(node_id, i)
             # connections += 1
         else:
-            visualize_interactions(np.vstack([config, neighbor_config]), obstacle_boundary)
+            visualize_interactions(config, neighbor_config, obstacle_boundary)
 
     # if connections == 0:  # If no connections were made, remove the node
     #     print("No connections were made")
@@ -211,7 +210,7 @@ def validate_and_remove_invalid_edges(G, obstacle_center, half_diagonal, safe_di
         config_u = G.nodes[u]['configuration']
         config_v = G.nodes[v]['configuration']
         # Perform the collision check for the edge
-        if not is_collision_free(np.vstack([config_u, config_v]), obstacle_center, half_diagonal, safe_distance):
+        if not is_collision_free(config_u, config_v, obstacle_center, half_diagonal, safe_distance):
             # If the edge is not collision-free, remove it from the graph
             G.remove_edge(u, v)
             print(f"Removed invalid edge: {u} <-> {v}")
@@ -449,11 +448,11 @@ if __name__ == "__main__":
     print("time taken to find the graph", end_time - start_time)  
 
     # Define start and goal configurations as numpy arrays
-    start_config = np.array([[271, 431], [270, 313], [194, 240], [214, 221], [300, 124], [312, 95]]) 
-    goal_config = np.array([[271, 431], [271, 313], [243, 211], [270, 203], [389, 258], [418, 243]]) 
+    start_config = np.array([[272, 437], [266, 314], [175, 261], [187, 236], [230, 108], [215, 85]]) 
+    goal_config = np.array([[271, 436], [267, 313], [223, 213], [248, 199], [383, 169], [404, 147]]) 
 	
     SAFE_ZONE = 50  # Safe distance from the obstacle
-    obstacle_center = (320, 83)
+    obstacle_center = (380, 73)
     half_diagonal = 20
     # safe_distance = SAFE_ZONE
 
@@ -475,9 +474,9 @@ if __name__ == "__main__":
     # Find and print the path from start to goal
     path = find_path(roadmap, start_node, goal_node)
 
-    output_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/scenarios_default/phys_path_scene_07_v2'
+    output_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/scenarios_default/phys_path_scene_06_v2'
 
-    image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/obstacle_image_07.png'
+    image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/obstacle_image_06.png'
 
     if path:
         print("Path found:", path)

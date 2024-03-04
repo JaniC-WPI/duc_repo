@@ -2,8 +2,8 @@ import os
 import shutil
 
 # Specify the source and destination folders
-source_folder_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_planning_panda/'
-destination_folder_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_planning_panda_classification/'
+source_folder_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_planning_kprcnn/'
+destination_folder_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_planning_kprcnn_train/'
 
 # Ensure the destination folder exists
 os.makedirs(destination_folder_path, exist_ok=True)
@@ -11,7 +11,7 @@ os.makedirs(destination_folder_path, exist_ok=True)
 # Iterate through all files in the source folder
 for filename in os.listdir(source_folder_path):
     # Check if the file is a .jpg or .json file but not a _vel.json file
-    if filename.endswith('.jpg') or (filename.endswith('.json') and not filename.endswith('_vel.json')):
+    if filename.endswith('.jpg') or (filename.endswith('.json') and not filename.endswith('_vel.json') and not filename.endswith('_joint_angles.json')):
         # Construct full file paths
         source_file_path = os.path.join(source_folder_path, filename)
         destination_file_path = os.path.join(destination_folder_path, filename)

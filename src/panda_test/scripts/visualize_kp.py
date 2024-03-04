@@ -13,7 +13,7 @@ folder = 1
 # default_data_dir = f'/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/kp_test_images/{folder}/'
 # default_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/data/kp_test_images/{folder}/'
 
-default_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/planning_data_predict/'
+default_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_planning_kprcnn_train/'
 output_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/kp_plan_viz/'
 # def visualize(image, keypoints, wait, window_name='Default'):
 #     for i in range(len(keypoints)):
@@ -76,7 +76,7 @@ def visualize_and_save(image, keypoints, filename, output_data_dir):
 if __name__ == '__main__':
     data_dir = sys.argv[1] if len(sys.argv) > 1 else default_data_dir
     json_files = sorted([f for f in os.listdir(data_dir) if f.endswith(".json") and not f.endswith("_vel.json")
-                          and not f.endswith("_combined.json") ])
+                          and not f.endswith("_combined.json")  and not f.endswith("_joint_angles.json")])
 
     for json_file in json_files:
         json_path = os.path.join(data_dir, json_file)

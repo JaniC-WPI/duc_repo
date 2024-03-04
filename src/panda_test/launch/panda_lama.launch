@@ -20,8 +20,8 @@
     
     <node name="record_images" pkg="panda_test" type="kp_gen_phys.py" output="screen" respawn="false" 
     launch-prefix="bash -c 'sleep $(arg img_node_start_delay); $0 $@' "/>
-    <!-- <node name="ws" pkg="panda_test" type="workspace_control_phys.py" output="screen" respawn="false" 
-    launch-prefix="bash -c 'sleep $(arg img_node_start_delay); $0 $@' "/> -->
+    <node name="ws" pkg="panda_test" type="workspace_control_phys.py" output="screen" respawn="false" 
+    launch-prefix="bash -c 'sleep $(arg img_node_start_delay); $0 $@' "/>
     <!-- <node name="record_images" pkg="panda_test" type="kp_gen_test.py" output="screen" respawn="false"/>
     <node name="ws" pkg="panda_test" type="workspace_control.py" output="screen" respawn="false"/> -->
    
