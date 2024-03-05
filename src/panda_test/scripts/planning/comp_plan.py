@@ -83,8 +83,8 @@ def build_lazy_roadmap(kp_configurations, jt_configurations, k_neighbors, model)
     Returns:
     - G: nx.Graph, the constructed roadmap.
     """
-    kp_configurations = kp_configurations[1:9000:500]
-    jt_configurations = jt_configurations[1:9000:500]
+    kp_configurations = kp_configurations[1:9000:10]
+    jt_configurations = jt_configurations[1:9000:10]
 
     flattened_kp_configs = np.vstack([config.flatten() for config in kp_configurations])
     tree1 = KDTree(flattened_kp_configs)
@@ -123,7 +123,7 @@ def build_lazy_roadmap(kp_configurations, jt_configurations, k_neighbors, model)
 
     for i, config in enumerate(flattened_jt_configs):
         dist, indices = tree3.query([config], k=k_neighbors + 1)
-        print("angle distance", dist)
+        # print("angle distance", dist)
         for d,j in zip(dist[0],indices[0]):  # Skip self
             if j!=i:
                 G3.add_edge(i, j, distance=d)    
@@ -145,54 +145,169 @@ def build_lazy_roadmap(kp_configurations, jt_configurations, k_neighbors, model)
 
     return G1, G2, G3, tree1, tree2, tree3
 
-def compare_edge_distances(G2, G3):
+def plot_common_node_pairs(G1,G2,G3):
+    total_edges_g1 = G1.number_of_edges()
+    total_edges_g2 = G2.number_of_edges()
+    total_edges_g3 = G3.number_of_edges()
+
+    # Find common connected edges between G1 and G3, and G2 and G3
+    common_edges_g1_g3 = set(G1.edges()).intersection(set(G3.edges()))
+    common_edges_g2_g3 = set(G2.edges()).intersection(set(G3.edges()))
+
+    # Print the information
+    print(f"Total connected edges in G1: {total_edges_g1}")
+    print(f"Total connected edges in G2: {total_edges_g2}")
+    print(f"Total connected edges in G3: {total_edges_g3}")
+    print(f"Common connected edges between G1 and G3: {len(common_edges_g1_g3)}")
+    print(f"Common connected edges between G2 and G3: {len(common_edges_g2_g3)}")
+    
+    common_pairs_g1_g3 = set(G1.edges()) & set(G3.edges())
+    common_pairs_g2_g3 = set(G2.edges()) & set(G3.edges())
+
+    common_pairs_g1_g3 = list(common_pairs_g1_g3)
+    common_pairs_g2_g3 = list(common_pairs_g2_g3)
+    # Unpack node pairs for G1 & G3
+    x1, y1 = zip(*common_pairs_g1_g3) if common_pairs_g1_g3 else ([], [])
+    # Unpack node pairs for G2 & G3
+    x2, y2 = zip(*common_pairs_g2_g3) if common_pairs_g2_g3 else ([], [])
+    
+    plt.figure(figsize=(10, 5))
+
+    plt.subplot(2,1,1)
+    plt.scatter(x1, y1, color='blue', label=f'G1 & G3 Common Nodes: {len(common_pairs_g1_g3)}', alpha=0.5)
+    plt.legend() 
+    plt.grid()
+
+    plt.subplot(2,1,2)
+    plt.scatter(x2, y2, color='red', label=f'G2 & G3 Common Nodes:  {len(common_pairs_g2_g3)}', alpha=0.5)
+    plt.legend() 
+    plt.grid()
+
+    plt.xlabel('Node Index 1')
+    plt.ylabel('Node Index 2')
+    plt.title('Common Node Pairs between Graphs')  
+   
+
+    plt.tight_layout()
+    plt.show()
+
+
+    # plt.scatter(x1, y1, color='blue', label='G1 & G3 Common Nodes', alpha=0.5)
+    # plt.xlabel('Node Index 1')
+    # plt.ylabel('Node Index 2')
+    # plt.title('Common Node Pairs between Graphs')
+    # plt.legend()
+    # plt.grid(True)
+    # plt.show()
+
+    # plt.figure(figsize=(10, 5))
+    # plt.scatter(x2, y2, color='red', label='G2 & G3 Common Nodes', alpha=0.7)
+    # plt.xlabel('Node Index 1')
+    # plt.ylabel('Node Index 2')
+    # plt.title('Common Node Pairs between Graphs')
+    # plt.legend()
+    # plt.grid(True)
+    # plt.show()
+
+def compare_edges_bar_chart(G1, G2, G3):
+    # Calculate total and common edges
+    total_edges_g1 = G1.number_of_edges()
+    total_edges_g2 = G2.number_of_edges()
+    common_edges_g1_g3 = len(set(G1.edges()) & set(G3.edges()))
+    common_edges_g2_g3 = len(set(G2.edges()) & set(G3.edges()))
+    
+    # Data setup
+    graphs = ['G1', 'G2']
+    total_edges = [total_edges_g1, total_edges_g2]
+    common_edges = [common_edges_g1_g3, common_edges_g2_g3]
+    
+    # Plotting
+    x = range(len(graphs))  # the label locations
+    width = 0.35  # the width of the bars
+
+    fig, ax = plt.subplots()
+    rects1 = ax.bar(x, total_edges, width, label='Total Edges')
+    rects2 = ax.bar(x, common_edges, width, bottom=total_edges, label='Common with G3', alpha=0.5)
+
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_ylabel('Edges')
+    ax.set_title('Edge Comparison with G3')
+    ax.set_xticks(x)
+    ax.set_xticklabels(graphs)
+    ax.legend()
+
+    ax.bar_label(rects1, padding=3)
+    ax.bar_label(rects2, padding=3)
+
+    plt.show()
+
+
+def compare_edge_distances_scatter(G1, G2, G3):
     """
-    Visualize comparison between edge distances of G2 and G3.
+    Visualize comparison between edge distances of G1, G2 and G3 with euclidean distances of G3 in scatterplot
     """
-    # Gather common edge distances
-    common_edge_distances = []
-    for (u, v, d) in G2.edges(data=True):
-        if G3.has_edge(u, v):
-            distance_g2 = d['distance']
-            distance_g3 = G3[u][v]['distance']
-            common_edge_distances.append((distance_g2, distance_g3))
+    distances_g1 = []
+    distances_g2 = []
+    distances_g3 = []
+    euclidean_distances_g13 = []
+    euclidean_distances_g23 = []
+    euclidean_distances_g33 = []
+    
+    for (u,v,d) in G1.edges(data=True):
+        if G3.has_node(u) and G3.has_node(v):            
+            pos_u = G3.nodes[u]['configuration']
+            pos_v = G3.nodes[v]['configuration']
+            euclidean_distance = calculate_euclidean_distance_3d(pos_u, pos_v)
+            distances_g1.append(d['distance'])
+            euclidean_distances_g13.append(euclidean_distance)
+
+    for (u,v,d) in G2.edges(data=True):
+        if G3.has_node(u) and G3.has_node(v):            
+            pos_u = G3.nodes[u]['configuration']
+            pos_v = G3.nodes[v]['configuration']
+            euclidean_distance = calculate_euclidean_distance_3d(pos_u, pos_v)
+            distances_g2.append(d['distance'])
+            euclidean_distances_g23.append(euclidean_distance)
+
+    for (u,v,d) in G3.edges(data=True):
+        if G3.has_node(u) and G3.has_node(v):            
+            pos_u = G3.nodes[u]['configuration']
+            pos_v = G3.nodes[v]['configuration']
+            euclidean_distance = calculate_euclidean_distance_3d(pos_u, pos_v)
+            distances_g3.append(d['distance'])
+            euclidean_distances_g33.append(euclidean_distance)
     
     # Scatter plot for distance comparison
-    distances_g2, distances_g3 = zip(*common_edge_distances)
-    plt.scatter(distances_g3, distances_g2, alpha=0.5)
-    plt.xlabel('Distances in G3')
-    plt.ylabel('Distances in G2')
+    plt.scatter(euclidean_distances_g13, distances_g1, alpha=0.5)
+    plt.xlabel('Euclidean distances in G3')
+    plt.ylabel('Connected Edge disatnces in G1')
+    plt.title('Scatter Plot of Distances in joint_space vs. kdtree_default')
+    plt.grid(True)
+    max_distance = max(max(euclidean_distances_g13), max(distances_g1))
+    plt.plot([0, max(euclidean_distances_g13)], [0, max(distances_g1)], 'r--')  # y=x reference line
+    plt.show()
+
+    plt.scatter(euclidean_distances_g23, distances_g2, alpha=0.5)
+    plt.xlabel('Euclidean distances in G3')
+    plt.ylabel('Connected Edge disatnces in G2')
     plt.title('Scatter Plot of Distances in joint_space vs. custom_joint_space')
     plt.grid(True)
-    max_distance = max(max(distances_g2), max(distances_g3))
-    plt.plot([0, max_distance], [0, max_distance], 'r--')  # y=x reference line
+    max_distance = max(max(euclidean_distances_g23), max(distances_g2))
+    print('max_euclidean_distances_g23', max(euclidean_distances_g23))
+    print('max distances_g2', max(distances_g2))
+    plt.plot([0, max(euclidean_distances_g23)], [0, max(distances_g2)], 'r--')  # y=x reference line
     plt.show()
 
-def compare_edge_distances_histogram(G2, G3):
-    """
-    Visualize the difference in edge distances between G2 and G3 using a histogram.
-    """
-    # Gather common edge distances
-    common_edge_distances = []
-    for (u, v, d) in G2.edges(data=True):
-        if G3.has_edge(u, v):
-            distance_g2 = d['distance']
-            distance_g3 = G3[u][v]['distance']
-            # Calculate the difference in distances
-            difference = distance_g2 - distance_g3
-            common_edge_distances.append(difference)
-    
-    # Histogram for differences in distance
-    plt.hist(common_edge_distances, bins=30, alpha=0.7, color='blue', edgecolor='black')
-    plt.xlabel('Distance Difference (G2 - G3)')
-    plt.ylabel('Number of Edges')
-    plt.title('Histogram of Distance Differences Between G2 and G3')
-    plt.grid(axis='y', alpha=0.75)
-    plt.axvline(0, color='red', linestyle='dashed', linewidth=1)  # Line at zero difference
-    plt.text(0.1, max(plt.ylim()) * 0.9, 'Equal distances', color = 'red')
+    plt.scatter(euclidean_distances_g33, distances_g3, alpha=0.5)
+    plt.xlabel('Euclidean distances in G3')
+    plt.ylabel('Connected Edge disatnces in G3')
+    plt.title('Scatter Plot of Distances in joint_space vs. actual_joint_space_disatnce')
+    plt.grid(True)
+    max_distance = max(max(euclidean_distances_g33), max(distances_g3))
+    plt.plot([0, max(euclidean_distances_g33)], [0, max(distances_g3)], 'r--')  # y=x reference line
     plt.show()
 
-def compare_edge_distance_joint_space(G1,G2,G3):
+def compare_edge_distances_hist(G1,G2,G3):
     distances_g1 = []
     distances_g2 = []
     distances_g3 = []
@@ -225,136 +340,42 @@ def compare_edge_distance_joint_space(G1,G2,G3):
             euclidean_distances_g33.append(euclidean_distance)
 
     # Plot histograms
-    fig, axs = plt.subplots(3, 3, figsize=(21, 15), sharey=True)
+    fig, axs = plt.subplots(2, 3, figsize=(14, 10), sharey=True)
     
     axs[0, 0].hist(distances_g1, bins=30, alpha=0.7, label='G1 Edge Distances', color='blue')
     axs[0, 0].set_title('G1 Edge Distances')
+    plt.xlim(0, 3.0)
 
     axs[1, 0].hist(euclidean_distances_g13, bins=30, alpha=0.7, label='G3 Euclidean Distances For Connected nodes', color='blue')
     axs[1, 0].set_title('G3 Euclidean Distances')
+    plt.xlim(0, 3.0)
 
-    axs[0, 1].hist(distances_g2, bins=30, alpha=0.7, label='G2 Edge Distances', color='blue')
+    axs[0, 1].hist(distances_g2, bins=30, alpha=0.7, label='G2 Edge Distances', color='green')
     axs[0, 1].set_title('G2 Edge Distances')
+    plt.xlim(0, 3.0)
 
-    axs[1, 1].hist(euclidean_distances_g23, bins=30, alpha=0.7, label='G3 Euclidean Distances For Connected nodes', color='blue')
+    axs[1, 1].hist(euclidean_distances_g23, bins=30, alpha=0.7, label='G3 Euclidean Distances For Connected nodes', color='green')
     axs[1, 1].set_title('G3 Euclidean Distances')
+    plt.xlim(0, 3.0)
 
-    axs[0, 2].hist(distances_g3, bins=30, alpha=0.7, label='G3 Edge Distances', color='blue')
+    axs[0, 2].hist(distances_g3, bins=30, alpha=0.7, label='G3 Edge Distances', color='orange')
     axs[0, 2].set_title('G3 Edge Distances')
+    plt.xlim(0, 3.0)
 
-    axs[1, 2].hist(euclidean_distances_g33, bins=30, alpha=0.7, label='G3 Euclidean Distances For Connected nodes', color='blue')
+    axs[1, 2].hist(euclidean_distances_g33, bins=30, alpha=0.7, label='G3 Euclidean Distances For Connected nodes', color='orange')
     axs[1, 2].set_title('G3 Euclidean Distances')
-            
+    plt.xlim(0, 3.0)
 
-
-
-def compare_all_edge_distances(G1, G2, G3):
-    # Initialize lists to store distance differences
-    differences_g1_g3 = []
-    differences_g2_g3 = []
-    
-    # Collect distance differences for G1 vs. G3
-    for (u, v, d) in G1.edges(data=True):
-        
-        if G3.has_edge(u,v):            
-            distance_g3_g1 = G3[u][v]['distance']
-            differences_g1_g3.append(distance_g1 - distance_g3_g1)
-    
-    # Collect distance differences for G2 vs. G3
-    for (u, v, d) in G2.edges(data=True):
-        if G3.has_edge(u, v):
-            distance_g2 = d['distance']
-            distance_g3_g2 = G3[u][v]['distance']
-            differences_g2_g3.append(distance_g2 - distance_g3_g2)
-    
-    # Plot histograms
-    fig, axs = plt.subplots(2, 3, figsize=(14, 10), sharey=True)
-
-    axs[0, 0].hist(distances_g1, bins=30, alpha=0.7, label='G1 Edge Distances', color='blue')
-    axs[0, 0].set_title('G1 Edge Distances')
-    
-    axs[0, 1].hist(distances_g2, bins=30, alpha=0.7, label='G2 Edge Distances', color='green')
-    axs[0, 1].set_title('G2 Edge Distances')
-    
-    axs[1, 0].hist(distances_g3, bins=30, alpha=0.7, label='G3 Edge Distances', color='red')
-    axs[1, 0].set_title('G3 Edge Distances')
-    
-    axs[1, 1].hist(euclidean_distances_g3, bins=30, alpha=0.7, label='Euclidean Distances in G3', color='orange')
-    axs[1, 1].set_title('Euclidean Distances in G3')
-    
-    axs[0].hist(differences_g1_g3, bins=30, alpha=0.7, color='blue', edgecolor='black')
-    axs[0].set_title('G1 vs. G3')
-    axs[0].set_xlabel('Distance Difference (G1 - G3)')
-    axs[0].set_ylabel('Number of Edges')
-    axs[0].axvline(0, color='red', linestyle='dashed', linewidth=1)
-    
-    axs[1].hist(differences_g2_g3, bins=30, alpha=0.7, color='green', edgecolor='black')
-    axs[1].set_title('G2 vs. G3')
-    axs[1].set_xlabel('Distance Difference (G2 - G3)')
-    axs[1].axvline(0, color='red', linestyle='dashed', linewidth=1)
-    
-    # Assuming G3 is your baseline and comparing it to itself just for uniformity in the visualization
-    axs[2].hist(differences_g2_g3, bins=30, alpha=0.7, color='orange', edgecolor='black')  # This is a placeholder
-    axs[2].set_title('G3 Baseline')
-    axs[2].set_xlabel('Distance Difference (G3 - G3)')
-    axs[2].axvline(0, color='red', linestyle='dashed', linewidth=1)
-    
-    plt.tight_layout()
-    plt.show()
-
-def calculate_euclidean_distance_3d(pos_u, pos_v):
-    """Calculate the Euclidean distance between two 3D positions."""
-    return np.linalg.norm(np.array(pos_u) - np.array(pos_v))
-
-def compare_edge_distances(G1, G2, G3):
-    # Assuming G3 nodes are already associated with their 3D positions as attributes
-    distances_g1 = []
-    distances_g2 = []
-    distances_g3 = []
-    euclidean_distances_g3 = []
-
-    # Process edges for G1 and G2, compare with Euclidean distances in G3
-    for G, distances_list in zip([G1, G2, G3], [distances_g1, distances_g2, distances_g3]):
-        for (u, v, d) in G.edges(data=True):
-            if G3.has_node(u) and G3.has_node(v):
-                # Retrieve the 3D positions from G3's nodes
-                pos_u = G3.nodes[u]['configuration']
-                pos_v = G3.nodes[v]['configuration']
-                euclidean_distance = calculate_euclidean_distance_3d(pos_u, pos_v)
-                distances_list.append(d['distance'])  # Distance from G1 or G2
-                euclidean_distances_g3.append(euclidean_distance)  # Corresponding Euclidean distance in G3
-
-    # Visualization with histograms
-    fig, axs = plt.subplots(2, 2, figsize=(14, 10), sharex=True, sharey=True)
-
-    axs[0, 0].hist(distances_g1, bins=30, alpha=0.7, label='G1 Edge Distances', color='blue')
-    axs[0, 0].set_title('G1 Edge Distances')
-    
-    axs[0, 1].hist(distances_g2, bins=30, alpha=0.7, label='G2 Edge Distances', color='green')
-    axs[0, 1].set_title('G2 Edge Distances')
-    
-    axs[1, 0].hist(distances_g3, bins=30, alpha=0.7, label='G3 Edge Distances', color='red')
-    axs[1, 0].set_title('G3 Edge Distances')
-    
-    axs[1, 1].hist(euclidean_distances_g3, bins=30, alpha=0.7, label='Euclidean Distances in G3', color='orange')
-    axs[1, 1].set_title('Euclidean Distances in G3')
-    
     for ax in axs.flat:
         ax.label_outer()  # Hide x labels and tick labels for top plots and y ticks for right plots.
         ax.legend()
     
     plt.show()
 
-    # Visualization with histograms
-    plt.hist(euclidean_distances_g3, bins=30, alpha=0.5, label='Euclidean Distances in G3', color='orange', edgecolor='black')
-    # plt.hist(distances_g1, bins=30, alpha=0.5, label='Edge Distances in G1', color='blue', edgecolor='black')
-    # plt.hist(distances_g2, bins=30, alpha=0.5, label='Edge Distances in G2', color='green', edgecolor='black')
-    plt.hist(distances_g3, bins=30, alpha=0.5, label='Edge Distances in G3', color='brown', edgecolor='black')
-    plt.xlabel('Distances')
-    plt.ylabel('Number of Edges')
-    plt.title('Comparison of Edge Distances: G1 & G2 & G3 vs. Euclidean in G3')
-    plt.legend()
-    plt.show()
+def calculate_euclidean_distance_3d(pos_u, pos_v):
+    """Calculate the Euclidean distance between two 3D positions."""
+    return np.linalg.norm(np.array(pos_u) - np.array(pos_v))
+
 
 # Main execution
 if __name__ == "__main__":
@@ -368,7 +389,9 @@ if __name__ == "__main__":
     roadmap1, roadmap2, roadmap3, tree1, tree2, tree3 = build_lazy_roadmap(kp_configurations, joint_angles, num_neighbors, model)   
 
     # compare_edge_distances_histogram(roadmap2, roadmap3)
-    compare_edge_distances(roadmap1,roadmap2,roadmap3)
+    compare_edge_distances_hist(roadmap1,roadmap2,roadmap3)
+    compare_edge_distances_scatter(roadmap1,roadmap2, roadmap3)
+    plot_common_node_pairs(roadmap1,roadmap2,roadmap3)
 
     
     
