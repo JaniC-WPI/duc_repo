@@ -14,7 +14,7 @@ import yaml
 import shapely.geometry as geom
 import scipy
 import matplotlib.pyplot as plt
-from pos_regression import PosRegModel
+from pos_regression_control import PosRegModel
 from descartes import PolygonPatch
 
 # Parameters
@@ -27,7 +27,7 @@ def load_keypoints_from_json(directory):
     configurations = []
     for filename in os.listdir(directory):
         # if filename.endswith('.json'):
-        if filename.endswith('.json') and not filename.endswith('_combined.json') and not filename.endswith('_vel.json'):
+        if filename.endswith('.json') and not filename.endswith('_joint_angles.json') and not filename.endswith('_vel.json'):
             with open(os.path.join(directory, filename), 'r') as file:
                 data = json.load(file)
                 # Convert keypoints to integers
@@ -178,11 +178,11 @@ def add_config_to_roadmap(config, G, tree, k_neighbors, obstacle_center, half_di
         print("Collision Check Result:", is_collision_free(np.vstack([config, neighbor_config]), obstacle_center, half_diagonal, safe_distance))
         # print("configs for collision check", type(check_config), check_config)
         if is_collision_free(np.vstack([config, neighbor_config]), obstacle_center, half_diagonal, safe_distance):
-            visualize_interactions(np.vstack([config, neighbor_config]), obstacle_boundary)
+            # visualize_interactions(np.vstack([config, neighbor_config]), obstacle_boundary)
             G.add_edge(node_id, i)
             # connections += 1
-        else:
-            visualize_interactions(np.vstack([config, neighbor_config]), obstacle_boundary)
+        # else:
+            # visualize_interactions(np.vstack([config, neighbor_config]), obstacle_boundary)
 
     # if connections == 0:  # If no connections were made, remove the node
     #     print("No connections were made")
@@ -341,12 +341,12 @@ def plot_path_on_image_dir(image_path, path, start_config, goal_config, output_d
 # Main execution
 if __name__ == "__main__":
     # Load configurations from JSON files
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_planning_panda_regression/'  # Replace with the path to your JSON files
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_planning_kprcnn/'  # Replace with the path to your JSON files
     num_samples = 500
     configurations = load_keypoints_from_json(directory)
     # configurations = load_and_sample_configurations(directory, num_samples)
     # Parameters for PRM
-    num_neighbors = 50 # Number of neighbors for each node in the roadmap
+    num_neighbors = 25 # Number of neighbors for each node in the roadmap
     start_time = time.time()
     # Build the roadmap
     roadmap, tree, pos_dict = build_lazy_roadmap_with_kdtree(configurations, num_neighbors)   
@@ -356,11 +356,11 @@ if __name__ == "__main__":
     print("time taken to find the graph", end_time - start_time)  
 
     # Define start and goal configurations as numpy arrays
-    start_config = np.array([[272, 436], [265, 315], [188, 241], [205, 218], [290, 112], [311, 91]]) 
-    goal_config = np.array([[271, 436], [267, 312], [231, 209], [256, 198], [384, 248], [414, 236]])
+    start_config = np.array([[267, 432], [270, 315], [167, 294], [173, 266], [160, 138], [132, 118]]) 
+    goal_config = np.array([[267, 432], [271, 315], [317, 218], [342, 231], [463, 293], [494, 281]])
 
     SAFE_ZONE = 50  # Safe distance from the obstacle
-    obstacle_center = (420, 133)
+    obstacle_center = (450, 103)
     half_diagonal = 20
     # safe_distance = SAFE_ZONE
 
@@ -388,7 +388,7 @@ if __name__ == "__main__":
 
     if path:
         print("Path found:", path)
-        visualize_interactions_path(path, obstacle_boundary)
+        # visualize_interactions_path(path, obstacle_boundary)
         # plot_path_on_image_dir(image_path, path, start_config, goal_config, output_dir)
     else:
         print("No path found")
@@ -397,7 +397,7 @@ if __name__ == "__main__":
         point_set = []
         goal_sets = []
         # Iterate through the path, excluding the first and last configuration
-        for configuration in path[1:-1]:
+        for configuration in path[0:-1]:
             # Extract the last three keypoints of each configuration
             last_three_points = configuration[-4:]
             last_three_points_float = [[float(point[0]), float(point[1])] for point in last_three_points]

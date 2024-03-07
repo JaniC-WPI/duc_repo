@@ -124,12 +124,12 @@ int main(int argc, char **argv){
     int num_goal_sets; 
     n.getParam("dl_controller/num_goal_sets", num_goal_sets);
     goal_features.resize(num_goal_sets);
-    std::cout<<"goal feature size"<<goal_features.size()<<std::endl;
+    // std::cout<<"goal feature size"<<goal_features.size()<<std::endl;
     for (int i = 0; i < num_goal_sets; ++i) {
         std::string param_name = "dl_controller/goal_features" + std::to_string(i + 1);
         n.getParam(param_name, goal_features[i]);
     }
-    std::cout<<"goal feature size"<<goal_features.size()<<std::endl;
+    // std::cout<<"goal feature size"<<goal_features.size()<<std::endl;
     // print_fvector(goal_features);
     // Servoing variables
     int window; // Estimation window size
@@ -141,8 +141,11 @@ int main(int argc, char **argv){
     // float control_rate;
     // n.getParam("vsbot/control/rate", control_rate);
 
-    float thresh;
-    n.getParam("vsbot/control/thresh",thresh);
+    float thresh1;
+    n.getParam("vsbot/control/thresh1",thresh1);
+
+    float thresh2;
+    n.getParam("vsbot/control/thresh2",thresh2);
 
     float lam;
     n.getParam("vsbot/control/lam",lam);
@@ -436,8 +439,8 @@ int main(int argc, char **argv){
     std::cout<<"Entering control loop"<<std::endl;
     // Initialize the first goal set
     std::vector<float> goal = goal_features[0]; // Start with the first goal set
-    std::cout<<"print goals"<<std::endl;
-    print_fvector(goal);
+    // std::cout<<"print goals"<<std::endl;
+    // print_fvector(goal);
     int current_goal_set = 0; // Index of the current goal feature set
 
     // Switching to control loop rate
@@ -523,8 +526,8 @@ int main(int argc, char **argv){
         // std::cout<<"Qhat_inv: "<<Qhat_inv<<std::endl;
         // std::cout<<"error_vec: "<<error_vec<<std::endl;
         // std::cout<<"gains: "<<lam<<std::endl;
-        joint_vel = lam*(Qhat_inv)*(error_vec);
-        // joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
+        // joint_vel = lam*(Qhat_inv)*(error_vec);
+        joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
         // std::cout<<"joint_vel_1: "<<joint_vel[0]<<std::endl;
         // std::cout<<"joint_vel_2: "<<joint_vel[1]<<std::endl;
         // std::cout<<"joint_vel_3: "<<joint_vel[2]<<std::endl; //uncomment - possible change for 3 joints
@@ -571,10 +574,26 @@ End of working velocity scaling*/
         }
 */
         // Publish velocity to robot
+
+        // Check for NaNs in the computed velocities
+        if (!joint_vel.allFinite()) {
+            std::cerr << "Warning: NaN detected in joint velocities. Applying minimal velocities." << std::endl;
+            // bool end_flag = true;
+            // Apply a very small velocity to each joint as a fallback
+            // joint_vel[0] = 0.001;
+            // joint_vel[1] = 0.001;
+            // joint_vel[2] = 0.0001;
+            // No need to skip the iteration; we apply minimal velocities instead
+        }
+
         j_vel.data.clear();
         j_vel.data.push_back(joint_vel[0]);
         j_vel.data.push_back(joint_vel[1]);
         j_vel.data.push_back(joint_vel[2]); //comment/uncomment depending on # of joints
+
+        // std::cout<< "j1 vel: " << j_vel.data.at(0) << std::endl;
+        // std::cout<< "j2 vel: " << j_vel.data.at(1) << std::endl;
+        // std::cout<< "j3 vel: " << j_vel.data.at(2) << std::endl;
 
         j_pub.publish(j_vel);
         
@@ -621,7 +640,19 @@ End of working velocity scaling*/
         //         std::fill(dRinitial.begin(), dRinitial.end(), 0);
         //     }
         // }
-        if (err < thresh) {
+        float current_thresh;
+
+        if (current_goal_set < num_goal_sets - 1) {
+            current_thresh = thresh1; // Use thresh1 for all but the last goal
+        } else {
+            current_thresh = thresh2; // Use thresh2 for the last goal
+        }
+        std::cout<<"Current goal set "<<current_goal_set<< std::endl;
+        std::cout<<"number of goal sets "<<num_goal_sets<< std::endl;
+        std::cout<<"Current Threshold in use is "<<current_thresh<< std::endl;
+        std::cout<<"Current Error is "<<err<<std::endl;
+
+        if (err < current_thresh) {            
             std::cout << "Goal " << current_goal_set << " reached. Moving to next goal." << std::endl;
             if (current_goal_set < num_goal_sets - 1) {
                 ++current_goal_set; // Move to the next set of goal features
@@ -703,8 +734,13 @@ End of working velocity scaling*/
             // Convrt to Float64multiarray
             ds_msg.data.clear();
             for(int i=0; i<no_of_features; i++){
+                // std::cout << "Element " << i << " value: " << ds[i] << std::endl;
                 ds_msg.data.push_back(ds[i]);
             }
+
+            // for(int i=0; i < ds_msg.data.size(); i++) {
+            //     std::cout << "ds_msg element " << i << " value: " << ds_msg.data[i] << std::endl;
+            // }
 
             dr_msg.data.clear();
             for(int i=0; i<no_of_actuators; i++){

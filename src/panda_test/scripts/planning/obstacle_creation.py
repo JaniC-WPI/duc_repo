@@ -46,7 +46,7 @@ def draw_green_rectangle(image_path, rectangle_center, half_diagonal, save_path)
     bottom_right = (rectangle_center[0] + half_diagonal + SAFE_DISTANCE, 
                     rectangle_center[1] + half_diagonal + SAFE_DISTANCE)
     # Draw the circle around the rectangle. Set thickness to 2 (or another value) instead of -1 to not fill the circle
-    # cv2.rectangle(image, top_left, bottom_right, red_color, thickness=2)
+    cv2.rectangle(image, top_left, bottom_right, red_color, thickness=2)
 
     # Save the new image
     cv2.imwrite(save_path, image)
@@ -57,7 +57,7 @@ def draw_green_rectangle(image_path, rectangle_center, half_diagonal, save_path)
 # image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/goal_image_2.png'
 image_path = '/home/jc-merlab/.ros/dl_published_goal_image_orig.jpg'  # Replace with your image file path
       # Replace with your image file path
-rectangle_center = (420, 133)  # Example center position (x, y)
+rectangle_center = (450, 103)  # Example center position (x, y)
 half_diagonal = 20  # Example half diagonal length
 # save_path = '/home/jc-merlab/.ros/dl_published_goal_image.jpg'  # Replace with your save file path
 save_path = '/home/jc-merlab/.ros/dl_published_goal_image_obs.jpg'

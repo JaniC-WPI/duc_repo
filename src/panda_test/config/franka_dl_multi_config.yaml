@@ -28,32 +28,33 @@ vsbot :
 # Deep learning parameters
   deeplearning:
     # weights_path: '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_weights_ld_b1_e30.pth'
-    weights_path: '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_planning_b1_e30_v2.pth'
+    weights_path: '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_planning_b2_e100_v4.pth'
 
 # Jacobian Estimation Parameters ------------------------------------
   estimation:
     epsilon: 1.0e-5 # update threshold or convergence condition
     gamma:  10 # learning rate
-    gamma2: 10 # learning rate during servoing
+    gamma2: 1.0e-5 # learning rate during servoing
     window: 50 # window size
     amplitude: 0.1 # amplitude for initial sin velocities
     rate: 10 # initialization loop rate
 
   control:
-    saturation: 50      # 2 joints
+    saturation: 10    # 2 joints
     # saturation: 10   # 3 joints
     # no_of_actuators: 2
     # no_of_features: 2
     gain_sm: -3
     # rate: 10 # control loop rate
-    thresh: 10 # visual servoing convergence threshold
+    thresh1: 20 # visual servoing convergence threshold
+    thresh2: 5
     goal_pos_x: 324
     goal_pos_y: 206
     # window: 20 # window size
     # lam: -10.0e-4 # servoing gain
     lam: -0.3 # for 2 joints
-    jacobian: [7,13,-21,17,19,-23,11,-29,31,11,3,17,29,42,-30,1,49,-16,19,-20,71,-80,19,-20]
-    gains: [-0.5, 0.5, -0.5, 0.5, -0.5, 0.5, -0.5, 0.5] # for 3 joints
+    jacobian: [19, 47, -79,  7, 89, -13, 71, -59, -23, 61, 41, -67,  -3,  2, -11, 29, -43, -31, 73, 17, -5, 83, 37, 53]
+    gains: [-0.3, -0.3, -0.3, -0.3, -0.6, -0.6, -0.3, -0.3] # for 3 joints
     # gains: [-1.0, -1.0, 1.0, 1.0, -0.5, -0.5, -0.6, -0.6, -0.3, -0.3, -0.3, -0.3] # for 3 joints
 
 # Shape Servoing Parameters -------------------------------------------
@@ -63,7 +64,7 @@ vsbot :
     no_of_actuators: 3
     num_of_segments: 2
     degree: 2
-    beta: 1.0 # threshold for selective Jacobian update
+    beta: 1.0 # threshold for selective Jacobian updates
     joint2_goal: -0.50
     joint4_goal: -1.05
     ############### ref 3 2/18/22 in franka desk #######
@@ -94,3 +95,13 @@ vsbot :
     dmax: 5 # to constrain the maximum intensity for depth image segmentation
     kernel1: 9
     kernel2: 9
+
+# start_goal_pose_details:
+#     start_config: [[267, 432], [270, 315], [167, 294], [173, 266], [160, 138], [132, 118]]
+#     goal_config:  [[267, 432], [271, 315], [317, 218], [342, 231], [463, 293], [494, 281]]
+
+
+#     SAFE_ZONE: 50  # Safe distance from the obstacle
+#     obstacle_center: (450, 103)
+#     half_diagonal: 20
+  

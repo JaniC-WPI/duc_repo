@@ -23,6 +23,12 @@ def main(args):
         plots = csv.reader(csvfile, delimiter = ',')
         for row in plots:
             err_data.append(row)
+
+        # for row in plots:
+        #     # Filter out empty strings and convert only valid strings to floats
+        #     valid_data = [float(i) for i in row if i]  # This skips any empty strings
+        #     if valid_data:  # Ensure we don't add empty lists
+        #         err_data.append(valid_data)
     
     # Post process the list
     err_data = err_data[1:]

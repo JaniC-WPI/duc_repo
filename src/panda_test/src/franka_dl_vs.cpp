@@ -249,9 +249,9 @@ int main(int argc, char **argv){
     while (it < window){
 
         // Publish sin vel to both joints
-        float j1_vel = amplitude*(cos(param)+sin(param));
-        float j2_vel = amplitude*sin(param);
-        float j3_vel = amplitude*cos(param);  // comment out when 3rd joint not in use
+        float j1_vel = amplitude*sin(param);
+        float j2_vel = amplitude*cos(param); 
+        float j3_vel = amplitude*(cos(param)+sin(param));  // comment out when 3rd joint not in use
         // float j1_vel = amplitude*sin(param);
         // float j2_vel = amplitude*cos(param); 
         

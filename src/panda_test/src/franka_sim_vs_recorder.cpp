@@ -36,20 +36,20 @@ void dsCallback(const std_msgs::Float64MultiArray &msg){
     // Write ds to excel
     std::ofstream ds_plotdata("ds.csv",std::ios::app);
     // uncomment next line for 3 features
-    ds_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","<<msg.data.at(3)<<","<<msg.data.at(4)<<","<<msg.data.at(5)<<"\n";
+    // ds_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","<<msg.data.at(3)<<","<<msg.data.at(4)<<","<<msg.data.at(5)<<"\n";
 
     // uncommnet next line for 4 features
-    // ds_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","<<msg.data.at(3)<<","
-    // <<msg.data.at(4)<<","<<msg.data.at(5)<<msg.data.at(6)<<","<<msg.data.at(7)<<","
-    // <<msg.data.at(8)<<","<<msg.data.at(9)<<","
+    ds_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","<<msg.data.at(3)<<","
+    <<msg.data.at(4)<<","<<msg.data.at(5)<<","<<msg.data.at(6)<<","<<msg.data.at(7)<<"\n";
+    // <<msg.data.at(8)<<","<<msg.data.at(9)<<",";
     //  <<msg.data.at(10)<<","<<msg.data.at(11)<<"\n";
     ds_plotdata.close();
 }
 void drCallback(const std_msgs::Float64MultiArray &msg){
     // Write dr to excel
     std::ofstream dr_plotdata("dr.csv", std::ios::app);
-    dr_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<"\n"; //uncomment for 2 joints
-    // dr_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<"\n";//uncomment for 3 joints    
+    // dr_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<"\n"; //uncomment for 2 joints
+    dr_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<"\n";//uncomment for 3 joints    
     dr_plotdata.close();
 }
 void JCallback(const std_msgs::Float32 &msg){
@@ -97,13 +97,12 @@ void velCallback(const std_msgs::Float64MultiArray &msg){
         j2vel_plotdata.close();
         
         std::ofstream j3vel_plotdata("j3vel.csv",std::ios::app);
-        j3vel_plotdata<<msg.data.at(1)<<"\n";
+        j3vel_plotdata<<msg.data.at(2)<<"\n";
         j3vel_plotdata.close();
 
 
     }
 }
-
 
 //  Uncomment the next block for 3f 2j
 // void errCallback(const std_msgs::Float64MultiArray &msg){
@@ -117,23 +116,6 @@ void velCallback(const std_msgs::Float64MultiArray &msg){
 // }
 
 
-// Uncomment for multiple goals
-// void errCallback(const std_msgs::Float64MultiArray &msg) {
-//     if (status > 1) {
-//         std::vector<float> error(msg.data.begin(), msg.data.end());
-//         // updateGoalSetIndex(error);
-
-//         std::ofstream err_plotdata("err.csv", std::ios::app);
-//         // Add the current goal set index as the first column
-//         // err_plotdata << current_goal_set << ",";
-//         for (const auto& e : error) {
-//             err_plotdata << e << ",";
-//         }
-//         err_plotdata << "\n";
-//         err_plotdata.close();
-//     }
-// }
-
 // Uncomment the next block for 4f 3j
 void errCallback(const std_msgs::Float64MultiArray &msg){
     if(status>1){
@@ -141,12 +123,26 @@ void errCallback(const std_msgs::Float64MultiArray &msg){
         err_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","
                     <<msg.data.at(2)<<","<<msg.data.at(3)<<","
                     <<msg.data.at(4)<<","<<msg.data.at(5)<<","
-                    <<msg.data.at(6)<<","<<msg.data.at(7)<<","
-                    <<msg.data.at(8)<<","<<msg.data.at(9)<<","
-                   <<msg.data.at(10)<<","<<msg.data.at(11)<<"\n";
+                    <<msg.data.at(6)<<","<<msg.data.at(7)<<"\n";
+                    // <<msg.data.at(8)<<","<<msg.data.at(9)<<","
+                //    <<msg.data.at(10)<<","<<msg.data.at(11)<<"\n";
         err_plotdata.close();
     }
 }
+
+// Uncomment for multiple goals
+// void errCallback(const std_msgs::Float64MultiArray &msg) {
+//     // Open the file in append mode to add new error data at the end
+//     std::ofstream err_plotdata("err.csv", std::ios::app);
+
+//     // Iterate over the error data contained within the msg and write to the file
+//     for (const auto& e : msg.data) {
+//         err_plotdata << e << ",";
+//     }
+//     // End each line to separate entries
+//     err_plotdata << "\n";
+//     err_plotdata.close();
+// }
 
 //  Uncomment the next block for 3f 2j
 // void cpCallback(const std_msgs::Float64MultiArray &msg){
@@ -164,8 +160,9 @@ void cpCallback(const std_msgs::Float64MultiArray &msg){
             std::ofstream cp_plotdata("cp.csv", std::ios::app);
             cp_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","
             <<msg.data.at(3)<<","<<msg.data.at(4)<<","<<msg.data.at(5)<<","<<msg.data.at(6)<<","
-            <<msg.data.at(7)<<","<<msg.data.at(8)<<","<<msg.data.at(9)<<","
-            <<msg.data.at(10)<<","<<msg.data.at(11)<<"\n";
+            <<msg.data.at(7)<<"\n";
+            // <<msg.data.at(8)<<","<<msg.data.at(9)<<","
+            // <<msg.data.at(10)<<","<<msg.data.at(11)<<"\n";
             cp_plotdata.close();
         }
 }

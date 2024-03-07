@@ -12,7 +12,7 @@ from descartes import PolygonPatch
 from sklearn.neighbors import KDTree, BallTree
 import shapely.geometry as geom
 import torch
-from pos_regression import PosRegModel
+from scripts.planning.control.pos_regression_control import PosRegModel
 
 # Parameters
 IMAGE_WIDTH, IMAGE_HEIGHT = 640, 480

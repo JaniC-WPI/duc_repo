@@ -13,6 +13,7 @@ from inference.models.utils import get_roboflow_model
 import torchvision
 from PIL import Image
 import torchvision.transforms as T
+import yaml
 
 # Parameters
 IMAGE_WIDTH, IMAGE_HEIGHT = 640, 480

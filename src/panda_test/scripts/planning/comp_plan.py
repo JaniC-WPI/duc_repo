@@ -83,8 +83,8 @@ def build_lazy_roadmap(kp_configurations, jt_configurations, k_neighbors, model)
     Returns:
     - G: nx.Graph, the constructed roadmap.
     """
-    kp_configurations = kp_configurations[1:9000:10]
-    jt_configurations = jt_configurations[1:9000:10]
+    kp_configurations = kp_configurations[1:9000:500]
+    jt_configurations = jt_configurations[1:9000:500]
 
     flattened_kp_configs = np.vstack([config.flatten() for config in kp_configurations])
     tree1 = KDTree(flattened_kp_configs)
@@ -208,39 +208,6 @@ def plot_common_node_pairs(G1,G2,G3):
     # plt.legend()
     # plt.grid(True)
     # plt.show()
-
-def compare_edges_bar_chart(G1, G2, G3):
-    # Calculate total and common edges
-    total_edges_g1 = G1.number_of_edges()
-    total_edges_g2 = G2.number_of_edges()
-    common_edges_g1_g3 = len(set(G1.edges()) & set(G3.edges()))
-    common_edges_g2_g3 = len(set(G2.edges()) & set(G3.edges()))
-    
-    # Data setup
-    graphs = ['G1', 'G2']
-    total_edges = [total_edges_g1, total_edges_g2]
-    common_edges = [common_edges_g1_g3, common_edges_g2_g3]
-    
-    # Plotting
-    x = range(len(graphs))  # the label locations
-    width = 0.35  # the width of the bars
-
-    fig, ax = plt.subplots()
-    rects1 = ax.bar(x, total_edges, width, label='Total Edges')
-    rects2 = ax.bar(x, common_edges, width, bottom=total_edges, label='Common with G3', alpha=0.5)
-
-    # Add some text for labels, title and custom x-axis tick labels, etc.
-    ax.set_ylabel('Edges')
-    ax.set_title('Edge Comparison with G3')
-    ax.set_xticks(x)
-    ax.set_xticklabels(graphs)
-    ax.legend()
-
-    ax.bar_label(rects1, padding=3)
-    ax.bar_label(rects2, padding=3)
-
-    plt.show()
-
 
 def compare_edge_distances_scatter(G1, G2, G3):
     """
@@ -376,6 +343,48 @@ def calculate_euclidean_distance_3d(pos_u, pos_v):
     """Calculate the Euclidean distance between two 3D positions."""
     return np.linalg.norm(np.array(pos_u) - np.array(pos_v))
 
+def plot_combined(keypoints, joint_angles, title='Combined Visualization of Keypoints and Joint Angles'):
+    fig = plt.figure(figsize=(14, 6))
+
+    # Plotting 2D keypoints
+    ax1 = fig.add_subplot(121)
+    if keypoints.ndim > 1:  # Checking if keypoints is multi-dimensional
+        for kp in keypoints:
+            ax1.scatter(kp[:, 0], kp[:, 1], c='blue')
+    else:  # Assuming keypoints is a flat array; reshape it to (-1, 2) if it contains pairs of coordinates
+        reshaped_kp = keypoints.reshape(-1, 2)
+        ax1.scatter(reshaped_kp[:, 0], reshaped_kp[:, 1], c='blue')
+    ax1 = fig.add_subplot(121)
+    ax1.set_xlabel('X')
+    ax1.set_ylabel('Y')
+    ax1.set_title('2D Keypoints')
+    ax1.axis('equal')
+    
+    # Plotting 3D joint angles
+    ax2 = fig.add_subplot(122, projection='3d')
+    ax2.scatter(joint_angles[0], joint_angles[1], joint_angles[2], c='red')
+    ax2.set_xlabel('Joint 1')
+    ax2.set_ylabel('Joint 2')
+    ax2.set_zlabel('Joint 3')
+    ax2.set_title('3D Joint Angles')
+
+    plt.suptitle(title)
+    plt.show()
+
+def visualize_corresponding_nodes(G1, G2, G3):
+    for node in G1.nodes():
+        if node in G3:
+            keypoints = G1.nodes[node]['configuration'][0]  # Assuming the configuration is the keypoints for G1
+            joint_angles = G3.nodes[node]['configuration']  # Assuming the configuration is the joint angles for G3
+            print(joint_angles)
+            plot_combined(keypoints, joint_angles, f'Node {node} Visualization')
+
+    for node in G2.nodes():
+        if node in G3:
+            keypoints = G2.nodes[node]['configuration']  # Assuming the configuration is the keypoints for G2
+            joint_angles = G3.nodes[node]['configuration']  # Assuming the configuration is the joint angles for G3
+            plot_combined(keypoints, joint_angles, f'Node {node} Visualization')
+
 
 # Main execution
 if __name__ == "__main__":
@@ -392,6 +401,7 @@ if __name__ == "__main__":
     compare_edge_distances_hist(roadmap1,roadmap2,roadmap3)
     compare_edge_distances_scatter(roadmap1,roadmap2, roadmap3)
     plot_common_node_pairs(roadmap1,roadmap2,roadmap3)
+    visualize_corresponding_nodes(roadmap1,roadmap2,roadmap3)
 
     
     

@@ -28,19 +28,19 @@ vsbot :
 # Deep learning parameters
   deeplearning:
     # weights_path: '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_weights_ld_b1_e30.pth'
-    weights_path: '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_planning_b1_e50_v3.pth'
+    weights_path: '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_planning_b2_e100_v4.pth'
 
 # Jacobian Estimation Parameters ------------------------------------
   estimation:
     epsilon: 1.0e-5 # update threshold or convergence condition
     gamma:  10 # learning rate
     gamma2: 10 # learning rate during servoing
-    window: 20 # window size
+    window: 50 # window size
     amplitude: 0.1 # amplitude for initial sin velocities
     rate: 10 # initialization loop rate
 
   control:
-    saturation: 30       # 2 joints
+    saturation: 50       # 2 joints
     # saturation: 10   # 3 joints
     # no_of_actuators: 2
     # no_of_features: 2
