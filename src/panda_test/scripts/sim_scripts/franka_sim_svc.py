@@ -510,7 +510,7 @@ class VideoInference:
         # uncomment the next line for 4 feature points
         # indices = [2,3,4,5,6,8]
         # uncomment the next line 3 feature points
-        indices = [0,1,3,4,5]
+        indices = [1,2,3,4,5]
         keypoints_ = [keypoints_[i] for i in indices]
 
         # print(keypoints)
@@ -549,9 +549,9 @@ class VideoInference:
         kp = []
 
         # Uncomment the next block for 3 features
-        for i in range(len(kp_x)-2):
-           kp.append(kp_x[i+2]) 
-           kp.append(kp_y[i+2])
+        for i in range(len(kp_x)-1):
+           kp.append(kp_x[i+1]) 
+           kp.append(kp_y[i+1])
 
         print("current keypoints", kp)
 

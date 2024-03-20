@@ -2,7 +2,7 @@
     <!-- Load YAML -->
     <rosparam file="$(find panda_test)/config/franka_dl_multi_config.yaml" command="load"/>
     <rosparam file="$(find panda_test)/config/dl_multi_features.yaml" command="load"/>
-    <include file="$(find realsense2_camera)/launch/rs_aligned_depth.launch"/>
+    <include file="$(find realsense2_camera)/launch/rs_camera.launch"/>
 
     <!-- Launch Realsense Camera & marker detection -->
     <!-- <include file="$(find panda_test)/launch/rs_origami.launch"/> -->
@@ -11,6 +11,9 @@
     <include file="$(find panda_test)/launch/franka_dl_control_service.launch"/>
 
     <node name="set_auto_exposure_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera enable_auto_exposure False"/>
+    <!-- <node name="set_white_balance_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera enable_auto_white_balance False"/> -->
+    <node name="set_brigtness_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera brightness -40"/>
+
 
 
     <!-- Joint publisher interface -->
@@ -37,7 +40,7 @@
     <!-- <node name="depth_writer" pkg="panda_test" type="depth_write.py" output="screen" respawn="false" /> -->
     
     <!-- Visualization node -->
-    <node name="franka_dl_vs_vis" pkg="panda_test" type="franka_dl_vs_vis_node_3f.py" output="screen" respawn="false" required="true" />
+    <node name="franka_dl_vs_vis" pkg="panda_test" type="franka_dl_vs_vis_node_3f_planning.py" output="screen" respawn="false" required="true" />
     <node name="goal_img_pub" pkg="panda_test" type="franka_dl_goal_img_pub.py" output="screen" respawn="false"/>
 
     <!-- publish multiple references -->

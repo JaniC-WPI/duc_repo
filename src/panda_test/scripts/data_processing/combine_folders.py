@@ -38,7 +38,7 @@ def process_folder(source_folder, dest_folder, start_index):
 
 # Define your source folders and destination folder
 source_folders = [
-                '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/1/', 
+                '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/1/',
                   '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/2/', 
                   '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/3/', 
                   '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/4/',

@@ -126,11 +126,11 @@ def build_lazy_roadmap_with_kdtree(configurations, k_neighbors):
         # for j in indices[0][1:]:  # Skip self
         #     distance = vectorized_sum_pairwise_euclidean(configurations[i], configurations[j]) # You'll need to define this distance calculation
         #     G.add_edge(i, j, weight=distance)
-    print(G.nodes.items())
+    # print(G.nodes.items())
     #SG= G.subgraph(range(1,9000,100))
     pos_dict = {n[0]:n[1]["configuration"][5] for n in G.nodes.items()} 
     nx.draw_networkx(G,node_size=5,width=0.3, with_labels=False, pos=pos_dict)
-    # plt.show()        
+    plt.show()        
     return G, tree, pos_dict
 
 
@@ -171,11 +171,11 @@ def add_config_to_roadmap(config, G, tree, k_neighbors, obstacle_center, half_di
         plt.xlim(0, IMAGE_WIDTH)  # Adjust based on your image dimensions
         plt.ylim(0, IMAGE_HEIGHT)
         plt.gca().invert_yaxis()  # To match image coordinates
-        plt.title('Potential Connection') 
+        # plt.title('Potential Connection') 
         # plt.show()
-        print("New Config:", config)
-        print("Neighbor Config:", neighbor_config)
-        print("Collision Check Result:", is_collision_free(np.vstack([config, neighbor_config]), obstacle_center, half_diagonal, safe_distance))
+        # print("New Config:", config)
+        # print("Neighbor Config:", neighbor_config)
+        # print("Collision Check Result:", is_collision_free(np.vstack([config, neighbor_config]), obstacle_center, half_diagonal, safe_distance))
         # print("configs for collision check", type(check_config), check_config)
         if is_collision_free(np.vstack([config, neighbor_config]), obstacle_center, half_diagonal, safe_distance):
             # visualize_interactions(np.vstack([config, neighbor_config]), obstacle_boundary)
@@ -192,7 +192,7 @@ def add_config_to_roadmap(config, G, tree, k_neighbors, obstacle_center, half_di
     pos_dict = {n[0]:n[1]["configuration"][5] for n in G.nodes.items()}     
     
     nx.draw_networkx(G,node_size=5,width=0.3, with_labels=False, pos=pos_dict)
-    # plt.show()
+    plt.show()
     
     # # Update the tree with the new node for future queries
     # new_flattened_configs = np.vstack([tree.data, flattened_config])
@@ -214,7 +214,7 @@ def validate_and_remove_invalid_edges(G, obstacle_center, half_diagonal, safe_di
         if not is_collision_free(np.vstack([config_u, config_v]), obstacle_center, half_diagonal, safe_distance):
             # If the edge is not collision-free, remove it from the graph
             G.remove_edge(u, v)
-            print(f"Removed invalid edge: {u} <-> {v}")
+            # print(f"Removed invalid edge: {u} <-> {v}")
 
 def distance_line_to_point(p1, p2, point):
     """Calculates the distance of a point to a line segment."""
@@ -242,7 +242,7 @@ def is_collision_free(configuration, obstacle_center, half_diagonal, safe_distan
         segment = geom.LineString([configuration[i], configuration[i + 1]])
         # print("segment by segment", segment)
         if segment.intersects(obstacle_boundary):
-            print("collision detected in segment")
+            # print("collision detected in segment")
             # If any segment intersects, the configuration is not collision-free
             return False
 
@@ -297,7 +297,7 @@ def visualize_interactions_path(configurations, obstacle_boundary):
             # Check for intersection and highlight if necessary
             if line.intersects(obstacle_boundary):
                 ax.plot(x, y, "red", linewidth=3, solid_capstyle='round', zorder=1)
-                print(f"Collision detected between points {segment[0]} and {segment[1]}")
+                # print(f"Collision detected between points {segment[0]} and {segment[1]}")
 
     plt.show()
 
@@ -346,22 +346,24 @@ if __name__ == "__main__":
     configurations = load_keypoints_from_json(directory)
     # configurations = load_and_sample_configurations(directory, num_samples)
     # Parameters for PRM
-    num_neighbors = 25 # Number of neighbors for each node in the roadmap
+    num_neighbors = 10 # Number of neighbors for each node in the roadmap
     start_time = time.time()
     # Build the roadmap
     roadmap, tree, pos_dict = build_lazy_roadmap_with_kdtree(configurations, num_neighbors)   
     end_time = time.time()
 
-    print("Connection of last keypoint in lazy roadmap", pos_dict)
-    print("time taken to find the graph", end_time - start_time)  
+    # print("Connection of last keypoint in lazy roadmap", pos_dict)
+    # print("time taken to find the graph", end_time - start_time)  
 
     # Define start and goal configurations as numpy arrays
-    start_config = np.array([[267, 432], [270, 315], [167, 294], [173, 266], [160, 138], [132, 118]]) 
-    goal_config = np.array([[267, 432], [271, 315], [317, 218], [342, 231], [463, 293], [494, 281]])
+    start_config = np.array([[269, 431], [273, 315], [224, 221], [248, 208], [333, 108], [337, 75]]) 
+    goal_config = np.array([[267, 432], [271, 315], [223, 219], [247, 206], [372, 249], [402, 244]])
 
     SAFE_ZONE = 50  # Safe distance from the obstacle
-    obstacle_center = (450, 103)
+    obstacle_center = (480, 113)
     half_diagonal = 20
+
+    # half_diagonal = 20
     # safe_distance = SAFE_ZONE
 
     obstacle_boundary = geom.Polygon([
@@ -373,9 +375,9 @@ if __name__ == "__main__":
 
     # Add start and goal configurations to the roadmap
     start_node, pos_dict = add_config_to_roadmap(start_config, roadmap, tree, num_neighbors, obstacle_center, half_diagonal, SAFE_ZONE)
-    print("Connection for last keypoint after adding start Node", pos_dict,len(pos_dict))
+    # print("Connection for last keypoint after adding start Node", pos_dict,len(pos_dict))
     goal_node, pos_dict = add_config_to_roadmap(goal_config, roadmap, tree, num_neighbors, obstacle_center, half_diagonal, SAFE_ZONE)
-    print("Connection for last keypoint after adding goal Node", pos_dict, len(pos_dict))
+    # print("Connection for last keypoint after adding goal Node", pos_dict, len(pos_dict))
         
     validate_and_remove_invalid_edges(roadmap, obstacle_center, half_diagonal, SAFE_ZONE)
 
@@ -386,12 +388,12 @@ if __name__ == "__main__":
 
     # image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/obstacle_image_02.png'
 
-    if path:
-        print("Path found:", path)
-        # visualize_interactions_path(path, obstacle_boundary)
-        # plot_path_on_image_dir(image_path, path, start_config, goal_config, output_dir)
-    else:
-        print("No path found")
+    # if path:
+    #     print("Path found:", path)
+    #     # visualize_interactions_path(path, obstacle_boundary)
+    #     # plot_path_on_image_dir(image_path, path, start_config, goal_config, output_dir)
+    # else:
+    #     print("No path found")
 
     if path:
         point_set = []
@@ -399,7 +401,7 @@ if __name__ == "__main__":
         # Iterate through the path, excluding the first and last configuration
         for configuration in path[0:-1]:
             # Extract the last three keypoints of each configuration
-            last_three_points = configuration[-4:]
+            last_three_points = configuration[-5:]
             last_three_points_float = [[float(point[0]), float(point[1])] for point in last_three_points]
             # Append these points to the point_set list
             point_set.append(last_three_points_float)

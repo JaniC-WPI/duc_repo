@@ -24,6 +24,8 @@ mv ~/.ros/cp.csv ~/Pictures/Dl_Exps/dl_vs/servoing/exps/$exp_no/
 
 mv ~/.ros/modelerror.csv ~/Pictures/Dl_Exps/dl_vs/servoing/exps/$exp_no/
 
+mv ~/.ros/joint_angles.csv ~/Pictures/Dl_Exps/dl_vs/servoing/exps/$exp_no/
+
 mv ~/.ros/*.jpg ~/Pictures/Dl_Exps/dl_vs/servoing/exps/$exp_no/
 
 mv ~/.ros/exp_vid.avi ~/Pictures/Dl_Exps/dl_vs/servoing/exps/$exp_no/

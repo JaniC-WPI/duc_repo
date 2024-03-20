@@ -30,7 +30,7 @@ fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 
 # Plotting all configurations as points in 3D space
-ax.scatter(j1_angles, j2_angles, j3_angles, c='r', marker='_')
+ax.scatter(j1_angles, j2_angles, j3_angles, c='g', marker='_')
 
 # Setting labels for axes
 ax.set_xlabel('Joint 1 angle')

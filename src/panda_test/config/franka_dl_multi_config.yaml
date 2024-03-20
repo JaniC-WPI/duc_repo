@@ -27,35 +27,35 @@ vsbot :
 
 # Deep learning parameters
   deeplearning:
-    # weights_path: '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_weights_ld_b1_e30.pth'
+    # weights_path: '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_weights_ld_b1_e25_v2.pth'
     weights_path: '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_planning_b2_e100_v4.pth'
 
 # Jacobian Estimation Parameters ------------------------------------
   estimation:
     epsilon: 1.0e-5 # update threshold or convergence condition
-    gamma:  10 # learning rate
+    gamma:   10 # learning rate
     gamma2: 1.0e-5 # learning rate during servoing
-    window: 50 # window size
+    window: 20 # window size
     amplitude: 0.1 # amplitude for initial sin velocities
     rate: 10 # initialization loop rate
 
   control:
-    saturation: 10    # 2 joints
-    # saturation: 10   # 3 joints
+    # saturation: 20    # 2 joints
+    saturation: 20   # 3 joints
     # no_of_actuators: 2
     # no_of_features: 2
-    gain_sm: -3
+    # gain_sm: -3
     # rate: 10 # control loop rate
     thresh1: 20 # visual servoing convergence threshold
     thresh2: 5
-    goal_pos_x: 324
-    goal_pos_y: 206
+    # goal_pos_x: 324
+    # goal_pos_y: 206
     # window: 20 # window size
     # lam: -10.0e-4 # servoing gain
     lam: -0.3 # for 2 joints
     jacobian: [19, 47, -79,  7, 89, -13, 71, -59, -23, 61, 41, -67,  -3,  2, -11, 29, -43, -31, 73, 17, -5, 83, 37, 53]
-    gains: [-0.3, -0.3, -0.3, -0.3, -0.6, -0.6, -0.3, -0.3] # for 3 joints
-    # gains: [-1.0, -1.0, 1.0, 1.0, -0.5, -0.5, -0.6, -0.6, -0.3, -0.3, -0.3, -0.3] # for 3 joints
+    gains1: [-0.8, -0.8, -0.8, -0.8, -1.5, -1.5, -0.5, -0.5] # for 3 joints
+    gains2: [-0.3, -0.3, -0.3, -0.3, -1.5, -1.5, -1.0, -1.0] # for 3 joints
 
 # Shape Servoing Parameters -------------------------------------------
   
@@ -97,11 +97,13 @@ vsbot :
     kernel2: 9
 
 # start_goal_pose_details:
-#     start_config: [[267, 432], [270, 315], [167, 294], [173, 266], [160, 138], [132, 118]]
-#     goal_config:  [[267, 432], [271, 315], [317, 218], [342, 231], [463, 293], [494, 281]]
+  # start_config = np.array([[269, 431], [272, 315],  [313, 216], [339, 226], [432, 322], [465, 323]]) 
+    # goal_config = np.array([[267, 432], [271, 315], [252, 210], [278, 204], [331, 85], [358, 72]])
 
+    # SAFE_ZONE = 50  # Safe distance from the obstacle
+    # obstacle_center = (435, 153)
+    # half_diagonal = 20
 
-#     SAFE_ZONE: 50  # Safe distance from the obstacle
-#     obstacle_center: (450, 103)
-#     half_diagonal: 20
+# [[[272.0, 315.0], [172.0, 287.0], [178.0, 262.0], [149.0, 139.0], [119.0, 130.0]], [[268.0, 314.0], [187.0, 250.0], [203.0, 228.0], [187.0, 104.0], [164.0, 92.0]], [[268.0, 314.0], [187.0, 250.0], [203.0, 228.0], [226.0, 102.0], [207.0, 83.0]], [[268.0, 314.0], [221.0, 221.0], [245.0, 208.0], [352.0, 131.0], [346.0, 104.0]], [[268.0, 314.0], [261.0, 208.0], [288.0, 206.0], [420.0, 178.0], [425.0, 148.0]], [[268.0, 314.0], [280.0, 208.0], [307.0, 210.0], [442.0, 206.0], [462.0, 183.0]], [[268.0, 314.0], [280.0, 208.0], [307.0, 210.0], [442.0, 206.0], [471.0, 193.0]]]
+  
   

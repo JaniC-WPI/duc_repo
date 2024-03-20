@@ -3,6 +3,7 @@
 #include <fstream>
 #include <string>
 
+#include "sensor_msgs/JointState.h"
 #include "std_msgs/Int32.h"
 #include "std_msgs/Float32.h"
 #include "std_msgs/Float64.h"
@@ -32,6 +33,7 @@ void currentGoalSetCallback(const std_msgs::Int32 &msg) {
 }
 
 
+
 void dsCallback(const std_msgs::Float64MultiArray &msg){
     // Write ds to excel
     std::ofstream ds_plotdata("ds.csv",std::ios::app);
@@ -39,7 +41,7 @@ void dsCallback(const std_msgs::Float64MultiArray &msg){
     // ds_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","<<msg.data.at(3)<<","<<msg.data.at(4)<<","<<msg.data.at(5)<<"\n";
 
     // uncommnet next line for 4 features
-    ds_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","<<msg.data.at(3)<<","
+    ds_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","<<msg.data.at(3)<<","
     <<msg.data.at(4)<<","<<msg.data.at(5)<<","<<msg.data.at(6)<<","<<msg.data.at(7)<<"\n";
     // <<msg.data.at(8)<<","<<msg.data.at(9)<<",";
     //  <<msg.data.at(10)<<","<<msg.data.at(11)<<"\n";
@@ -49,13 +51,13 @@ void drCallback(const std_msgs::Float64MultiArray &msg){
     // Write dr to excel
     std::ofstream dr_plotdata("dr.csv", std::ios::app);
     // dr_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<"\n"; //uncomment for 2 joints
-    dr_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<"\n";//uncomment for 3 joints    
+    dr_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<"\n";//uncomment for 3 joints    
     dr_plotdata.close();
 }
 void JCallback(const std_msgs::Float32 &msg){
     if(status > 0){
         std::ofstream J_plotdata("modelerror.csv",std::ios::app);
-        J_plotdata<<msg.data<<"\n";
+        J_plotdata<<current_goal_set<<","<<msg.data<<"\n";
         J_plotdata.close();
     }
 }
@@ -89,15 +91,15 @@ void JCallback(const std_msgs::Float32 &msg){
 void velCallback(const std_msgs::Float64MultiArray &msg){
     if(status>0){
         std::ofstream j1vel_plotdata("j1vel.csv",std::ios::app);
-        j1vel_plotdata<<msg.data.at(0)<<"\n";
+        j1vel_plotdata<<current_goal_set<<","<<msg.data.at(0)<<"\n";
         j1vel_plotdata.close();
 
         std::ofstream j2vel_plotdata("j2vel.csv",std::ios::app);
-        j2vel_plotdata<<msg.data.at(1)<<"\n";
+        j2vel_plotdata<<current_goal_set<<","<<msg.data.at(1)<<"\n";
         j2vel_plotdata.close();
         
         std::ofstream j3vel_plotdata("j3vel.csv",std::ios::app);
-        j3vel_plotdata<<msg.data.at(2)<<"\n";
+        j3vel_plotdata<<current_goal_set<<","<<msg.data.at(2)<<"\n";
         j3vel_plotdata.close();
 
 
@@ -120,7 +122,7 @@ void velCallback(const std_msgs::Float64MultiArray &msg){
 void errCallback(const std_msgs::Float64MultiArray &msg){
     if(status>1){
         std::ofstream err_plotdata("err.csv", std::ios::app);
-        err_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","
+        err_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","
                     <<msg.data.at(2)<<","<<msg.data.at(3)<<","
                     <<msg.data.at(4)<<","<<msg.data.at(5)<<","
                     <<msg.data.at(6)<<","<<msg.data.at(7)<<"\n";
@@ -158,7 +160,7 @@ void errCallback(const std_msgs::Float64MultiArray &msg){
 void cpCallback(const std_msgs::Float64MultiArray &msg){
         if(status>0){
             std::ofstream cp_plotdata("cp.csv", std::ios::app);
-            cp_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","
+            cp_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","
             <<msg.data.at(3)<<","<<msg.data.at(4)<<","<<msg.data.at(5)<<","<<msg.data.at(6)<<","
             <<msg.data.at(7)<<"\n";
             // <<msg.data.at(8)<<","<<msg.data.at(9)<<","
@@ -166,6 +168,19 @@ void cpCallback(const std_msgs::Float64MultiArray &msg){
             cp_plotdata.close();
         }
 }
+
+void jointCallback(const sensor_msgs::JointState::ConstPtr& msg){
+    std::ofstream joint_angle_plot("joint_angles.csv", std::ios::app);
+
+    if (msg->position.size() >= 6) { // Ensure there are at least 6 joints
+        joint_angle_plot << current_goal_set << ",";
+        joint_angle_plot << msg->position[1] << ","; // 2nd joint, index 1
+        joint_angle_plot << msg->position[3] << ","; // 4th joint, index 3
+        joint_angle_plot << msg->position[5] << "\n"; // 6th joint, index 5
+    }
+    joint_angle_plot.close();
+}
+
 
 int main(int argc, char **argv){
 
@@ -183,9 +198,10 @@ int main(int argc, char **argv){
     std::ofstream j3vel_plot("j3vel.csv"); // comment/uncomment on the basis of joint numbers
     std::ofstream err_plot("err.csv");
     std::ofstream cp_plot("cp.csv");
+    std::ofstream joint_angle_plot("joint_angles.csv");    
 
     // Add column names to files
-    J_plot <<"Model Error"<<"\n";
+    J_plot <<"current_goal"<<","<<"Model Error"<<"\n";
     J_plot.close();
     // ds_plot <<"ds_x"<<","<<"ds_y"<<"\n";
 
@@ -207,25 +223,26 @@ int main(int argc, char **argv){
     // cp_plot.close();
 
     // Uncomment next block for 4f 3j
-    ds_plot <<"cp3 x"<<","<<"cp3 y"<<","<<"cp4 x"<<","<<"cp4 y"<<","
+    ds_plot <<"current_goal"<<","<<"cp3 x"<<","<<"cp3 y"<<","<<"cp4 x"<<","<<"cp4 y"<<","
                 <<"cp5 x"<<","<<"cp5 y"<<","<<"cp6 x"<<","<<"cp6 y"<<"\n";
     ds_plot.close();
-    dr_plot <<"dr_1"<<","<<"dr_2"<<","<<"dr_3"<<"\n";
+    dr_plot <<"current_goal"<<","<<"dr_1"<<","<<"dr_2"<<","<<"dr_3"<<"\n";
     dr_plot.close();
-    j1vel_plot <<"Joint 1" <<"\n";
+    j1vel_plot <<"current_goal"<<","<<"Joint 1" <<"\n";
     j1vel_plot.close();
-    j2vel_plot <<"Joint 2" <<"\n";
+    j2vel_plot <<"current_goal"<<","<<"Joint 2" <<"\n";
     j2vel_plot.close();
-    j3vel_plot <<"Joint 3" <<"\n";
+    j3vel_plot <<"current_goal"<<","<<"Joint 3" <<"\n";
     j3vel_plot.close();
-    err_plot <<"Err_cp3_x"<<","<<"Err_cp3_y"
+    err_plot <<"current_goal"<<","<<"Err_cp3_x"<<","<<"Err_cp3_y"
              <<","<<"Err_cp4_x"<<","<<"Err_cp4_y"<<","<<"Err_cp5_x"<<","<<"Err_cp5_y"<<","<<"Err_cp6_x"<<","<<"Err_cp6_y"
              <<"\n";
     err_plot.close();
-    cp_plot <<"cp3 x"<<","<<"cp3 y"<<","<<"cp4 x"<<","<<"cp4 y"<<","
+    cp_plot <<"current_goal"<<","<<"cp3 x"<<","<<"cp3 y"<<","<<"cp4 x"<<","<<"cp4 y"<<","
                 <<"cp5 x"<<","<<"cp5 y"<<","<<"cp6 x"<<","<<"cp6 y"<<"\n";
     cp_plot.close();
-
+    joint_angle_plot<<"current_goal"<<","<<"Joint1"<<","<<"Joint2"<<","<<"Joint3"<<"\n";
+    joint_angle_plot.close();
 
 
     // Initialize subscribers
@@ -239,6 +256,7 @@ int main(int argc, char **argv){
                                     // This is for storing feature trajectories 
                                     // Subscriber for current goal set
     ros::Subscriber current_goal_set_sub = n.subscribe("current_goal_set_topic", 1, currentGoalSetCallback);
+    ros::Subscriber joint_sub = n.subscribe<sensor_msgs::JointState>("joint_states", 1, jointCallback);
 
 
     // Also add subs for Jacobian and Jacobian update

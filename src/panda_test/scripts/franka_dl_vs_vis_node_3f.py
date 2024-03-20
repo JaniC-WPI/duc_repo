@@ -139,6 +139,7 @@ def visCallback(msg):
         cv_img = cv2.putText(cv_img, 'Initialization', (100, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0,255,0), 1, cv2.LINE_AA)
         # cv_img = cv2.putText(cv_img, 'x2', (10, 290), cv2.FONT_HERSHEY_SIMPLEX, 2.5, (255,255,255), 2, cv2.LINE_AA)
         # cv_img = cv2.putText(cv_img, 'Frame #: '+str(itr), (100, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0,255,0), 1, cv2.LINE_AA)
+        print("initialization!")
 
     elif status == 2:
         # draw goal curve if servoing
@@ -157,9 +158,9 @@ def visCallback(msg):
             # start_pt4 = (int(traj_cp4_x[i]), int(traj_cp4_y[i]))
             # end_pt4 = (int(traj_cp4_x[i+1]), int(traj_cp4_y[i+1]))
 
-            cv_img = cv2.line(cv_img, start_pt1, end_pt1,(255,0,0), 3)
-            cv_img = cv2.line(cv_img, start_pt2, end_pt2,(0,255,0), 3)
-            cv_img = cv2.line(cv_img, start_pt3, end_pt3,(255,255,0), 3)
+            # cv_img = cv2.line(cv_img, start_pt1, end_pt1,(255,0,0), 3)
+            # cv_img = cv2.line(cv_img, start_pt2, end_pt2,(0,255,0), 3)
+            # cv_img = cv2.line(cv_img, start_pt3, end_pt3,(255,255,0), 3)
             # cv_img = cv2.line(cv_img, start_pt4, end_pt4,(0,255,255), 1)
 
         # text
@@ -192,9 +193,9 @@ def visCallback(msg):
             # start_pt5 = (int(traj_cp5_x[i]), int(traj_cp5_y[i]))
             # end_pt5 = (int(traj_cp5_x[i+1]), int(traj_cp5_y[i+1]))
 
-            cv_img = cv2.line(cv_img, start_pt1, end_pt1,(255,0,0), 3)
-            cv_img = cv2.line(cv_img, start_pt2, end_pt2,(0,255,0), 3)
-            cv_img = cv2.line(cv_img, start_pt3, end_pt3,(255,255,0), 3)
+            # cv_img = cv2.line(cv_img, start_pt1, end_pt1,(255,0,0), 3)
+            # cv_img = cv2.line(cv_img, start_pt2, end_pt2,(0,255,0), 3)
+            # cv_img = cv2.line(cv_img, start_pt3, end_pt3,(255,255,0), 3)
             # cv_img = cv2.line(cv_img, start_pt4, end_pt4,(0,255,255), 1)
             # cv_img = cv2.line(cv_img, start_pt5, end_pt5,(255,0,255), 1)
 

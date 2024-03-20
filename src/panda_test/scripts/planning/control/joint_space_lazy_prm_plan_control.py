@@ -343,14 +343,15 @@ if __name__ == "__main__":
     print("time taken to find the graph", end_time - start_time)      
 
     # Define start and goal configurations as numpy arrays
-    start_config = np.array([[267, 432], [269, 315], [200, 237], [219, 217], [322, 139], [344, 115]]) 
-    goal_config = np.array([[267, 431], [269, 315], [240, 213], [266, 206], [387, 256], [417, 243]])
-
-    start_angle, goal_angle = convert_configs(kp_configurations, joint_angles, start_config, goal_config)
+    start_config = np.array([[267, 432], [270, 315], [167, 294], [173, 266], [160, 138], [132, 118]]) 
+    goal_config = np.array([[267, 432], [271, 315], [317, 218], [342, 231], [463, 293], [494, 281]])
 
     SAFE_ZONE = 50  # Safe distance from the obstacle
-    obstacle_center = (420, 133)
+    obstacle_center = (450, 103)
     half_diagonal = 20
+
+    start_angle, goal_angle = convert_configs(kp_configurations, joint_angles, start_config, goal_config)
+   
     # safe_distance = SAFE_ZONE
 
     obstacle_boundary = geom.Polygon([
@@ -384,7 +385,7 @@ if __name__ == "__main__":
         point_set = []
         goal_sets = []
         # Iterate through the path, excluding the first and last configuration
-        for configuration in path[1:-1]:
+        for configuration in path[0:-1]:
             # Extract the last three keypoints of each configuration
             last_three_points = configuration[-4:]
             last_three_points_float = [[float(point[0]), float(point[1])] for point in last_three_points]

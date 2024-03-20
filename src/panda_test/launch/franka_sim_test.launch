@@ -14,13 +14,16 @@
     <param name="robot_description" command="$(find xacro)/xacro $(find panda_test)/urdf/franka_sim.xacro" />
     <!-- <param name="robot_description" command="$(find xacro)/xacro $(find active_vision)/desc/franka_camera.xacro" />  -->
     <node name="spawn_franka_urdf" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" args="-param robot_description -urdf -model panda -z 1.015 -J panda_joint2 0.5
-      -J panda_joint4 -1.8 -unpause" />
+      -J panda_joint4 -1.8 -J panda_joint6 1.5 -unpause" />
+
+    <!-- Start: j2 -1.25, j4 -1.8, j6 1.5 - -->
+    <!-- Goal: j2 0.5, j4 -1.8, j6 1.5  -->
 
     <!-- <param name="robot_description" command="$(find xacro)/xacro $(find active_vision)/desc/franka_camera.xacro" /> -->
     <rosparam file="$(find panda_test)/config/encoderless_control.yaml" command="load" />
     <rosparam file="$(find panda_test)/config/franka_dl_config.yaml" command="load" />
 
-    <node name="franka_sim_obs_detection" pkg="panda_test" type="detect_red_ball.py" output="screen" respawn="false" required="true" />
+    <!-- <node name="franka_sim_obs_detection" pkg="panda_test" type="detect_red_ball.py" output="screen" respawn="false" required="true" /> -->
 
     <!-- Launch controllers -->
     <node name="stopped_panda_arm_controller_spawner" pkg="controller_manager" type="spawner" respawn="false"

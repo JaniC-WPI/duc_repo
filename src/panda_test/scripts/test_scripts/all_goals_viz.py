@@ -1,15 +1,21 @@
 import cv2
 import numpy as np
+import os
 
 # Load your image
 image_path = '/home/jc-merlab/.ros/dl_published_goal_image_obs.jpg'  # Replace with the path to your image
-image = cv2.imread(image_path)
+static_image = cv2.imread(image_path)
+gif_image = static_image.copy()
+
+# Save the result
+output_path = '/home/jc-merlab/.ros/dl_published_goal_image.jpg'
+output_dir = '/home/jc-merlab/Pictures/Dl_Exps/dl_vs/servoing/exps/euc_4/path/'
+if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
 # List of points to draw
-points_sets = [[[167.0, 294.0], [173.0, 266.0], [160.0, 138.0], [132.0, 118.0]], [[178.0, 264.0], [191.0, 240.0], [240.0, 120.0], [224.0, 98.0]], [[178.0, 264.0], [191.0, 240.0], [297.0, 163.0], [290.0, 136.0]], [[221.0, 221.0], [245.0, 208.0], [376.0, 208.0], [388.0, 181.0]], [[280.0, 208.0], [307.0, 210.0], [408.0, 299.0], [436.0, 285.0]], [[280.0, 208.0], [307.0, 210.0], [440.0, 232.0], [459.0, 208.0]]]
+points_sets =  [[[272.0, 315.0], [206.0, 232.0], [228.0, 214.0], [319.0, 122.0], [331.0, 93.0]], [[268.0, 314.0], [212.0, 225.0], [235.0, 210.0], [325.0, 114.0], [354.0, 119.0]], [[268.0, 314.0], [198.0, 236.0], [218.0, 217.0], [338.0, 163.0], [355.0, 138.0]], [[268.0, 314.0], [196.0, 238.0], [215.0, 219.0], [337.0, 169.0], [358.0, 189.0]], [[268.0, 314.0], [204.0, 232.0], [225.0, 215.0], [355.0, 209.0], [382.0, 222.0]], [[268.0, 314.0], [223.0, 219.0], [247.0, 206.0], [372.0, 249.0], [393.0, 270.0]], [[268.0, 314.0], [238.0, 213.0], [264.0, 204.0], [381.0, 265.0], [412.0, 264.0]], [[268.0, 314.0], [275.0, 208.0], [302.0, 209.0], [428.0, 257.0], [434.0, 287.0]], [[268.0, 314.0], [289.0, 209.0], [316.0, 214.0], [444.0, 259.0], [451.0, 290.0]]]
 
-# [[[187.0, 241.0], [204.0, 219.0], [294.0, 114.0], [324.0, 116.0]], [[187.0, 241.0], [204.0, 219.0], [316.0, 141.0], [346.0, 152.0]]]
- # [[193.0, 234.0], [212.0, 213.0], [344.0, 232.0], [364.0, 257.0]]]
 # colors = [
 #     (255, 0, 0),  # Blue
 #     (0, 255, 255)  # Green
@@ -18,31 +24,28 @@ points_sets = [[[167.0, 294.0], [173.0, 266.0], [160.0, 138.0], [132.0, 118.0]],
 #     # Add more colors if you have more sets of points
 # ]
 
-# [[[187.0, 241.0], [204.0, 219.0], [294.0, 114.0], [324.0, 116.0]], [[187.0, 241.0], [204.0, 219.0], [316.0, 141.0], [346.0, 152.0]], [[184.0, 246.0], [199.0, 223.0], [329.0, 191.0], [356.0, 207.0]], [[193.0, 234.0], [212.0, 213.0], [344.0, 232.0], [364.0, 257.0]], [[231.0, 207.0], [257.0, 196.0], [386.0, 245.0], [401.0, 275.0]]]
+# Define fixed colors for the points
+fixed_colors = [(0, 0, 255), (255, 0, 0), (0, 255, 0), (255, 255, 0), (0, 255, 255)]
 
 colors = np.random.randint(0, 255, (len(points_sets), 3))
 
-# # Draw the points
-# for points in points_sets:
-#     for x, y in points:
-#         cv2.circle(image, (int(x), int(y)), 5, (255, 0, 255), -1)  # Green points
+for set_index, (points, color) in enumerate(zip(points_sets, colors)):
+    if set_index ==0:
+        for x,y in points:
+            cv2.circle(static_image, (int(x), int(y)), 9, (0,255,0), -1)
+        for i in range(len(points) - 1):  # Go up to the second-to-last point
+            x1, y1 = points[i]
+            x2, y2 = points[i + 1]
+            cv2.line(static_image, (int(x1), int(y1)), (int(x2), int(y2)), (0,255,0), thickness=4)
+    else:
+        # Draw circles at each point
+        for index, (x, y) in enumerate(points):
+            cv2.circle(static_image, (int(x), int(y)), 9, fixed_colors[index], -1)
+        for i in range(len(points) - 1):  # Go up to the second-to-last point
+            x1, y1 = points[i]
+            x2, y2 = points[i + 1]
+            cv2.line(static_image, (int(x1), int(y1)), (int(x2), int(y2)), tuple(int(c) for c in color), thickness=4)
 
-# Draw the points with corresponding colors
-# for points, color in zip(points_sets, colors):
-#     for x, y in points:
-#         cv2.circle(image, (int(x), int(y)), 5, color, -1)
+    cv2.imwrite(os.path.join(output_dir, f'path_{set_index}.jpg'), static_image)
 
-# Draw the points with unique colors
-for points, color in zip(points_sets, colors):
-    for i in range(len(points) - 1):  # Go up to the second-to-last point
-        x1, y1 = points[i]
-        x2, y2 = points[i + 1]
-        cv2.line(image, (int(x1), int(y1)), (int(x2), int(y2)), tuple(int(c) for c in color), thickness=2)
-    
-    # Draw circles at each point
-    for x, y in points:
-        cv2.circle(image, (int(x), int(y)), 9, tuple(int(c) for c in color), -1)
-
-# Save the result
-output_path = '/home/jc-merlab/.ros/dl_published_goal_image.jpg'
-cv2.imwrite(output_path, image)
+cv2.imwrite(output_path, static_image)

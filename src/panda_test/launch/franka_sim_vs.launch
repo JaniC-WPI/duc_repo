@@ -1,13 +1,13 @@
 <launch>
     <!-- Load YAML -->
     <rosparam file="$(find panda_test)/config/franka_sim_config.yaml" command="load"/>
-    <rosparam file="$(find panda_test)/config/dl_features.yaml" command="load"/>
+    <rosparam file="$(find panda_test)/config/dl_multi_features.yaml" command="load"/>
 
     <!-- Launch Realsense Camera & marker detection -->
     <!-- <include file="$(find encoderless_vs)/launch/rs_encoderless.launch"/> -->
     
     <!-- Launch the control point generation services -->
-    <include file="$(find panda_test)/launch/franka_sim.launch"/>
+    <!-- <include file="$(find panda_test)/launch/franka_sim.launch"/> -->
     <include file="$(find panda_test)/launch/franka_sim_control_service.launch"/>
 
     <!-- Joint publisher interface -->

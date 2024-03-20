@@ -212,10 +212,10 @@ int main(int argc, char **argv){
 
     // uncomment next block for 3D motions
     // Convert gains to Eigen vector
-    // Eigen::VectorXf K(no_of_features);
-    // for(int i=0; i<no_of_features; i++){
-    //     K[i] = gains[i];
-    // }
+    Eigen::VectorXf K(no_of_features);
+    for(int i=0; i<no_of_features; i++){
+        K[i] = gains[i];
+    }
 
 
 // --------------------------- Initial Estimation -----------------------------    
@@ -519,8 +519,8 @@ int main(int argc, char **argv){
         std::cout<<"Qhat_inv: "<<Qhat_inv<<std::endl;
         std::cout<<"error_vec: "<<error_vec<<std::endl;
         std::cout<<"gains: "<<lam<<std::endl;
-        joint_vel = lam*(Qhat_inv)*(error_vec);
-        // joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
+        // joint_vel = lam*(Qhat_inv)*(error_vec);
+        joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
         std::cout<<"joint_vel_1: "<<joint_vel[0]<<std::endl;
         std::cout<<"joint_vel_2: "<<joint_vel[1]<<std::endl;
         std::cout<<"joint_vel_3: "<<joint_vel[2]<<std::endl; //uncomment - possible change for 3 joints

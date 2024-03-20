@@ -18,7 +18,6 @@ from pos_regression_control import PosRegModel
 import matplotlib.pyplot as plt
 from descartes import PolygonPatch
 
-
 # Parameters
 IMAGE_WIDTH, IMAGE_HEIGHT = 640, 480
 
@@ -170,7 +169,7 @@ def build_lazy_roadmap_with_kdtree(configurations, k_neighbors, model):
 
     return G, tree
 
-def add_config_to_roadmap(config,  G, tree, k_neighbors=300):
+def add_config_to_roadmap(config,  G, tree, k_neighbors):
     """Add a configuration to the roadmap, connecting it to its k nearest neighbors."""
     flattened_config = config.flatten().reshape(1, -1)
     _, indices = tree.query(flattened_config, k=k_neighbors)

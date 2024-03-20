@@ -213,6 +213,8 @@ def build_lazy_roadmap_with_kdtree(configurations, k_neighbors, model):
     - G: nx.Graph, the constructed roadmap.
     """
     configurations = configurations[1:9000:10]
+    with open('/home/jc-merlab/Pictures/Dl_Exps/dl_vs/servoing/exps/cust_1/configurations.txt', 'w') as f:
+            f.write(str(configurations))
     # print("Shape of configurations before building the roadmap:", len(configurations), configurations[0].shape)
 
     flattened_configs = np.vstack([config.flatten() for config in configurations])
@@ -243,22 +245,22 @@ def build_lazy_roadmap_with_kdtree(configurations, k_neighbors, model):
     # plt.show()        
     return G, tree
 
-def add_config_to_roadmap(config,  G, tree, k_neighbors=300):
-    """Add a configuration to the roadmap, connecting it to its k nearest neighbors."""
-    flattened_config = config.flatten().reshape(1, -1)
-    _, indices = tree.query(flattened_config, k=k_neighbors)
+# def add_config_to_roadmap(config,  G, tree, k_neighbors=300):
+#     """Add a configuration to the roadmap, connecting it to its k nearest neighbors."""
+#     flattened_config = config.flatten().reshape(1, -1)
+#     _, indices = tree.query(flattened_config, k=k_neighbors)
     
-    node_id = len(G.nodes)
-    G.add_node(node_id, configuration=config)
+#     node_id = len(G.nodes)
+#     G.add_node(node_id, configuration=config)
     
-    for i in indices[0]:
-        G.add_edge(node_id, i)
+#     for i in indices[0]:
+#         G.add_edge(node_id, i)
     
-    # Update the tree with the new node for future queries
-    new_flattened_configs = np.vstack([tree.data, flattened_config])
-    new_tree = KDTree(new_flattened_configs)
+#     # Update the tree with the new node for future queries
+#     new_flattened_configs = np.vstack([tree.data, flattened_config])
+#     new_tree = KDTree(new_flattened_configs)
     
-    return node_id, new_tree
+#     return node_id, new_tree
 
 # Function to add a configuration to the roadmap with collision checking
 def add_config_to_roadmap(config, G, tree, k_neighbors, obstacle_center, half_diagonal, safe_distance):
@@ -334,14 +336,14 @@ def is_collision_free(configuration1, configuration2, obstacle_center, half_diag
         for i in range(len(config) - 1):
             segment = geom.LineString([config[i], config[i+1]])
             if segment.intersects(obstacle_boundary):
-                print("collision detected")
+                # print("collision detected")
                 # If any segment intersects, the configuration is not collision-free
                 return False
         
     for i in range(len(configuration1)):
         segment = geom.LineString([configuration1[i], configuration2[i]])
         if segment.intersects(obstacle_boundary):
-            print("edge collision detected")
+            # print("edge collision detected")
             return False
         
      # If no segments intersect, the configuration is collision-free
@@ -356,7 +358,7 @@ def validate_and_remove_invalid_edges(G, obstacle_center, half_diagonal, safe_di
         if not is_collision_free(config_u, config_v, obstacle_center, half_diagonal, safe_distance):
             # If the edge is not collision-free, remove it from the graph
             G.remove_edge(u, v)
-            print(f"Removed invalid edge: {u} <-> {v}")
+            # print(f"Removed invalid edge: {u} <-> {v}")
 
 def find_path_heuristic(G, start_node, goal_node, heuristic):
     try:
@@ -415,20 +417,21 @@ if __name__ == "__main__":
     # distance_matrix = np.array([1.0]).reshape(-1,1)
     # configurations = load_and_sample_configurations(directory, num_samples)
     # Parameters for PRM
-    num_neighbors = 25 # Number of neighbors for each node in the roadmap
+    num_neighbors = 25
+     # Number of neighbors for each node in the roadmap
     start_time = time.time()
     # Build the roadmap
     roadmap, tree = build_lazy_roadmap_with_kdtree(configurations, num_neighbors, model)   
     end_time = time.time()
 
-    print("time taken to find the graph", end_time - start_time)      
+    # print("time taken to find the graph", end_time - start_time)      
 
     # Define start and goal configurations as numpy arrays
-    start_config = np.array([[267, 432], [270, 315], [167, 294], [173, 266], [160, 138], [132, 118]]) 
-    goal_config = np.array([[267, 432], [271, 315], [317, 218], [342, 231], [463, 293], [494, 281]])
+    start_config = np.array([[269, 431], [272, 315], [172, 287], [178, 262], [149, 139], [119, 130]])  
+    goal_config = np.array([[263, 430], [268, 314], [257, 209], [284, 205], [399, 273], [414, 299]])
 
-    SAFE_ZONE = 50  # Safe distance from the obstacle
-    obstacle_center = (450, 103)
+    SAFE_ZONE = 50 
+    obstacle_center = (420, 103)
     half_diagonal = 20
     # safe_distance = SAFE_ZONE
 
@@ -457,7 +460,7 @@ if __name__ == "__main__":
         # Iterate through the path, excluding the first and last configuration
         for configuration in path[0:-1]:
             # Extract the last three keypoints of each configuration
-            last_three_points = configuration[-4:]
+            last_three_points = configuration[-5:]
             last_three_points_float = [[float(point[0]), float(point[1])] for point in last_three_points]
             # Append these points to the point_set list
             point_set.append(last_three_points_float)

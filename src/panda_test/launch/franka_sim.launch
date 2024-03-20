@@ -16,8 +16,8 @@
     
     <!-- <node name="spawn_franka_urdf" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" args="-param robot_description -urdf -model panda -z 1.015" /> -->
 
-    <node name="spawn_franka_urdf" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" args="-param robot_description -urdf -model panda -z 1.015 -J panda_joint2 -1.57
-      -J panda_joint4 -1.8 -unpause" />
+    <node name="spawn_franka_urdf" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen" args="-param robot_description -urdf -model panda -z 1.015 -J panda_joint2 -1.25
+      -J panda_joint4 -1.8 -J panda_joint6 1.5 -J panda_joint7 1.0 -unpause" />
 
       <!-- J = -1.0, -2.3 -->
 

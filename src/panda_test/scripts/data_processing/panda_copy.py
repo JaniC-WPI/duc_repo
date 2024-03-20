@@ -2,8 +2,8 @@ import os
 import shutil
 
 # Specify the source and destination folders
-source_folder_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_planning_kprcnn/'
-destination_folder_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_planning_kprcnn_train/'
+source_folder_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/kprcnn_training_output/'
+destination_folder_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/planning_kprcnn_train/'
 
 # Ensure the destination folder exists
 os.makedirs(destination_folder_path, exist_ok=True)

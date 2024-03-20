@@ -13,7 +13,7 @@ folder = 1
 # default_data_dir = f'/home/user/Workspace/WPI/Summer2023/ws/duc_repo/src/panda_test/data/kp_test_images/{folder}/'
 # default_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/data/kp_test_images/{folder}/'
 
-default_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_planning_kprcnn_train/'
+default_data_dir = '/home/jc-merlab/Pictures/Data/Dataset_EE/Combined_dataset/'
 output_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/kp_plan_viz/'
 # def visualize(image, keypoints, wait, window_name='Default'):
 #     for i in range(len(keypoints)):
@@ -57,37 +57,92 @@ output_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/kp_plan_viz
 #             visualize(image, data['keypoints'], 0, json_file)
 #             cv2.destroyWindow(json_file)
 #     cv2.destroyAllWindows()
+# def visualize_and_save(image, keypoints, filename, output_data_dir):
+#     for sublist in keypoints:  # Iterate through sublists 
+#         print(sublist)
+#         for kp in sublist:  # Iterate through keypoints within each sublist
+#             print(kp)
+#             u = int(kp[0])    
+#             print(u)
+#             v = int(kp[1])    
+#             image = cv2.circle(image, (u, v), radius=3, color=(0, 0, 255), thickness=-1)
+
+
+#     # Save visualized image
+#     output_path = os.path.join(output_data_dir, filename)
+#     cv2.imwrite(output_path, image)
+
+
+# if __name__ == '__main__':
+#     data_dir = sys.argv[1] if len(sys.argv) > 1 else default_data_dir
+#     # json_files = sorted([f for f in os.listdir(data_dir) if f.endswith(".json") and not f.endswith("_vel.json")
+#     #                       and not f.endswith("_combined.json")  and not f.endswith("_joint_angles.json")])
+    
+#     json_files = sorted([f for f in os.listdir(default_data_dir) if f.endswith(".json")])
+
+#     for json_file in json_files:
+#         json_path = os.path.join(default_data_dir, json_file)
+
+#         with open(json_path, 'r') as f_json:
+#             data = json.load(f_json)
+
+#         # Load the corresponding image
+#         image_filename = data['image_rgb']
+#         image_path = os.path.join(default_data_dir, image_filename)
+#         image = cv2.imread(image_path)
+
+#         # Visualize and save
+#         visualize_and_save(image, data['keypoints'], image_filename, output_data_dir) 
+
+
+import cv2
+import json
+import os
+import sys
+
+# Paths to the input and output directories
+default_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/8/'
+output_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/kp_plan_viz/'
+
 def visualize_and_save(image, keypoints, filename, output_data_dir):
-    for sublist in keypoints:  # Iterate through sublists 
-        print(sublist)
-        for kp in sublist:  # Iterate through keypoints within each sublist
-            print(kp)
-            u = int(kp[0])    
-            print(u)
-            v = int(kp[1])    
+    # Iterate through all keypoints and draw them on the image
+    for sublist in keypoints:
+        for kp in sublist:
+            u = int(kp[0])
+            v = int(kp[1])
             image = cv2.circle(image, (u, v), radius=3, color=(0, 0, 255), thickness=-1)
 
-
-    # Save visualized image
+    # Save the image to the specified output directory
     output_path = os.path.join(output_data_dir, filename)
     cv2.imwrite(output_path, image)
 
-
 if __name__ == '__main__':
     data_dir = sys.argv[1] if len(sys.argv) > 1 else default_data_dir
-    json_files = sorted([f for f in os.listdir(data_dir) if f.endswith(".json") and not f.endswith("_vel.json")
-                          and not f.endswith("_combined.json")  and not f.endswith("_joint_angles.json")])
+
+    # Ensure output directory exists
+    if not os.path.exists(output_data_dir):
+        os.makedirs(output_data_dir)
+
+    # List JSON files
+    json_files = sorted([f for f in os.listdir(data_dir) \
+                         if f.endswith(".json") and not f.endswith("_joint_angles.json") \
+                            and not f.endswith("_vel.json")])
 
     for json_file in json_files:
+        base_filename = json_file.split('.')[0]  # Remove the extension from the json filename
+        image_filename = f"{base_filename}.jpg"  # Construct the corresponding image filename
+        
         json_path = os.path.join(data_dir, json_file)
-
-        with open(json_path, 'r') as f_json:
-            data = json.load(f_json)
-
-        # Load the corresponding image
-        image_filename = data['image_rgb']
         image_path = os.path.join(data_dir, image_filename)
-        image = cv2.imread(image_path)
 
-        # Visualize and save
-        visualize_and_save(image, data['keypoints'], image_filename, output_data_dir) 
+        # Check if the corresponding image file exists
+        if os.path.exists(image_path):
+            with open(json_path, 'r') as f_json:
+                data = json.load(f_json)
+
+            image = cv2.imread(image_path)
+
+            # Visualize keypoints on the image and save in the output directory
+            visualize_and_save(image, data['keypoints'], image_filename, output_data_dir)
+        else:
+            print(f"No corresponding image found for {json_file}")

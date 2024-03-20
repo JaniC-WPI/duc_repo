@@ -35,6 +35,12 @@ int no_of_actuators;
 bool end_flag = false;      // true when servoing is completed. Triggered by user
 bool start_flag = false;    // true when camera stream is ready
 
+// Initialize a counter for iterations after switching goal sets
+int iterations_since_goal_change = 0;
+// Define the number of iterations to publish 0 velocities after a goal set change
+const int zero_velocity_iterations = 3;
+
+
 // Sign function for sliding mode controller
 int sign(double x){
     if(x<0)
@@ -78,7 +84,7 @@ int main(int argc, char **argv){
     ros::Publisher status_pub = n.advertise<std_msgs::Int32>("vsbot/status", 1);
     ros::Publisher cp_pub = n.advertise<std_msgs::Float64MultiArray>("vsbot/control_points", 1);
     // Declaring a publisher for the current goal set
-    ros::Publisher current_goal_set_pub = n.advertise<std_msgs::Int32>("current_goal_set", 1);
+    ros::Publisher current_goal_set_pub = n.advertise<std_msgs::Int32>("current_goal_set_topic", 1);
     // std::cout << "Initialized Publishers" <<std::endl;
 
     // Initializing ROS subscribers
@@ -150,8 +156,11 @@ int main(int argc, char **argv){
     float lam;
     n.getParam("vsbot/control/lam",lam);
 
-    std::vector<float> gains;
-    n.getParam("vsbot/control/gains",gains);
+    std::vector<float> gains1;
+    n.getParam("vsbot/control/gains1",gains1);
+
+    std::vector<float> gains2;
+    n.getParam("vsbot/control/gains2",gains2);    
 
     float gain_sm;
     n.getParam("vsbot/control/gain_sm", gain_sm);
@@ -212,12 +221,6 @@ int main(int argc, char **argv){
     // std::cout <<"Initialized estimation variables" << std::endl;
 
     // uncomment next block for 3D motions
-    // Convert gains to Eigen vector
-    Eigen::VectorXf K(no_of_features);
-    for(int i=0; i<no_of_features; i++){
-        K[i] = gains[i];
-    }
-
 
 // --------------------------- Initial Estimation -----------------------------    
 
@@ -454,7 +457,6 @@ int main(int argc, char **argv){
     // Refresh subscribers
     ros::spinOnce();
 
-
     // ----------------------- Control Loop for Servoing -----------------------------
     std_msgs::Int32 current_goal_set_msg; // Message for publishing current goal set index
     while(ros::ok() && !end_flag && current_goal_set < num_goal_sets){    // convergence condition
@@ -474,6 +476,20 @@ int main(int argc, char **argv){
         err = sqrt(err_acc);
         err_acc = 0; // Reset error accumulator
         // std::cout<<" norm:"<<err<<std::endl;
+
+        std::vector<float> current_gains;
+        if ((num_goal_sets == 1) || (current_goal_set < num_goal_sets - 1)) {
+            current_gains = gains1; // Use the first set of gains for all but the last goal
+        } 
+        else {
+            current_gains = gains2; // Use the second set of gains for the last goal
+        }
+
+        // Convert gains to Eigen vector
+        Eigen::VectorXf K(no_of_features);
+        for(int i=0; i<no_of_features; i++){
+            K[i] = current_gains[i];
+        }
 
         // Generate velocity
         // Convert qhat vector into matrix format
@@ -523,14 +539,15 @@ int main(int argc, char **argv){
         // IBVS control law (Velocity generator)
         //  With Berk 
         // P Control 
-        // std::cout<<"Qhat_inv: "<<Qhat_inv<<std::endl;
+        std::cout<<"Qhat_inv: "<<Qhat_inv<<std::endl;
         // std::cout<<"error_vec: "<<error_vec<<std::endl;
         // std::cout<<"gains: "<<lam<<std::endl;
         // joint_vel = lam*(Qhat_inv)*(error_vec);
+        std::cout<<"gains"<<Eigen::MatrixXf(K.asDiagonal())<<std::endl;
         joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
-        // std::cout<<"joint_vel_1: "<<joint_vel[0]<<std::endl;
-        // std::cout<<"joint_vel_2: "<<joint_vel[1]<<std::endl;
-        // std::cout<<"joint_vel_3: "<<joint_vel[2]<<std::endl; //uncomment - possible change for 3 joints
+        std::cout<<"joint_vel_1: "<<joint_vel[0]<<std::endl;
+        std::cout<<"joint_vel_2: "<<joint_vel[1]<<std::endl;
+        std::cout<<"joint_vel_3: "<<joint_vel[2]<<std::endl; //uncomment - possible change for 3 joints
         // end of with Berk
         
         
@@ -640,6 +657,30 @@ End of working velocity scaling*/
         //         std::fill(dRinitial.begin(), dRinitial.end(), 0);
         //     }
         // }
+
+        // Check if we should publish 0 velocities or calculated velocities
+        // if (iterations_since_goal_change < zero_velocity_iterations) {
+        //     // Publish 0 velocities
+        //     j_vel.data.clear();
+        //     for (int i = 0; i < no_of_actuators; ++i) {
+        //         j_vel.data.push_back(0.0); // Insert zero velocity for each actuator
+        //     }
+        //     // Increment the counter
+        //     iterations_since_goal_change++;
+        // } else {
+        //     // Publish calculated velocities
+        //     j_vel.data.clear();
+        //     j_vel.data.push_back(joint_vel[0]);
+        //     j_vel.data.push_back(joint_vel[1]);
+        //     j_vel.data.push_back(joint_vel[2]); // Adjust based on the number of actuators
+
+        //     // Reset the counter if we just finished publishing zero velocities
+        //     if (iterations_since_goal_change == zero_velocity_iterations) {
+        //         iterations_since_goal_change = 0; // Reset counter
+        //     }
+        // }
+
+        // j_pub.publish(j_vel);
         float current_thresh;
 
         if (current_goal_set < num_goal_sets - 1) {
@@ -656,6 +697,7 @@ End of working velocity scaling*/
             std::cout << "Goal " << current_goal_set << " reached. Moving to next goal." << std::endl;
             if (current_goal_set < num_goal_sets - 1) {
                 ++current_goal_set; // Move to the next set of goal features
+                // Publish the updated current goal set index                
                 // print_fvector(goal_features);
                 goal = goal_features[current_goal_set]; // Update the goal to the next set
                 std::cout<<"new goal is"<<std::endl;
@@ -674,12 +716,12 @@ End of working velocity scaling*/
                 std::cout << "All goals reached" << std::endl;
                 break;
             }
-            // Publish the updated current goal set index
-            current_goal_set_msg.data = current_goal_set;
-            current_goal_set_pub.publish(current_goal_set_msg);
+            // // // Publish the updated current goal set index
+            // current_goal_set_msg.data = current_goal_set;
+            // current_goal_set_pub.publish(current_goal_set_msg);
         }
         else{         
-                    // could change ds_norm to error_norm and stop updating near goal
+            // could change ds_norm to error_norm and stop updating near goal
         
             // Update sampling windows
             for(int i=0; i<no_of_features;i++){
@@ -782,6 +824,10 @@ End of working velocity scaling*/
         
         // Publish status msg
         status_pub.publish(status);
+
+        // // Publish the updated current goal set index
+        current_goal_set_msg.data = current_goal_set;
+        current_goal_set_pub.publish(current_goal_set_msg);
 
         // Refresh subscriber callbacks
         ros::spinOnce();

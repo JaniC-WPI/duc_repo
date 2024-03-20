@@ -8,7 +8,7 @@
     </include> -->
     <!-- Load parameters -->
     <!-- Launch the control point generation services -->
-    <include file="$(find panda_test)/launch/franka_sim.launch"/>
+    <include file="$(find panda_test)/launch/franka_sim_test.launch"/>
     <rosparam file="$(find panda_test)/config/franka_sim_config.yaml" command="load"/>
     
     <!-- Launch binary image -->

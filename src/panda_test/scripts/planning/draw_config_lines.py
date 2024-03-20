@@ -38,10 +38,10 @@ import os
 #         obstacle_center, obstacle_radius = None, None
 
 if __name__ == "__main__":
-    image_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/obstacle_image_07.png'
+    image_path = '/home/jc-merlab/.ros/dl_published_goal_image_obs.jpg'
      # Define start and goal configurations as numpy arrays
-    start_config = np.array([[272, 437], [266, 314], [175, 261], [187, 236], [230, 108], [215, 85]]) 
-    goal_config = np.array([[271, 436], [267, 313], [223, 213], [248, 199], [383, 169], [404, 147]]) 
+    start_config = np.array([[269, 431], [273, 315], [224, 221], [248, 208], [333, 108], [337, 75]]) 
+    # goal_config = np.array([[267, 432], [271, 315], [223, 219], [247, 206], [372, 249], [402, 244]]) 
 
 
     base_image = cv2.imread(image_path)
@@ -49,13 +49,13 @@ if __name__ == "__main__":
     # Draw start and goal keypoints
     for point in start_config:
         cv2.circle(base_image, tuple(point.astype(int)), radius=5, color=(0, 0, 255), thickness=-1)  # Red for start
-    for point in goal_config:
-        cv2.circle(base_image, tuple(point.astype(int)), radius=5, color=(0, 255, 0), thickness=-1)  # Green for goal
+    # for point in goal_config:
+    #     cv2.circle(base_image, tuple(point.astype(int)), radius=5, color=(0, 255, 0), thickness=-1)  # Green for goal
 
     for i in range(len(start_config) - 1):
         cv2.line(base_image, tuple(start_config[i].astype(int)), tuple(start_config[i+1].astype(int)), (0, 0, 255), 2)
-    for i in range(len(goal_config) - 1):
-        cv2.line(base_image, tuple(goal_config[i].astype(int)), tuple(goal_config[i+1].astype(int)), (0, 255, 0), 2)
+    # for i in range(len(goal_config) - 1):
+    #     cv2.line(base_image, tuple(goal_config[i].astype(int)), tuple(goal_config[i+1].astype(int)), (0, 255, 0), 2)
 
-    cv2.imwrite('/home/jc-merlab/Pictures/panda_data/panda_sim_vel/physical_path_planning/scenarios/path_planning_phys_scene_07.jpg', base_image)
+    cv2.imwrite('/home/jc-merlab/.ros/dl_published_goal_image_all.jpg', base_image)
 
