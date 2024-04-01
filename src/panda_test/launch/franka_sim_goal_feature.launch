@@ -8,7 +8,7 @@
     </include> -->
     <!-- Load parameters -->
     <!-- Launch the control point generation services -->
-    <include file="$(find panda_test)/launch/franka_sim_test.launch"/>
+    <!-- <include file="$(find panda_test)/launch/franka_sim_goal.launch"/> -->
     <rosparam file="$(find panda_test)/config/franka_sim_config.yaml" command="load"/>
     
     <!-- Launch binary image -->
@@ -19,7 +19,7 @@
 
     <!-- <node name="set_auto_exposure_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera enable_auto_exposure False"/> -->
 
-    <node name="franka_sim_goal_vis_node" pkg="panda_test" type="franka_sim_goal_img_pub.py" output="screen" />
+    <!-- <node name="franka_sim_goal_vis_node" pkg="panda_test" type="franka_sim_goal_img_pub.py" output="screen" /> -->
     
     <!-- Save images -->
     <node name="image_writer" pkg="panda_test" type="img_write.py" output="screen" respawn="false" />

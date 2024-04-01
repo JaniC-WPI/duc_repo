@@ -5,9 +5,15 @@
 
     <!-- setting auto exposure parameter to False -->
    <node name="set_auto_exposure_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera enable_auto_exposure False"/>
+   <node name="set_brigtness_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera brightness -35"/>
 
     <!-- Launch skeleton node detection -->
-    <node name="image_capture" pkg="panda_test" type="kprcnn_track_3d.py" respawn="false" output="screen" />
+    <node name="image_capture" pkg="panda_test" type="image_capture.py" respawn="false" output="screen" />
+
+    <node name="image_view" pkg="image_view" type="image_view" respawn="false" output="screen">
+    	<remap from="image" to="/camera/color/image_raw" />
+
+    </node> 
     
 
 </launch>

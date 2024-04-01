@@ -22,6 +22,7 @@ from kalmanfilter import KalmanFilter
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # weights_path = '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_weights_ld_b3_e25.pth'
 weights_path = rospy.get_param('vsbot/deeplearning/weights_path')
+no_of_features = rospy.get_param('vsbot/shape_control/no_of_features')
 model = torch.load(weights_path).to(device)
 
 kf1 = KalmanFilter(100, 7, 7, 7, 7)
@@ -548,10 +549,14 @@ class VideoInference:
 
         kp = []
 
-        # Uncomment the next block for 3 features
-        for i in range(len(kp_x)-1):
-           kp.append(kp_x[i+1]) 
-           kp.append(kp_y[i+1])
+        if no_of_features==8:
+            for i in range(len(kp_x)-1):
+               kp.append(kp_x[i+1]) 
+               kp.append(kp_y[i+1])
+        elif no_of_features==6:
+            for i in range(len(kp_x)-2):
+               kp.append(kp_x[i+2]) 
+               kp.append(kp_y[i+2])
 
         print("current keypoints", kp)
 

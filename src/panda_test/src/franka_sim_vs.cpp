@@ -185,6 +185,9 @@ int main(int argc, char **argv){
     float gamma2; // learning rate during control loop
     n.getParam("vsbot/estimation/gamma2", gamma2);
 
+    float gamma3;
+    n.getParam("vsbot/estimation/gamma3", gamma3);
+
     float beta; // threshold for selective Jacobian update
     n.getParam("vsbot/shape_control/beta", beta);
 
@@ -255,7 +258,11 @@ int main(int argc, char **argv){
         // Publish sin vel to both joints
         float j1_vel = amplitude*sin(param);
         float j2_vel = amplitude*cos(param); 
-        float j3_vel = amplitude*(cos(param)+sin(param)); // comment out when 3rd joint not in use
+        float j3_vel;
+        if (no_of_actuators == 3){
+            j3_vel = amplitude*(cos(param)+sin(param)); // comment out when 3rd joint not in use
+        }
+
         // float j1_vel = amplitude*sin(param);
         // float j2_vel = amplitude*cos(param); 
         
@@ -268,8 +275,10 @@ int main(int argc, char **argv){
         j_vel.data.clear();
         j_vel.data.push_back(j1_vel);
         j_vel.data.push_back(j2_vel);
-        j_vel.data.push_back(j3_vel); // comment out when 3rd joint not in use
 
+        if (no_of_actuators == 3) {
+            j_vel.data.push_back(j3_vel); // comment out when 3rd joint not in use
+        }
         j_pub.publish(j_vel);
 
         // Obtain current robot state
@@ -298,8 +307,10 @@ int main(int argc, char **argv){
         dr.clear();
         dr.push_back((j1_vel*t));
         dr.push_back((j2_vel*t));
-        dr.push_back((j3_vel*t)); // comment out when 3rd joint not in use
 
+        if (no_of_actuators==3){
+            dr.push_back((j3_vel*t)); // comment out when 3rd joint not in use
+        }
         // Update dSinitial and dRinitial
         for(int i = 0; i < no_of_features; i++){
             dSinitial.push_back(ds[i]);
@@ -350,7 +361,9 @@ int main(int argc, char **argv){
     j_vel.data.clear();
     j_vel.data.push_back(0.0);
     j_vel.data.push_back(0.0);
-    j_vel.data.push_back(0.0); //comment/uncomment depending on number of joints
+    if (no_of_actuators==3){
+        j_vel.data.push_back(0.0); //comment/uncomment depending on number of joints
+    }
 
     j_pub.publish(j_vel);
 
@@ -402,7 +415,8 @@ int main(int argc, char **argv){
     panda_test::energyFuncMsg msg;
     while(it < window){
         // Service request data
-        msg.request.gamma = gamma;
+        msg.request.gamma_general = gamma;
+        msg.request.gamma_third_actuator = gamma;
         msg.request.it = it;
         msg.request.dS = dSmsg;
         msg.request.dR = dRmsg;
@@ -520,9 +534,14 @@ int main(int argc, char **argv){
         }
 
         // joint velocity Eigen::vector
-        // Eigen::Vector2f joint_vel; // uncomment for 2 joints
+        Eigen::VectorXf joint_vel;
 
-        Eigen::Vector3f joint_vel;  // uncomment for 3 joints
+        if (no_of_actuators==3){
+            Eigen::Vector3f joint_vel;  
+        }
+        else if (no_of_actuators==2) {
+            Eigen::Vector2f joint_vel;
+        }
 
         // std::cout<<"Jacobian: \n"<<Qhat<<std::endl;
 
@@ -544,10 +563,19 @@ int main(int argc, char **argv){
         // std::cout<<"gains: "<<lam<<std::endl;
         // joint_vel = lam*(Qhat_inv)*(error_vec);
         std::cout<<"gains"<<Eigen::MatrixXf(K.asDiagonal())<<std::endl;
-        joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
+
+        if (no_of_features==8){
+            joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
+        }        
+        else if (no_of_features==6){
+            joint_vel = lam*(Qhat_inv)*(error_vec);
+        }
         std::cout<<"joint_vel_1: "<<joint_vel[0]<<std::endl;
         std::cout<<"joint_vel_2: "<<joint_vel[1]<<std::endl;
-        std::cout<<"joint_vel_3: "<<joint_vel[2]<<std::endl; //uncomment - possible change for 3 joints
+        if (no_of_actuators==3){
+            std::cout<<"joint_vel_3: "<<joint_vel[2]<<std::endl; 
+        }
+        //uncomment - possible change for 3 joints
         // end of with Berk
         
         
@@ -606,7 +634,10 @@ End of working velocity scaling*/
         j_vel.data.clear();
         j_vel.data.push_back(joint_vel[0]);
         j_vel.data.push_back(joint_vel[1]);
-        j_vel.data.push_back(joint_vel[2]); //comment/uncomment depending on # of joints
+        if (no_of_actuators==3) {
+            j_vel.data.push_back(joint_vel[2]); // Only add j3_vel if no_of_actuators is more than 2
+        }
+
 
         // std::cout<< "j1 vel: " << j_vel.data.at(0) << std::endl;
         // std::cout<< "j2 vel: " << j_vel.data.at(1) << std::endl;
@@ -634,7 +665,10 @@ End of working velocity scaling*/
         // Do not loose your mind every time you see this!
         dr[0] += joint_vel[0]*t;
         dr[1] += joint_vel[1]*t;
-        dr[2] += joint_vel[2]*t; //comment/uncomment
+        if (no_of_actuators==3){
+            dr[2] += joint_vel[2]*t; 
+        }
+        //comment/uncomment
     
         // Compute shape change magnitude
         float ds_accumulator = 0;
@@ -751,7 +785,8 @@ End of working velocity scaling*/
                 qhatmsg.data.push_back(*itr);
             }
             // populating request data
-            msg.request.gamma = gamma2;
+            msg.request.gamma_general = gamma2;
+            msg.request.gamma_third_actuator = gamma3;
             msg.request.it = window-1;
             msg.request.dS = dSmsg;
             msg.request.dR = dRmsg;
@@ -838,7 +873,9 @@ End of working velocity scaling*/
     j_vel.data.clear();
     j_vel.data.push_back(0.0);
     j_vel.data.push_back(0.0);
-    j_vel.data.push_back(0.0); // comment/ uncomment on the basis of joints
+    if (no_of_actuators==3){
+        j_vel.data.push_back(0.0); 
+    }
 
     j_pub.publish(j_vel);
 

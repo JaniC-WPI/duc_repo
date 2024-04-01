@@ -20,10 +20,10 @@ status = -2
 
 # latest changes
 
-file_path = home + "/Pictures/" + "Data/"
+file_path = home + "/Pictures/" + "panda_data/"
 
-rgb_path = file_path + 'video_images/rgb_new/'
-dep_path = file_path + 'video_images/dep/'
+rgb_path = file_path + 'ur10_new/39'
+# dep_path = file_path + 'video_images/dep/'
 
 # path = "/home/fearless/Pictures/video_images"s
 
@@ -35,7 +35,7 @@ def statusCallback(msg):
 
 def depth_callback(dep):
     
-    fname = dep_path + "image_" + str(i) + ".jpg"
+    fname = dep_path + "/" + str(i).zfill(6) + ".jpg"
     cv_img = bridge.imgmsg_to_cv2(dep, 'mono8')
   
     # cv2.imwrite(path+str(i)+'.jpg', cv_img)
@@ -48,7 +48,7 @@ def image_callback(img):
     # if status == -2:
     # print("is image call back getting called")
     # convert ros images to numpy/cv images
-    fname = rgb_path + "/image_" + str(i) + ".jpg"
+    fname = rgb_path + "/" + str(i).zfill(6) + ".jpg"
     cv_img = bridge.imgmsg_to_cv2(img, 'bgr8')
 
     # print(cv_img)

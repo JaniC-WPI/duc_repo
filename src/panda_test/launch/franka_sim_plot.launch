@@ -5,5 +5,5 @@
 
 
 <!-- PLotting node -->
-    <node name="franka_sim_vs_plots" pkg="panda_test" type="franka_sim_plot_3f.py" output="screen" respawn="false" />
+    <node name="franka_sim_vs_plots" pkg="panda_test" type="franka_sim_plot_3f_planning.py" output="screen" respawn="false" />
 </launch>

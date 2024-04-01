@@ -3,18 +3,18 @@ import numpy as np
 import os
 
 # Load your image
-image_path = '/home/jc-merlab/.ros/dl_published_goal_image_obs.jpg'  # Replace with the path to your image
+image_path = '/home/jc-merlab/.ros/sim_published_goal_image_orig.jpg'  # Replace with the path to your image
 static_image = cv2.imread(image_path)
 gif_image = static_image.copy()
 
 # Save the result
-output_path = '/home/jc-merlab/.ros/dl_published_goal_image.jpg'
+output_path = '/home/jc-merlab/.ros/sim_published_goal_image.jpg'
 output_dir = '/home/jc-merlab/Pictures/Dl_Exps/dl_vs/servoing/exps/euc_4/path/'
 if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
 # List of points to draw
-points_sets =  [[[272.0, 315.0], [206.0, 232.0], [228.0, 214.0], [319.0, 122.0], [331.0, 93.0]], [[268.0, 314.0], [212.0, 225.0], [235.0, 210.0], [325.0, 114.0], [354.0, 119.0]], [[268.0, 314.0], [198.0, 236.0], [218.0, 217.0], [338.0, 163.0], [355.0, 138.0]], [[268.0, 314.0], [196.0, 238.0], [215.0, 219.0], [337.0, 169.0], [358.0, 189.0]], [[268.0, 314.0], [204.0, 232.0], [225.0, 215.0], [355.0, 209.0], [382.0, 222.0]], [[268.0, 314.0], [223.0, 219.0], [247.0, 206.0], [372.0, 249.0], [393.0, 270.0]], [[268.0, 314.0], [238.0, 213.0], [264.0, 204.0], [381.0, 265.0], [412.0, 264.0]], [[268.0, 314.0], [275.0, 208.0], [302.0, 209.0], [428.0, 257.0], [434.0, 287.0]], [[268.0, 314.0], [289.0, 209.0], [316.0, 214.0], [444.0, 259.0], [451.0, 290.0]]]
+points_sets =  [[[195.0,232.0],[230.0,139.0],[243.0,120.0]],[[255.0,200.0], [330.0,140.0], [353.0,130.0]],[[255.0,200.0],[353.0,185.0],[375.0,181.0]],[[255.0,200.0],[351.0,225.0],[372.0,230.0]]]
 
 # colors = [
 #     (255, 0, 0),  # Blue

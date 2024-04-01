@@ -9,6 +9,8 @@ std_msgs::Float64 j1_vel;
 std_msgs::Float64 j2_vel;
 std_msgs::Float64 j3_vel;
 
+int no_of_actuators;
+
 // In case of physical
 // float j1_vel = 0.0;
 // float j2_vel = 0.0;
@@ -22,7 +24,10 @@ void jointVelCallback(const::std_msgs::Float64MultiArray &msg){
 
     j1_vel.data = msg.data.at(0);
     j2_vel.data = msg.data.at(1);
-    j3_vel.data = msg.data.at(2); //comment/unc0mment depending on number of joints used
+    if (no_of_actuators==3){
+        j3_vel.data = msg.data.at(2);
+    }
+     //comment/unc0mment depending on number of joints used
 }
 
 // Unclomment for physical
@@ -38,13 +43,14 @@ int main(int argc, char **argv){
     ros::init(argc, argv, "joint_hardware_interface");
     ros::NodeHandle n;
     
+    n.getParam("vsbot/shape_control/no_of_actuators", no_of_actuators);
     // Subscribers
     ros::Subscriber joint_vel_sub = n.subscribe("joint_vel", 1, jointVelCallback);
     
     // Publishers for simulation
     ros::Publisher franka_joint2_vel_pub = n.advertise<std_msgs::Float64>("/panda/joint2_velocity_controller/command",1);
     ros::Publisher franka_joint4_vel_pub = n.advertise<std_msgs::Float64>("/panda/joint4_velocity_controller/command",1);
-    ros::Publisher franka_joint6_vel_pub = n.advertise<std_msgs::Float64>("/panda/joint6_velocity_controller/command",1);
+    ros::Publisher franka_joint6_vel_pub = n.advertise<std_msgs::Float64>("/panda/joint6_velocity_controller/command",1);   
 
     //Publishers for physical
     // ros::Publisher franka_joint_vel_pub = n.advertise<std_msgs::Float64MultiArray>("/joint_group_velocity_controller/command",1);
@@ -93,7 +99,11 @@ int main(int argc, char **argv){
         // to activate 3 joints in simulation
         franka_joint2_vel_pub.publish(j1_vel);
         franka_joint4_vel_pub.publish(j2_vel);
-        franka_joint6_vel_pub.publish(j3_vel);
+
+        if (no_of_actuators==3){
+            franka_joint6_vel_pub.publish(j3_vel);
+        }
+        
 
         //Publish physical joint vel
         // franka_joint_vel_pub.publish(franka_joint_vel);

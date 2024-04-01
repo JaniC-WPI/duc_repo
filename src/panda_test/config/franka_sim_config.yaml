@@ -33,14 +33,15 @@ vsbot :
 # Jacobian Estimation Parameters ------------------------------------
   estimation:
     epsilon: 1.0e-5 # update threshold or convergence condition
-    gamma:  10 # learning rate
-    gamma2: 20 # learning rate during servoing
+    gamma:  10.0 # learning rate
+    gamma2: 10.0 # learning rate during servoing
+    gamma3: 1.0e-5
     window: 20 # window size
     amplitude: 0.1 # amplitude for initial sin velocities
     rate: 10 # initialization loop rate
 
   control:
-    saturation: 10       # 2 joints
+    saturation: 50       # 2 joints
     # saturation: 10   # 3 joints
     # no_of_actuators: 2
     # no_of_features: 2
@@ -52,9 +53,11 @@ vsbot :
     goal_pos_y: 206
     # window: 20 # window size
     # lam: -10.0e-4 # servoing gain
-    lam: -0.2 # for 2 joints
+    lam: -0.3 # for 2 joints
     jacobian: [19, 47, -79,  7, 89, -13, 71, -59, -23, 61, 41, -67,  -3,  2, -11, 29, -43, -31, 73, 17, -5, 83, 37, 53]
-    gains1: [-0.8, -0.8, -0.8, -0.8, -1.5, -1.5, -0.5, -0.5] # for 3 joints
+    # jacobian: [19, 47, -79,  7, 89, -13, 71, -59, -23, 61, 41, -67]  #,-3,  2, -11, 29, -43, -31, 73, 17, -5, 83, 37, 53]
+    # jacobian: [19, 47, -79,  7, 89, -13, 71, -59, -23, 61, 41, -67,  -3,  2, -11, 29, -43, -31]
+    gains1: [-0.5, -0.5, -0.3, -0.3, -0.5, -0.5, -0.3, -0.3] # for 3 joints
     gains2: [-0.3, -0.3, -0.3, -0.3, -1.5, -1.5, -1.0, -1.0] # for 3 joints
 
 # Shape Servoing Parameters -------------------------------------------

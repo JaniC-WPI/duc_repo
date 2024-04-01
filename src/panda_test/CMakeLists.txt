@@ -148,9 +148,9 @@ include_directories(
 # add_dependencies(franka_energy_func_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 # target_link_libraries(franka_energy_func_node ${catkin_LIBRARIES})
 
-add_executable(franka_shape_energy_func_node src/franka_shape_compute_energy_functional.cpp)
-add_dependencies(franka_shape_energy_func_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(franka_shape_energy_func_node ${catkin_LIBRARIES})
+# add_executable(franka_shape_energy_func_node src/franka_shape_compute_energy_functional.cpp)
+# add_dependencies(franka_shape_energy_func_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(franka_shape_energy_func_node ${catkin_LIBRARIES})
 
 # add_executable(servo_controller_node src/servo_controller.cpp)
 # add_dependencies(servo_controller_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -190,17 +190,17 @@ add_executable(franka_shape_record_node src/franka_shape_vs_recorder.cpp)
 add_dependencies(franka_shape_record_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(franka_shape_record_node ${catkin_LIBRARIES})
 
-add_executable(franka_shape_controller_node src/franka_shape_vs.cpp)
-add_dependencies(franka_shape_controller_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(franka_shape_controller_node ${catkin_LIBRARIES})
+# add_executable(franka_shape_controller_node src/franka_shape_vs.cpp)
+# add_dependencies(franka_shape_controller_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(franka_shape_controller_node ${catkin_LIBRARIES})
 
 # add_executable(redundant_shape_controller_node src/redundant_shape_servo_controller.cpp)
 # add_dependencies(redundant_shape_controller_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 # target_link_libraries(redundant_shape_controller_node ${catkin_LIBRARIES})
 
-add_executable(franka_dl_controller_node src/franka_dl_vs.cpp)
-add_dependencies(franka_dl_controller_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(franka_dl_controller_node ${catkin_LIBRARIES})
+# add_executable(franka_dl_controller_node src/franka_dl_vs.cpp)
+# add_dependencies(franka_dl_controller_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(franka_dl_controller_node ${catkin_LIBRARIES})
 
 add_executable(franka_sim_controller_node src/franka_sim_vs.cpp)
 add_dependencies(franka_sim_controller_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -210,9 +210,9 @@ add_executable(franka_dl_energy_func_node src/franka_dl_compute_energy_functiona
 add_dependencies(franka_dl_energy_func_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(franka_dl_energy_func_node ${catkin_LIBRARIES})
 
-add_executable(franka_sim_energy_func_node src/franka_sim_compute_energy_functional.cpp)
-add_dependencies(franka_sim_energy_func_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(franka_sim_energy_func_node ${catkin_LIBRARIES})
+# add_executable(franka_sim_energy_func_node src/franka_sim_compute_energy_functional.cpp)
+# add_dependencies(franka_sim_energy_func_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(franka_sim_energy_func_node ${catkin_LIBRARIES})
 
 add_executable(franka_dl_record_node src/franka_dl_vs_recorder.cpp)
 add_dependencies(franka_dl_record_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})

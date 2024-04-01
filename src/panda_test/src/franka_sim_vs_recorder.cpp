@@ -12,6 +12,13 @@
 int status = 0;
 int current_goal_set = 0;
 
+int no_of_features;
+
+// n.getParam("vsbot/shape_control/no_of_features", no_of_features);
+
+int no_of_actuators;
+
+// n.getParam("vsbot/shape_control/no_of_features", no_of_actuators);
 
 void statusCallback(const std_msgs::Int32 &status_msg){
     status = status_msg.data;
@@ -32,17 +39,18 @@ void currentGoalSetCallback(const std_msgs::Int32 &msg) {
     current_goal_set = msg.data;
 }
 
-
-
 void dsCallback(const std_msgs::Float64MultiArray &msg){
     // Write ds to excel
     std::ofstream ds_plotdata("ds.csv",std::ios::app);
     // uncomment next line for 3 features
-    // ds_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","<<msg.data.at(3)<<","<<msg.data.at(4)<<","<<msg.data.at(5)<<"\n";
-
-    // uncommnet next line for 4 features
-    ds_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","<<msg.data.at(3)<<","
-    <<msg.data.at(4)<<","<<msg.data.at(5)<<","<<msg.data.at(6)<<","<<msg.data.at(7)<<"\n";
+    if (no_of_features==6){
+        ds_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","
+        <<msg.data.at(3)<<","<<msg.data.at(4)<<","<<msg.data.at(5)<<"\n";
+    }
+    else if (no_of_features==8){
+        ds_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","<<msg.data.at(3)<<","
+        <<msg.data.at(4)<<","<<msg.data.at(5)<<","<<msg.data.at(6)<<","<<msg.data.at(7)<<"\n";
+    }  
     // <<msg.data.at(8)<<","<<msg.data.at(9)<<",";
     //  <<msg.data.at(10)<<","<<msg.data.at(11)<<"\n";
     ds_plotdata.close();
@@ -50,8 +58,14 @@ void dsCallback(const std_msgs::Float64MultiArray &msg){
 void drCallback(const std_msgs::Float64MultiArray &msg){
     // Write dr to excel
     std::ofstream dr_plotdata("dr.csv", std::ios::app);
-    // dr_plotdata<<msg.data.at(0)<<","<<msg.data.at(1)<<"\n"; //uncomment for 2 joints
-    dr_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<"\n";//uncomment for 3 joints    
+    if (no_of_actuators==2){
+        dr_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<"\n"; //uncomment for 2 joints
+    }
+    else if (no_of_actuators==3){
+        dr_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","
+        <<msg.data.at(2)<<"\n";//uncomment for 3 joints    
+    }   
+    
     dr_plotdata.close();
 }
 void JCallback(const std_msgs::Float32 &msg){
@@ -98,9 +112,12 @@ void velCallback(const std_msgs::Float64MultiArray &msg){
         j2vel_plotdata<<current_goal_set<<","<<msg.data.at(1)<<"\n";
         j2vel_plotdata.close();
         
-        std::ofstream j3vel_plotdata("j3vel.csv",std::ios::app);
-        j3vel_plotdata<<current_goal_set<<","<<msg.data.at(2)<<"\n";
-        j3vel_plotdata.close();
+        if (no_of_actuators==3){
+            std::ofstream j3vel_plotdata("j3vel.csv",std::ios::app);
+            j3vel_plotdata<<current_goal_set<<","<<msg.data.at(2)<<"\n";
+            j3vel_plotdata.close();
+        }
+        
 
 
     }
@@ -122,10 +139,18 @@ void velCallback(const std_msgs::Float64MultiArray &msg){
 void errCallback(const std_msgs::Float64MultiArray &msg){
     if(status>1){
         std::ofstream err_plotdata("err.csv", std::ios::app);
-        err_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","
+        if (no_of_features==8){
+            err_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","
                     <<msg.data.at(2)<<","<<msg.data.at(3)<<","
                     <<msg.data.at(4)<<","<<msg.data.at(5)<<","
                     <<msg.data.at(6)<<","<<msg.data.at(7)<<"\n";
+        }
+        else if (no_of_features==6){
+            err_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","
+                    <<msg.data.at(2)<<","<<msg.data.at(3)<<","
+                    <<msg.data.at(4)<<","<<msg.data.at(5)<<"\n";
+        }
+        
                     // <<msg.data.at(8)<<","<<msg.data.at(9)<<","
                 //    <<msg.data.at(10)<<","<<msg.data.at(11)<<"\n";
         err_plotdata.close();
@@ -160,9 +185,16 @@ void errCallback(const std_msgs::Float64MultiArray &msg){
 void cpCallback(const std_msgs::Float64MultiArray &msg){
         if(status>0){
             std::ofstream cp_plotdata("cp.csv", std::ios::app);
-            cp_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","
-            <<msg.data.at(3)<<","<<msg.data.at(4)<<","<<msg.data.at(5)<<","<<msg.data.at(6)<<","
-            <<msg.data.at(7)<<"\n";
+            if (no_of_features==8){
+                cp_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","
+                <<msg.data.at(3)<<","<<msg.data.at(4)<<","<<msg.data.at(5)<<","<<msg.data.at(6)<<","
+                <<msg.data.at(7)<<"\n";
+            }
+            else if (no_of_features==6){
+                cp_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","
+            <<msg.data.at(3)<<","<<msg.data.at(4)<<","<<msg.data.at(5)<<"\n";
+            }
+            
             // <<msg.data.at(8)<<","<<msg.data.at(9)<<","
             // <<msg.data.at(10)<<","<<msg.data.at(11)<<"\n";
             cp_plotdata.close();
@@ -188,6 +220,9 @@ int main(int argc, char **argv){
     ros::init(argc, argv, "servo_control_node");
     ros::NodeHandle n;
 
+    n.getParam("vsbot/shape_control/no_of_features", no_of_features);
+    n.getParam("vsbot/shape_control/no_of_actuators", no_of_actuators);
+
     // std::cout<<"Creating files"<<std::endl;
     // Create files to write data to
     std::ofstream J_plot("modelerror.csv");
@@ -198,7 +233,7 @@ int main(int argc, char **argv){
     std::ofstream j3vel_plot("j3vel.csv"); // comment/uncomment on the basis of joint numbers
     std::ofstream err_plot("err.csv");
     std::ofstream cp_plot("cp.csv");
-    std::ofstream joint_angle_plot("joint_angles.csv");    
+    // std::ofstream joint_angle_plot("joint_angles.csv");    
 
     // Add column names to files
     J_plot <<"current_goal"<<","<<"Model Error"<<"\n";
@@ -241,8 +276,8 @@ int main(int argc, char **argv){
     cp_plot <<"current_goal"<<","<<"cp3 x"<<","<<"cp3 y"<<","<<"cp4 x"<<","<<"cp4 y"<<","
                 <<"cp5 x"<<","<<"cp5 y"<<","<<"cp6 x"<<","<<"cp6 y"<<"\n";
     cp_plot.close();
-    joint_angle_plot<<"current_goal"<<","<<"Joint1"<<","<<"Joint2"<<","<<"Joint3"<<"\n";
-    joint_angle_plot.close();
+    // joint_angle_plot<<"current_goal"<<","<<"Joint1"<<","<<"Joint2"<<","<<"Joint3"<<"\n";
+    // joint_angle_plot.close();
 
 
     // Initialize subscribers

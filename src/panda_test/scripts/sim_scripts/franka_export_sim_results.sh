@@ -37,6 +37,9 @@ mv ~/.ros/goal_raw ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
 # mv ~/.ros/goal_d_raw ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
 # mv ~/.ros/d_raw ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
 
-cp ~/duc_repo/src/panda_test/config/franka_dl_config.yaml  ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
-cp ~/duc_repo/src/panda_test/config/dl_features.yaml  ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+cp ~/duc_repo/src/panda_test/config/franka_sim_config.yaml  ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+cp ~/duc_repo/src/panda_test/config/dl_multi_features.yaml  ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+cp ~/duc_repo/src/panda_test/launch/franka_sim.launch  ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+cp ~/duc_repo/src/panda_test/launch/franka_sim_goal.launch  ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+
 

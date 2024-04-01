@@ -4,6 +4,8 @@
         "string_view": "c",
         "bitset": "cpp",
         "initializer_list": "cpp",
-        "utility": "cpp"
+        "utility": "cpp",
+        "ostream": "cpp",
+        "fstream": "cpp"
     }
 }

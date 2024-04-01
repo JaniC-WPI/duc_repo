@@ -1,8 +1,11 @@
-float32 gamma
+# Request
+float32 gamma_general
+float32 gamma_third_actuator
 float32 it
 std_msgs/Float32MultiArray dS
 std_msgs/Float32MultiArray dR
 std_msgs/Float32MultiArray qhat
 ---
+# Response
 float32 J
 std_msgs/Float32MultiArray qhat_dot

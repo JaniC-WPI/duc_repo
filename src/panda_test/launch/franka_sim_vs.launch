@@ -28,8 +28,8 @@
     <!-- <node name="depth_writer" pkg="panda_test" type="depth_write.py" output="screen" respawn="false" /> -->
     
     <!-- Visualization node -->
-    <node name="franka_sim_vs_vis" pkg="panda_test" type="franka_sim_vs_vis_node_3f.py" output="screen" respawn="false" required="true" />
-    <!-- <node name="goal_img_pub" pkg="panda_test" type="franka_dl_goal_img_pub.py" output="screen" respawn="false"/> -->
+    <node name="franka_sim_vs_vis" pkg="panda_test" type="franka_sim_vs_vis_node_3f_planning.py" output="screen" respawn="false" required="true" />
+    <node name="sim_goal_img_pub" pkg="panda_test" type="franka_sim_goal_img_pub.py" output="screen" respawn="false"/>
 
     <!-- publish multiple references -->
     <!-- <node name="franka_multiref" pkg="encoderless_vs" type="multiref.py" output="screen" /> -->
