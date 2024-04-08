@@ -22,8 +22,7 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
     // std::cout <<"no of features: "<<no_of_features<<std::endl;
 
     // Assign Request data
-    float gamma_general = req.gamma_general; //Learning Rate for first two joints
-    float gamma_third_actuator = req.gamma_third_actuator;
+    float gamma = req.gamma; //Learning Rate
     float it = req.it; // iterator
 
     std_msgs::Float32MultiArray dS =  req.dS;
@@ -109,7 +108,6 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
 
     // Updated Jacobian Vectors
     for(int i=0; i<dSmat.cols();i++){
-        float current_gamma = (i == 2) ? gamma_third_actuator : gamma_general;
         if(Ji(i) > eps){    // Update Jacobian if error greater than convergence threshold
             Eigen::MatrixXf G1 = dRmat*(qhatMat.row(i).transpose()) - dSmat.col(i);
             // std::cout<<"Size of G1:"<<G1.rows()<<","<<G1.cols()<<std::endl;
@@ -125,7 +123,7 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
 
             // std::cout<<"Size of H1:"<<H1.rows()<<","<<H1.cols()<<std::endl;
             Eigen::MatrixXf H = H1.transpose(); 
-            qhatMat.row(i) = (-current_gamma*(H.transpose())*G).transpose();
+            qhatMat.row(i) = (-gamma*(H.transpose())*G).transpose();
         }
     }
     // std::cout<<"updated Jacobian vectors"<<std::endl;

@@ -1,5 +1,6 @@
 #include "ros/ros.h"
 #include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/SVD>
 #include <math.h>
 #include <iostream>
 #include <vector>
@@ -85,6 +86,8 @@ int main(int argc, char **argv){
     ros::Publisher cp_pub = n.advertise<std_msgs::Float64MultiArray>("vsbot/control_points", 1);
     // Declaring a publisher for the current goal set
     ros::Publisher current_goal_set_pub = n.advertise<std_msgs::Int32>("current_goal_set_topic", 1);
+    ros::Publisher Qhat_pub = n.advertise<std_msgs::Float64MultiArray>("Qhat_columns", 1);
+    ros::Publisher Qhat_feat_pub = n.advertise<std_msgs::Float64MultiArray>("Qhat_rows", 1);
     // std::cout << "Initialized Publishers" <<std::endl;
 
     // Initializing ROS subscribers
@@ -471,8 +474,11 @@ int main(int argc, char **argv){
     // Refresh subscribers
     ros::spinOnce();
 
-    // ----------------------- Control Loop for Servoing -----------------------------
+    // ----------------------- Control Loop for Servoing -----------------------------    
     std_msgs::Int32 current_goal_set_msg; // Message for publishing current goal set index
+    
+
+
     while(ros::ok() && !end_flag && current_goal_set < num_goal_sets){    // convergence condition
         // error norm "err" is always positive
         // std::vector<float> cur_goal = goal_features[current_goal_set];
@@ -524,8 +530,44 @@ int main(int argc, char **argv){
             row_count = row_count + 1;
             itr = itr + no_of_actuators;  // comment - possible change for no_of_actuators
         }
-        // std::cout<<"Created Jacobian: "<<Qhat<<std::endl;
+        std::cout<<"Created Jacobian: "<<Qhat<<std::endl;
+
+        std_msgs::Float64MultiArray Qhat_msg;
+        Qhat_msg.layout.dim.push_back(std_msgs::MultiArrayDimension());
+        Qhat_msg.layout.dim[0].label = "Qhat_column_elements";
+        Qhat_msg.layout.dim[0].size = Qhat.rows() * Qhat.cols(); // Assuming Qhat is a dense matrix
+        Qhat_msg.layout.dim[0].stride = 1;
+
+        // Flatten Qhat into Qhat_msg.data
+        for (int row = 0; row < Qhat.rows(); ++row) {
+            for (int col = 0; col < Qhat.cols(); ++col) {
+                Qhat_msg.data.push_back(Qhat(row, col));
+            }
+        }
+        std::cout<<"Published Jacobian Matrix: "<<Qhat_msg<<std::endl;
         
+        // Publishing the Qhat matrix
+        Qhat_pub.publish(Qhat_msg);
+
+        Eigen::MatrixXf Qhat_T = Qhat.transpose();        
+
+        Eigen::JacobiSVD<Eigen::MatrixXf> svd(Qhat, Eigen::ComputeFullU | Eigen::ComputeFullV);
+        float tolerance = 1e-4; // Threshold for considering singular values as zero
+        bool is_singular = svd.singularValues().minCoeff() < tolerance;
+
+        std::cout << "Min Coefficient: " << svd.singularValues().minCoeff() << std::endl;
+
+        // Optional: Print the condition number for diagnostics
+        float cond_number = svd.singularValues().maxCoeff() / svd.singularValues().minCoeff();
+        std::cout << "Condition number of Qhat: " << cond_number << std::endl;
+
+        if (is_singular) {
+            std::cerr << "Warning: Qhat is singular or close to singular!" << std::endl;
+            status.data = -1;
+            status_pub.publish(status);
+            // Handle the singularity case, e.g., by applying regularization
+        }
+
         // Convert error std::vector to Eigen::vector
         // for matrix computations
         Eigen::VectorXf error_vec(no_of_features);
@@ -548,6 +590,7 @@ int main(int argc, char **argv){
         // Closed form solution for linearly independent columns
         // A_inv = (A.transpose()*A).inverse() * A.transpose()
         Eigen::MatrixXf Qhat_inv = (Qhat.transpose()*Qhat).inverse() * Qhat.transpose();
+        std::cout << "Qhat_inv dimensions: " << Qhat_inv.rows() << "x" << Qhat_inv.cols() << std::endl;
         // std::cout<<"Inverted Jacobian: \n"<<Qhat_inv<<std::endl;
         // Saturating the error vector
         for(int i=0; i<no_of_features; i++){
@@ -555,21 +598,42 @@ int main(int argc, char **argv){
                 error_vec(i) = (error_vec(i)/abs(error_vec(i)))*saturation;
             }
         }
+        std::cout << "Error vector dimensions: " << error_vec.size() << std::endl;
         // IBVS control law (Velocity generator)
         //  With Berk 
         // P Control 
         std::cout<<"Qhat_inv: "<<Qhat_inv<<std::endl;
+
+        std_msgs::Float64MultiArray Qhat_feat_msg;
+        Qhat_feat_msg.layout.dim.push_back(std_msgs::MultiArrayDimension());
+        Qhat_feat_msg.layout.dim[0].label = "Qhat_row_elements";
+        Qhat_feat_msg.layout.dim[0].size = Qhat_inv.rows() * Qhat_inv.cols(); // Assuming Qhat is a dense matrix
+        Qhat_feat_msg.layout.dim[0].stride = 1;
+
+        // Flatten Qhat into Qhat_msg.data
+        for (int row = 0; row < Qhat_inv.rows(); ++row) {
+            for (int col = 0; col < Qhat_inv.cols(); ++col) {
+                Qhat_feat_msg.data.push_back(Qhat_inv(row, col));
+            }
+        }
+        std::cout<<"Published Jacobian Transpose Matrix: "<<Qhat_feat_msg<<std::endl;
+        
+        // Publishing the Qhat matrix
+        Qhat_feat_pub.publish(Qhat_feat_msg);
+
         // std::cout<<"error_vec: "<<error_vec<<std::endl;
         // std::cout<<"gains: "<<lam<<std::endl;
         // joint_vel = lam*(Qhat_inv)*(error_vec);
-        std::cout<<"gains"<<Eigen::MatrixXf(K.asDiagonal())<<std::endl;
+        // std::cout<<"gains"<<Eigen::MatrixXf(K.asDiagonal())<<std::endl;
+        std::cout << "Diagonal gains matrix dimensions: " << Eigen::MatrixXf(K.asDiagonal()).rows() << "x" << Eigen::MatrixXf(K.asDiagonal()).cols() << std::endl;
 
         if (no_of_features==8){
             joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
         }        
         else if (no_of_features==6){
             joint_vel = lam*(Qhat_inv)*(error_vec);
-        }
+        } 
+                
         std::cout<<"joint_vel_1: "<<joint_vel[0]<<std::endl;
         std::cout<<"joint_vel_2: "<<joint_vel[1]<<std::endl;
         if (no_of_actuators==3){

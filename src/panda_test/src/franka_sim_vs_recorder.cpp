@@ -76,6 +76,56 @@ void JCallback(const std_msgs::Float32 &msg){
     }
 }
 
+void qhatCallback(const std_msgs::Float64MultiArray &msg){
+    // Assuming Qhat is a matrix with a fixed number of rows (features) and columns (actuators)
+    std::ofstream qhat_plotdata("qhat.csv", std::ios::app);
+
+    // Ensure that the number of elements in the message is as expected for a 8x3 matrix
+    if (msg.data.size() == no_of_features * no_of_actuators) {
+        for(int row = 0; row < no_of_features; ++row) {
+            for(int col = 0; col < no_of_actuators; ++col) {
+                // Calculate the index in the flat vector for the current element
+                int index = row * no_of_actuators + col;
+                qhat_plotdata << msg.data[index];
+                // Add a comma after each element except the last one in a row
+                if (col < no_of_actuators - 1) {
+                    qhat_plotdata << ",";
+                }
+            }
+            // End the line after finishing a row to move to the next row of the matrix
+            qhat_plotdata << "\n";
+        }
+    } else {
+        std::cerr << "Error: Received Qhat data size does not match expected size for a 8x3 matrix.\n";
+    }
+    qhat_plotdata.close();
+}
+
+void qhatFeatCallback(const std_msgs::Float64MultiArray &msg){
+    // Assuming Qhat is a matrix with a fixed number of rows (features) and columns (actuators)
+    std::ofstream qhat_feat_plotdata("qhat_feat.csv", std::ios::app);
+
+    // Ensure that the number of elements in the message is as expected for a 8x3 matrix
+    if (msg.data.size() == no_of_actuators*no_of_features) {
+        for(int row = 0; row < no_of_actuators; ++row) {
+            for(int col = 0; col < no_of_features; ++col) {
+                // Calculate the index in the flat vector for the current element
+                int index = row * no_of_features + col;
+                qhat_feat_plotdata << msg.data[index];
+                // Add a comma after each element except the last one in a row
+                if (col < no_of_features - 1) {
+                    qhat_feat_plotdata << ",";
+                }
+            }
+            // End the line after finishing a row to move to the next row of the matrix
+            qhat_feat_plotdata << "\n";
+        }
+    } else {
+        std::cerr << "Error: Received Qhat_feat data size does not match expected size for a 3X8 matrix.\n";
+    }
+    qhat_feat_plotdata.close();
+}
+
 // void j1velCallback(const std_msgs::Float64 &msg){
 //     std::ofstream j1vel_plotdata("j1vel.csv",std::ios::app);
 //     j1vel_plotdata<<msg.data<<"\n";
@@ -233,6 +283,8 @@ int main(int argc, char **argv){
     std::ofstream j3vel_plot("j3vel.csv"); // comment/uncomment on the basis of joint numbers
     std::ofstream err_plot("err.csv");
     std::ofstream cp_plot("cp.csv");
+    std::ofstream qhat_plot("qhat.csv");
+    std::ofstream qhat_feat_plot("qhat_feat.csv");
     // std::ofstream joint_angle_plot("joint_angles.csv");    
 
     // Add column names to files
@@ -279,6 +331,13 @@ int main(int argc, char **argv){
     // joint_angle_plot<<"current_goal"<<","<<"Joint1"<<","<<"Joint2"<<","<<"Joint3"<<"\n";
     // joint_angle_plot.close();
 
+    qhat_plot << "joint1_jacobian" << "," << "joint2_jacobian" << "," << "joint3_jacobian" << "\n";
+    qhat_plot.close();
+
+    qhat_feat_plot << "x1" << "," << "y1" << "," << "x2" << "," << "y2" << "," << "x3" << "," << "y3"
+                    <<"," <<"x4"<<","<<"y4"<<"\n";
+    qhat_feat_plot.close();
+
 
     // Initialize subscribers
     ros::Subscriber ds_sub = n.subscribe("ds_record",1,dsCallback);
@@ -292,6 +351,10 @@ int main(int argc, char **argv){
                                     // Subscriber for current goal set
     ros::Subscriber current_goal_set_sub = n.subscribe("current_goal_set_topic", 1, currentGoalSetCallback);
     ros::Subscriber joint_sub = n.subscribe<sensor_msgs::JointState>("joint_states", 1, jointCallback);
+    ros::Subscriber Qhat_sub = n.subscribe("Qhat_columns", 1, qhatCallback);
+    ros::Subscriber Qhat_feat_sub = n.subscribe("Qhat_rows", 1, qhatFeatCallback);
+
+
 
 
     // Also add subs for Jacobian and Jacobian update

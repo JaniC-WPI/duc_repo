@@ -22,7 +22,8 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
     // std::cout <<"no of features: "<<no_of_features<<std::endl;
 
     // Assign Request data
-    float gamma = req.gamma; //Learning Rate
+    float gamma_general = req.gamma_general; //Learning Rate
+    float gamma_third_actuator = req.gamma_third_actuator;
     float it = req.it; // iterator
 
     std_msgs::Float32MultiArray dS =  req.dS;
@@ -80,7 +81,7 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
     row_count = 0;
     itr = 0;
     while(row_count < no_of_features){
-         for (int j = 0; j < no_of_actuators; j++) {
+        for (int j = 0; j < no_of_actuators; j++) {
             qhatMat(row_count, j) = qhatdata[itr + j];
         }
         // qhatMat.row(row_count) << qhatdata[itr], qhatdata[itr+1], qhatdata[itr+2];
@@ -107,28 +108,28 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
     // std::cout<<"computed energy functional"<<std::endl;
 
     // Updated Jacobian Vectors
-    for(int i=0; i<dSmat.cols();i++){
-        if(Ji(i) > eps){    // Update Jacobian if error greater than convergence threshold
-            Eigen::MatrixXf G1 = dRmat*(qhatMat.row(i).transpose()) - dSmat.col(i);
-            // std::cout<<"Size of G1:"<<G1.rows()<<","<<G1.cols()<<std::endl;
-            float G2 = dRmat.row(it)*(qhatMat.row(i).transpose()) - dSmat(it,i);
-            // std::cout<<"G2:"<<G2<<std::endl;
-            Eigen::MatrixXf G ((G1.rows()+1),1);
-            G << G1,
-                 G2;
-            // std::cout<<"Size of G:"<<G.rows()<<","<<G.cols()<<std::endl;
+    for(int j = 0; j < no_of_actuators; j++){
+    // Choose the appropriate learning rate based on the joint index
+    float current_gamma = (j < 2) ? gamma_general : gamma_third_actuator;
+        for(int i=0; i<dSmat.cols(); i++){
+            if(Ji(i) > eps){    // Update Jacobian if error greater than convergence threshold
+                Eigen::MatrixXf G1 = dRmat*(qhatMat.row(i).transpose()) - dSmat.col(i);
+                float G2 = dRmat.row(it)*(qhatMat.row(i).transpose()) - dSmat(it,i);
+                Eigen::MatrixXf G ((G1.rows()+1),1);
+                G << G1,
+                     G2;
 
-            Eigen::MatrixXf H1 (no_of_actuators,(window+1)); //comment - changes the row size with no_of_actuators
-            H1 << dRmat.transpose(), dRmat.row(it).transpose();
+                Eigen::MatrixXf H1 (no_of_actuators,(window+1));
+                H1 << dRmat.transpose(), dRmat.row(it).transpose();
 
-            // std::cout<<"Size of H1:"<<H1.rows()<<","<<H1.cols()<<std::endl;
-            Eigen::MatrixXf H = H1.transpose(); 
-            qhatMat.row(i) = (-gamma*(H.transpose())*G).transpose();
+                Eigen::MatrixXf H = H1.transpose(); 
+                // Apply the selected gamma for this joint update
+                qhatMat.row(i) = (-current_gamma*(H.transpose())*G).transpose();
+            }
         }
     }
-    // std::cout<<"updated Jacobian vectors"<<std::endl;
 
-    // Convert Eigen::Matrix to ROS MSG Array
+        // Convert Eigen::Matrix to ROS MSG Array
         // Declare vector to store qhatMat elements
         std::vector<float> qhatMatVector;
 

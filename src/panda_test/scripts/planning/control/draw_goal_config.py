@@ -6,7 +6,7 @@ import os
 
 if __name__ == "__main__": 
     # goal_config = np.array([[267, 432], [271, 315], [317, 218], [342, 231], [463, 293], [494, 281]])
-    goal_config = np.array([[316, 225], [399, 279], [413, 295]])
+    goal_config = np.array([[320, 233], [333, 250], [402, 179], [423, 175]])
 
     goal_image =  np.zeros((480,640,3), dtype=np.int8)
 

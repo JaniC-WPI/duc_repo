@@ -101,7 +101,7 @@ import os
 import sys
 
 # Paths to the input and output directories
-default_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/8/'
+default_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_planning_kp_sim/'
 output_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/kp_plan_viz/'
 
 def visualize_and_save(image, keypoints, filename, output_data_dir):
@@ -125,7 +125,7 @@ if __name__ == '__main__':
 
     # List JSON files
     json_files = sorted([f for f in os.listdir(data_dir) \
-                         if f.endswith(".json") and not f.endswith("_joint_angles.json") \
+                         if f.endswith(".json") and not f.endswith("_combined.json") \
                             and not f.endswith("_vel.json")])
 
     for json_file in json_files:
