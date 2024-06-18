@@ -163,7 +163,16 @@ int main(int argc, char **argv){
     n.getParam("vsbot/control/gains1",gains1);
 
     std::vector<float> gains2;
-    n.getParam("vsbot/control/gains2",gains2);    
+    n.getParam("vsbot/control/gains2",gains2);   
+
+    float alpha_gains;
+    n.getParam("vsbot/control/alpha_gains",alpha_gains);
+
+    float reg_lambda;
+    n.getParam("vsbot/control/reg_lambda",reg_lambda);
+
+    float p_lam;
+    n.getParam("vsbot/control/p_lam",p_lam);
 
     float gain_sm;
     n.getParam("vsbot/control/gain_sm", gain_sm);
@@ -424,6 +433,7 @@ int main(int argc, char **argv){
         msg.request.dS = dSmsg;
         msg.request.dR = dRmsg;
         msg.request.qhat = qhatmsg;
+        msg.request.feature_error_magnitude = 1.0;
 
         // call compute energy functional
         energyClient.call(msg);
@@ -530,7 +540,7 @@ int main(int argc, char **argv){
             row_count = row_count + 1;
             itr = itr + no_of_actuators;  // comment - possible change for no_of_actuators
         }
-        std::cout<<"Created Jacobian: "<<Qhat<<std::endl;
+        // std::cout<<"Created Jacobian: "<<Qhat<<std::endl;
 
         std_msgs::Float64MultiArray Qhat_msg;
         Qhat_msg.layout.dim.push_back(std_msgs::MultiArrayDimension());
@@ -544,7 +554,7 @@ int main(int argc, char **argv){
                 Qhat_msg.data.push_back(Qhat(row, col));
             }
         }
-        std::cout<<"Published Jacobian Matrix: "<<Qhat_msg<<std::endl;
+        // std::cout<<"Published Jacobian Matrix: "<<Qhat_msg<<std::endl;
         
         // Publishing the Qhat matrix
         Qhat_pub.publish(Qhat_msg);
@@ -575,6 +585,8 @@ int main(int argc, char **argv){
             error_vec(i) = error[i];
         }
 
+        Eigen::VectorXf unsaturated_error_vec = error_vec;
+
         // joint velocity Eigen::vector
         Eigen::VectorXf joint_vel;
 
@@ -590,6 +602,7 @@ int main(int argc, char **argv){
         // Closed form solution for linearly independent columns
         // A_inv = (A.transpose()*A).inverse() * A.transpose()
         Eigen::MatrixXf Qhat_inv = (Qhat.transpose()*Qhat).inverse() * Qhat.transpose();
+        // Eigen::MatrixXf Qhat_inv = (Qhat.transpose() * Qhat + reg_lambda * Eigen::MatrixXf::Identity(Qhat.cols(), Qhat.cols())).inverse() * Qhat.transpose();
         std::cout << "Qhat_inv dimensions: " << Qhat_inv.rows() << "x" << Qhat_inv.cols() << std::endl;
         // std::cout<<"Inverted Jacobian: \n"<<Qhat_inv<<std::endl;
         // Saturating the error vector
@@ -602,7 +615,7 @@ int main(int argc, char **argv){
         // IBVS control law (Velocity generator)
         //  With Berk 
         // P Control 
-        std::cout<<"Qhat_inv: "<<Qhat_inv<<std::endl;
+        // std::cout<<"Qhat_inv: "<<Qhat_inv<<std::endl;
 
         std_msgs::Float64MultiArray Qhat_feat_msg;
         Qhat_feat_msg.layout.dim.push_back(std_msgs::MultiArrayDimension());
@@ -616,7 +629,7 @@ int main(int argc, char **argv){
                 Qhat_feat_msg.data.push_back(Qhat_inv(row, col));
             }
         }
-        std::cout<<"Published Jacobian Transpose Matrix: "<<Qhat_feat_msg<<std::endl;
+        // std::cout<<"Published Jacobian Transpose Matrix: "<<Qhat_feat_msg<<std::endl;
         
         // Publishing the Qhat matrix
         Qhat_feat_pub.publish(Qhat_feat_msg);
@@ -625,10 +638,51 @@ int main(int argc, char **argv){
         // std::cout<<"gains: "<<lam<<std::endl;
         // joint_vel = lam*(Qhat_inv)*(error_vec);
         // std::cout<<"gains"<<Eigen::MatrixXf(K.asDiagonal())<<std::endl;
-        std::cout << "Diagonal gains matrix dimensions: " << Eigen::MatrixXf(K.asDiagonal()).rows() << "x" << Eigen::MatrixXf(K.asDiagonal()).cols() << std::endl;
+        // std::cout << "Diagonal gains matrix dimensions: " << Eigen::MatrixXf(K.asDiagonal()).rows() << "x" << Eigen::MatrixXf(K.asDiagonal()).cols() << std::endl;
 
-        if (no_of_features==8){
-            joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
+        // Compute the error magnitude for adaptive gain
+        float error_magnitude = unsaturated_error_vec.norm();
+
+        std::cout << "feature error norm: " << error_magnitude << std::endl;       
+        
+        // float adaptive_gain = p_lam * (1 + alpha_gains * error_magnitude); // Adaptive gain calculation
+
+        float adaptive_gain = (1+(alpha_gains * error_magnitude));
+
+        // std::cout << "Adaptive gain preprocess: " << adaptive_gain << std::endl;
+
+        // if ((current_goal_set == num_goal_sets - 1) && (error_magnitude <= 40)){
+        //     adaptive_gain = adaptive_gain * 2.5;
+        // }
+        // if (error_magnitude <= 40){
+        //     adaptive_gain = (adaptive_gain + 1)/2.5;
+        // }
+        Eigen::VectorXf adaptive_gains(no_of_features);
+        for (int i = 0; i < no_of_features; i++) {
+            float feature_error = abs(unsaturated_error_vec(i));
+            // adaptive_gains(i) = p_lam * (1 + alpha_gains * feature_error);
+            // adaptive_gains(i) = p_lam * alpha_gains * feature_error;
+            adaptive_gains(i) = (alpha_gains * feature_error);
+        }
+
+        // std::cout << "Diagonal adaptive gains: " << adaptive_gains << std::endl;
+
+        Eigen::MatrixXf adaptive_gains_matrix = adaptive_gains.asDiagonal();
+
+        Eigen::MatrixXf K_diag = K.asDiagonal();
+
+        std::cout << "Inverse Jacobian: " << Qhat_inv << std::endl;
+
+        std::cout << "Adaptive gain postprocess: " << adaptive_gain << std::endl;
+
+        // std::cout << "Applied gain: " << adaptive_gain * K_diag << std::endl;
+
+        // std::cout << "Adaptive gains matrix: " << adaptive_gains_matrix << std::endl;
+
+        if (no_of_features == 8 || no_of_features == 10 || no_of_features == 12){
+            // joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
+            joint_vel = (Qhat_inv)*(adaptive_gain*K_diag)*(error_vec);
+            // joint_vel = (Qhat_inv) * (adaptive_gains_matrix * K_diag) * (error_vec);
         }        
         else if (no_of_features==6){
             joint_vel = lam*(Qhat_inv)*(error_vec);
@@ -642,7 +696,7 @@ int main(int argc, char **argv){
         //uncomment - possible change for 3 joints
         // end of with Berk
         
-        
+        // std::cout<<"joint_vel: "<<joint_vel<<std::endl;
         // with Berk Sliding mode control
         // Eigen::VectorXf u_sliding_mode(no_of_features);
         // Eigen::VectorXf gain_sm_vec(no_of_features);
@@ -701,11 +755,79 @@ End of working velocity scaling*/
         if (no_of_actuators==3) {
             j_vel.data.push_back(joint_vel[2]); // Only add j3_vel if no_of_actuators is more than 2
         }
+        
+        // if ((error_magnitude <= 100) && (current_goal_set < (num_goal_sets - 1))){
+        //     j_vel.data.clear();
+        //     j_vel.data.push_back(joint_vel[0]);
+        //     j_vel.data.push_back(joint_vel[1]);
+        //     if (no_of_actuators==3) {
+        //         j_vel.data.push_back(joint_vel[2]*0.1); // Only add j3_vel if no_of_actuators is more than 2
+        //     }
+        // }
+        // // else if ((error_magnitude <= 70) && (current_goal_set == (num_goal_sets - 1))){
+        // //     j_vel.data.clear();
+        // //     j_vel.data.push_back(joint_vel[0]);
+        // //     j_vel.data.push_back(joint_vel[1]);
+        // //     if (no_of_actuators==3) {
+        // //         j_vel.data.push_back(joint_vel[2]); // Only add j3_vel if no_of_actuators is more than 2
+        // //     }
+        // // }
+        // else if ((error_magnitude <= 50) && (current_goal_set < (num_goal_sets - 1))){
+        //     j_vel.data.clear();
+        //     j_vel.data.push_back(joint_vel[0]);
+        //     j_vel.data.push_back(joint_vel[1]);
+        //         if (no_of_actuators==3) {
+        //             j_vel.data.push_back(joint_vel[2]); // Only add j3_vel if no_of_actuators is more than 2
+        //         }
+        // }       
+        // else if ((error_magnitude > 20) && (current_goal_set == (num_goal_sets - 1))){
+        //     j_vel.data.clear();
+        //     j_vel.data.push_back(joint_vel[0]);
+        //     j_vel.data.push_back(joint_vel[1]);
+        //     if (no_of_actuators==3) {
+        //         j_vel.data.push_back(-joint_vel[2]); // Only add j3_vel if no_of_actuators is more than 2
+        //     }
+        // }
+        // else if ((error_magnitude <= 20) && (current_goal_set == (num_goal_sets - 1))){
+        //     j_vel.data.clear();
+        //     j_vel.data.push_back(joint_vel[0]);
+        //     j_vel.data.push_back(joint_vel[1]);
+        //     if (no_of_actuators==3) {
+        //         j_vel.data.push_back(joint_vel[2]); // Only add j3_vel if no_of_actuators is more than 2
+        //     }
+        // }
+        // else {
+        //     j_vel.data.clear();
+        //     j_vel.data.push_back(joint_vel[0]);
+        //     j_vel.data.push_back(joint_vel[1]);
+        //     if (no_of_actuators==3) {
+        //         j_vel.data.push_back(0); // Only add j3_vel if no_of_actuators is more than 2
+        //     }
+        // }
+        
+        // j_vel.data.clear();
+        // j_vel.data.push_back(joint_vel[0]);
+        // j_vel.data.push_back(joint_vel[1]);
+
+        // // Add the third joint velocity based on the number of actuators and conditions
+        // if (no_of_actuators == 3) {
+        //     if (error_magnitude <= 100) {
+        //         j_vel.data.push_back(joint_vel[2] * 0.1); // Scale down j3_vel if error_magnitude <= 100
+        //     } else if ((error_magnitude <= 50) && (current_goal_set < num_goal_sets - 1)) {
+        //         j_vel.data.push_back(joint_vel[2]); // Use full j3_vel if error_magnitude <= 50 and not the last goal set
+        //     } else if ((error_magnitude <= 70) && (current_goal_set == num_goal_sets - 1)) {
+        //         j_vel.data.push_back(joint_vel[2]); // Use full j3_vel if error_magnitude <= 70 and it's the last goal set
+        //     } else {
+        //         j_vel.data.push_back(0); // Set j3_vel to 0 for all other cases
+        //     }
+        // }
 
 
         // std::cout<< "j1 vel: " << j_vel.data.at(0) << std::endl;
         // std::cout<< "j2 vel: " << j_vel.data.at(1) << std::endl;
         // std::cout<< "j3 vel: " << j_vel.data.at(2) << std::endl;
+
+        std::cout<<"for error magnitude" << error_magnitude <<"published joint_vel: "<< j_vel <<std::endl;
 
         j_pub.publish(j_vel);
         
@@ -855,6 +977,7 @@ End of working velocity scaling*/
             msg.request.dS = dSmsg;
             msg.request.dR = dRmsg;
             msg.request.qhat = qhatmsg;
+            msg.request.feature_error_magnitude = error_magnitude; 
             // Call energy functional service
             energyClient.call(msg);
             // Populate service response

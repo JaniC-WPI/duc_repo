@@ -3,19 +3,44 @@ import numpy as np
 import os
 
 # Load your image
-image_path = '/home/jc-merlab/.ros/sim_published_goal_image_orig.jpg'  # Replace with the path to your image
+image_path = '/home/jc-merlab/.ros/sim_published_goal_image_obs.jpg'  # Replace with the path to your image
 static_image = cv2.imread(image_path)
 gif_image = static_image.copy()
 
 # Save the result
 output_path = '/home/jc-merlab/.ros/sim_published_goal_image.jpg'
-output_dir = '/home/jc-merlab/Pictures/Dl_Exps/dl_vs/servoing/exps/euc_4/path/'
+output_dir = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/euc_4/path/'
 if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
 # List of points to draw
-points_sets =  [[[195.0,232.0],[230.0,139.0],[243.0,120.0]],[[255.0,200.0], [330.0,140.0], [353.0,130.0]],[[255.0,200.0],[353.0,185.0],[375.0,181.0]],[[255.0,200.0],[351.0,225.0],[372.0,230.0]]]
+# points_sets =  [[[255, 200], [333, 140], [354, 143], [352, 164]],\
+#                 # [[255, 200], [304, 198], [354, 197], [376, 195], [377, 218]]] #,\
+#                 [[280, 204], [378, 219], [392, 203], [409, 217]], \
+#                 [[320, 229], [413, 266], [434, 274], [426, 295]]] #, \
+#                 # [[280, 203], [315, 238], [351, 272], [366, 288], [351, 303]]
 
+# points_sets = [[[255, 200], [353, 214], [375, 217], [372, 239]],
+#                 [[255, 200], [333, 140], [352, 149], [344, 168]],
+#                 [[230, 205], [269, 114], [279, 94], [299, 103]]]
+        
+# points_sets = [[[235, 206], [255, 200], [333, 140], [354, 143], [352, 164]],
+#             #    [[235, 206], [255, 200], [354, 197], [376, 195], [377, 218]],
+#                [[260, 203], [280, 204], [378, 219], [392, 203], [409, 217]],
+#                [[303, 217], [320, 229], [413, 266], [434, 274], [426, 295]]]
+        
+# points_sets = [[[278, 203], [362, 151], [379, 163], [367, 180]],
+#                [[279, 203], [370, 167], [391, 159], [399, 180]]]
+            #    [[279, 203], [378, 203], [392, 218], [373, 236]],
+            #    [[279, 203], [364, 254], [372, 274], [347, 284]],
+            #    [[319, 228], [417, 234], [440, 232], [441, 260]],
+            #    [[339, 274], [437, 263], [460, 259], [465, 286]]]
+
+    # [[255, 200], [333, 140], [354, 144], [350, 165]]
+        
+points_sets = [[[191.0, 211.0], [217.0, 194.0], [325.0, 96.0], [340.0, 67.0], [376.0, 81.0]], [[167.0, 232.0], [188.0, 209.0], [246.0, 77.0], [263.0, 49.0], [297.0, 71.0]], [[138.0, 283.0], [146.0, 253.0], [103.0, 117.0], [126.0, 94.0], [154.0, 123.0]]]
+
+# 
 # colors = [
 #     (255, 0, 0),  # Blue
 #     (0, 255, 255)  # Green
@@ -30,6 +55,7 @@ fixed_colors = [(0, 0, 255), (255, 0, 0), (0, 255, 0), (255, 255, 0), (0, 255, 2
 colors = np.random.randint(0, 255, (len(points_sets), 3))
 
 for set_index, (points, color) in enumerate(zip(points_sets, colors)):
+    print(points)
     if set_index ==0:
         for x,y in points:
             cv2.circle(static_image, (int(x), int(y)), 9, (0,255,0), -1)

@@ -40,7 +40,7 @@ import os
 if __name__ == "__main__":
     image_path = '/home/jc-merlab/.ros/dl_published_goal_image_obs.jpg'
      # Define start and goal configurations as numpy arrays
-    start_config = np.array([[269, 431], [273, 315], [224, 221], [248, 208], [333, 108], [337, 75]]) 
+    start_config = np.array([[235, 206], [255, 200], [224, 221], [248, 208], [333, 108], [337, 75]]) 
     # goal_config = np.array([[267, 432], [271, 315], [223, 219], [247, 206], [372, 249], [402, 244]]) 
 
 

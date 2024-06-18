@@ -101,16 +101,56 @@ import os
 import sys
 
 # Paths to the input and output directories
-default_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_planning_kp_sim/'
+default_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_rearranged/'
 output_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/kp_plan_viz/'
 
+# def visualize_and_save(image, keypoints, filename, output_data_dir):
+#     # Iterate through all keypoints and draw them on the image
+#     for sublist in keypoints:
+#         for kp in sublist:
+#             u = int(kp[0])
+#             v = int(kp[1])
+#             image = cv2.circle(image, (u, v), radius=3, color=(0, 0, 255), thickness=-1)
+
+#     # Save the image to the specified output directory
+#     output_path = os.path.join(output_data_dir, filename)
+#     cv2.imwrite(output_path, image)
+
 def visualize_and_save(image, keypoints, filename, output_data_dir):
+    if len(keypoints) < 2:
+        print("Not enough keypoints to draw a line.")
+        return
+
     # Iterate through all keypoints and draw them on the image
-    for sublist in keypoints:
-        for kp in sublist:
-            u = int(kp[0])
-            v = int(kp[1])
-            image = cv2.circle(image, (u, v), radius=3, color=(0, 0, 255), thickness=-1)
+    for i in range(len(keypoints) - 1):
+        # Check if the coordinates are wrapped in another list and extract appropriately
+        if isinstance(keypoints[i][0], list):  # Checking if the coordinate is a nested list
+            u1 = int(keypoints[i][0][0])  # Accessing the first element in the nested list for x-coordinate
+            v1 = int(keypoints[i][0][1])  # Accessing the second element in the nested list for y-coordinate
+        else:
+            u1 = int(keypoints[i][0])
+            v1 = int(keypoints[i][1])
+
+        if isinstance(keypoints[i + 1][0], list):  # Repeat for the second point
+            u2 = int(keypoints[i + 1][0][0])
+            v2 = int(keypoints[i + 1][0][1])
+        else:
+            u2 = int(keypoints[i + 1][0])
+            v2 = int(keypoints[i + 1][1])
+
+        # Draw the keypoints
+        cv2.circle(image, (u1, v1), radius=3, color=(0, 0, 255), thickness=-1)
+        # Draw line connecting the keypoints
+        cv2.line(image, (u1, v1), (u2, v2), color=(0, 255, 0), thickness=1)
+
+    # Handle the last keypoint similarly
+    if isinstance(keypoints[-1][0], list):
+        u = int(keypoints[-1][0][0])
+        v = int(keypoints[-1][0][1])
+    else:
+        u = int(keypoints[-1][0])
+        v = int(keypoints[-1][1])
+    cv2.circle(image, (u, v), radius=3, color=(0, 0, 255), thickness=-1)
 
     # Save the image to the specified output directory
     output_path = os.path.join(output_data_dir, filename)
@@ -124,9 +164,7 @@ if __name__ == '__main__':
         os.makedirs(output_data_dir)
 
     # List JSON files
-    json_files = sorted([f for f in os.listdir(data_dir) \
-                         if f.endswith(".json") and not f.endswith("_combined.json") \
-                            and not f.endswith("_vel.json")])
+    json_files = sorted([f for f in os.listdir(data_dir) if f.endswith(".json") and not f.endswith("_combined.json") and not f.endswith("_vel.json") and not f.endswith("_joint_angles.json")])
 
     for json_file in json_files:
         base_filename = json_file.split('.')[0]  # Remove the extension from the json filename

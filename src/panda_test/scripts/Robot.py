@@ -259,8 +259,10 @@ class PandaReal2D(RobotTest):
                     # (-1.7628, 1.2),
                     (-1.2628, 1.2628),
                     (-0, 0),
-                    (-2.4708, -1.0708),
-                    # (-1.5481, -0.775),
+                    # (-2.754, -0.175),
+                    # (-1.5481, -0.775), 
+                    # (-3.718, -1.0708)
+                    (-2.0708, -0.775),
                     (-0, 0),
                     # (-0.0175, 1.75),
                     (1.1951, 2.9021),
@@ -276,7 +278,7 @@ class PandaReal2D(RobotTest):
             self.target_link,
 
             duplicated_joints=self.duplicated_joints,
-            initial_vel_sign = np.array([1, -1, -1]),
+            initial_vel_sign = np.array([-1, -1, -1]),
 
             kine_init=True,
 

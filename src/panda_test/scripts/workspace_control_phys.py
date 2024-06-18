@@ -153,13 +153,13 @@ if __name__ == '__main__':
     print("is main getting called")
     robot = PandaReal2D()
     # resolutions = [4, 4, 3, 3, 3, 3]
-    resolutions = [8, 1, 1]
+    resolutions = [8, 8, 1]
     # joint_limits = [(-1.7628, 1.2),
     #                 (-2.754, -0.075),
     #                 (-0.0175, 1.7)]
     joint_limits = np.array(PandaReal2D.joint_limits)[[1, 3, 5]]
-    v_max = [0.3, 0.3, 0.3]
+    v_max = [0.5, 0.5, 0.5]
     # v_max = [2.1, 2.1, 2.1, 2.1, 2.5, 2.5]
     # timesteps = 0.2
-    timesteps = np.array([4, 1, 1])
+    timesteps = np.array([4, 4, 1])
     WorkspacePublisher(robot, resolutions, joint_limits, v_max, timesteps, sync=False).run()

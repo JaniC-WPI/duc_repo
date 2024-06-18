@@ -22,13 +22,13 @@ status = -2
 itr = 0
 goal_image = None
 
-cp1x, cp1y, cp2x, cp2y, cp3x, cp3y, cp4x, cp4y = 0, 0, 0, 0, 0, 0, 0, 0
+cp1x, cp1y, cp2x, cp2y, cp3x, cp3y, cp4x, cp4y, cp5x, cp5y = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 no_of_actuators = rospy.get_param('vsbot/shape_control/no_of_actuators')
 no_of_features = rospy.get_param('vsbot/shape_control/no_of_features')
 
 def controlPointCallback(cp_msg):
-    global cp1x, cp1y, cp2x, cp2y, cp3x, cp3y, cp4x, cp4y
+    global cp1x, cp1y, cp2x, cp2y, cp3x, cp3y, cp4x, cp4y, cp5x, cp5y
 
     cp1x, cp1y = cp_msg.data[0], cp_msg.data[1]
     cp2x, cp2y = cp_msg.data[2], cp_msg.data[3]
@@ -36,6 +36,9 @@ def controlPointCallback(cp_msg):
 
     if (no_of_features == 8):
         cp4x, cp4y = cp_msg.data[6], cp_msg.data[7]
+    elif (no_of_features == 10):
+        cp4x, cp4y = cp_msg.data[6], cp_msg.data[7]
+        cp5x, cp5y = cp_msg.data[8], cp_msg.data[9]
 
 def goalImgCallback(img_msg):
     global goal_image
@@ -78,6 +81,9 @@ def visCallback(msg):
     cv2.circle(cv_img, (int(cp3x), int(cp3y)), 5, (255,255,0), -1)
     if (no_of_features==8):
         cv2.circle(cv_img, (int(cp4x), int(cp4y)), 5, (0,255,255), -1)
+    elif (no_of_features==10):
+        cv2.circle(cv_img, (int(cp4x), int(cp4y)), 5, (0,255,255), -1)
+        cv2.circle(cv_img, (int(cp5x), int(cp5y)), 5, (255,0,255), -1)
 
     if capture_images:
         fname = "frame_{:04d}.png".format(itr)

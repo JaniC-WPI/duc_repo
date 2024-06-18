@@ -12,7 +12,7 @@ from torchvision.transforms import functional as F
 from PIL import Image as Img
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-weights_path = '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_planning_b1_e50_v3.pth'
+weights_path = '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_planning_b1_e100_v4.pth'
 model = torch.load(weights_path).to(device)
 bridge = CvBridge()
 i = 0

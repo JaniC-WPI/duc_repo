@@ -1,0 +1,771 @@
+#!/usr/bin/env python
+import os
+import time
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+from os import listdir
+import pandas as pd
+import numpy as np
+import glob
+import cv2
+import json
+from os.path import expanduser
+import splitfolders
+import shutil
+from define_path import Def_Path
+from datetime import datetime
+
+from tqdm import tqdm
+
+import torch 
+import torchvision
+from torchvision import models
+from torchvision.models.detection.rpn import AnchorGenerator
+import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader
+import torch.nn as nn 
+import torchvision.transforms as T
+from torchvision.transforms import functional as F
+from torchsummary import summary
+from sklearn.model_selection import train_test_split
+from torch.cuda.amp import GradScaler, autocast
+
+import albumentations as A # Library for augmentations
+
+import matplotlib.pyplot as plt 
+from PIL import Image
+
+import transforms, utils, engine, train
+from utils import collate_fn
+from engine import train_one_epoch, evaluate
+
+t = torch.cuda.get_device_properties(0).total_memory
+print(t)
+torch.cuda.empty_cache()
+
+r = torch.cuda.memory_reserved(0)
+print(r)
+a = torch.cuda.memory_allocated(0)
+print(a)
+# f = r-a  # free inside reserved
+
+weights_path = '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_planning_b1_e100_v4.pth'
+
+n_nodes = 9
+
+# to generalize home directory. User can change their parent path without entering their home directory
+path = Def_Path()
+
+# parent_path =  path.home + "/Pictures/" + "Data/"
+
+parent_path =  "/home/jc-merlab/Pictures/Data/"
+
+# root_dir = parent_path + path.year + "-" + path.month + "-" + path.day + "/"
+root_dir = parent_path + "occ_panda_physical_dataset_full/"
+
+
+# In[ ]:
+
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+# torch.cuda.set_per_process_memory_fraction(0.9, 0)
+print(device)
+
+
+def train_transform():
+    return A.Compose([
+        A.Sequential([
+            A.RandomRotate90(p=1), # Random rotation of an image by 90 degrees zero or more times
+            A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.3, brightness_by_max=True, always_apply=False, p=1), # Random change of brightness & contrast
+        ], p=1)
+#         A.Resize(640, 480)  # Resize all images to be 640x480
+    ],
+    keypoint_params=A.KeypointParams(format='xy'), # More about keypoint formats used in albumentations library read at https://albumentations.ai/docs/getting_started/keypoints_augmentation/
+    bbox_params=A.BboxParams(format='pascal_voc', label_fields=['bboxes_labels']) # Bboxes should have labels, read more at https://albumentations.ai/docs/getting_started/bounding_boxes_augmentation/
+    )
+
+
+def train_test_split(src_dir):
+    dst_dir_img = src_dir + "images"
+    dst_dir_anno = src_dir + "annotations"
+    
+    if os.path.exists(dst_dir_img) and os.path.exists(dst_dir_anno):
+        print("folders exist")
+    else:
+        os.mkdir(dst_dir_img)
+        os.mkdir(dst_dir_anno)
+        
+    for jpgfile in glob.iglob(os.path.join(src_dir, "*.jpg")):
+        shutil.copy(jpgfile, dst_dir_img)
+
+    for jsonfile in glob.iglob(os.path.join(src_dir, "*.json")):
+        shutil.copy(jsonfile, dst_dir_anno)
+        
+    output = parent_path + "split_folder_output" + "-" + path.year + "-" + path.month + "-" + path.day 
+    
+    splitfolders.ratio(src_dir, # The location of dataset
+                   output=output, # The output location
+                   seed=42, # The number of seed
+                   ratio=(0.95, 0.025, 0.025), # The ratio of split dataset
+                   group_prefix=None, # If your dataset contains more than one file like ".jpg", ".pdf", etc
+                   move=False # If you choose to move, turn this into True
+                   )
+    
+    shutil.rmtree(dst_dir_img)
+    shutil.rmtree(dst_dir_anno)
+    
+    return output  
+
+class KPDataset(Dataset):
+    def __init__(self, root, transform=None, demo=False):                
+        self.root = root
+        self.transform = transform
+        self.demo = demo # Use demo=True if you need transformed and original images (for example, for visualization purposes)
+        self.imgs_files = sorted(os.listdir(os.path.join(root, "images")))
+        self.annotations_files = sorted(os.listdir(os.path.join(root, "annotations")))
+    
+    def __getitem__(self, idx):
+        img_file = self.imgs_files[idx]
+        img_path = os.path.join(self.root, "images", self.imgs_files[idx])
+        annotations_path = os.path.join(self.root, "annotations", self.annotations_files[idx])
+
+        img_original = cv2.imread(img_path)
+        img_original = cv2.cvtColor(img_original, cv2.COLOR_BGR2RGB)
+        
+        with open(annotations_path) as f:
+            data = json.load(f)
+            bboxes_original = data['bboxes']
+            keypoints_original = data['keypoints']
+            
+            # All objects are keypoints on the robot
+            bboxes_labels_original = [] 
+            bboxes_labels_original.append('base_joint')
+            bboxes_labels_original.append('joint2')
+            bboxes_labels_original.append('joint3')
+            bboxes_labels_original.append('joint4')
+            bboxes_labels_original.append('joint5')
+            bboxes_labels_original.append('joint6')  
+            bboxes_labels_original.append('joint7')
+            bboxes_labels_original.append('joint8')
+            bboxes_labels_original.append('joint9')
+
+        if self.transform:   
+            # Converting keypoints from [x,y,visibility]-format to [x, y]-format + Flattening nested list of keypoints            
+            # For example, if we have the following list of keypoints for three objects (each object has two keypoints):
+            # [[obj1_kp1, obj1_kp2], [obj2_kp1, obj2_kp2], [obj3_kp1, obj3_kp2]], where each keypoint is in [x, y]-format            
+            # Then we need to convert it to the following list:
+            # [obj1_kp1, obj1_kp2, obj2_kp1, obj2_kp2, obj3_kp1, obj3_kp2]
+            keypoints_original_flattened = [el[0:2] for kp in keypoints_original for el in kp]
+            
+            # Apply augmentations
+            transformed = self.transform(image=img_original, bboxes=bboxes_original, bboxes_labels=bboxes_labels_original, keypoints=keypoints_original_flattened)
+            img = transformed['image']
+            bboxes = transformed['bboxes']
+            # Unflattening list transformed['keypoints']
+            # For example, if we have the following list of keypoints for three objects (each object has two keypoints):
+            # [obj1_kp1, obj1_kp2, obj2_kp1, obj2_kp2, obj3_kp1, obj3_kp2], where each keypoint is in [x, y]-format
+            # Then we need to convert it to the following list:
+            # [[obj1_kp1, obj1_kp2], [obj2_kp1, obj2_kp2], [obj3_kp1, obj3_kp2]]
+            keypoints_transformed_unflattened = np.reshape(np.array(transformed['keypoints']), (-1,1,2)).tolist()
+
+            # Converting transformed keypoints from [x, y]-format to [x,y,visibility]-format by appending original visibilities to transformed coordinates of keypoints
+            keypoints = []
+            for o_idx, obj in enumerate(keypoints_transformed_unflattened):
+#                 print("object", obj)
+#                 print(" obj index", o_idx)# Iterating over objects
+                obj_keypoints = []
+                for k_idx, kp in enumerate(obj): # Iterating over keypoints in each object
+                    obj_keypoints.append(kp + [keypoints_original[o_idx][k_idx][2]])
+                keypoints.append(obj_keypoints)
+        
+        else:
+            img, bboxes, keypoints = img_original, bboxes_original, keypoints_original        
+        
+        # Convert everything into a torch tensor        
+        bboxes = torch.as_tensor(bboxes, dtype=torch.float32)       
+        target = {}
+        labels = [1, 2, 3, 4, 5, 6, 7, 8, 9]  
+#         labels = [1, 2, 3, 4, 5, 6]
+        target["boxes"] = bboxes
+        target["labels"] = torch.as_tensor(labels, dtype=torch.int64) # all objects are joint positions
+        target["image_id"] = torch.tensor([idx])
+        target["area"] = (bboxes[:, 3] - bboxes[:, 1]) * (bboxes[:, 2] - bboxes[:, 0])
+        target["iscrowd"] = torch.zeros(len(bboxes), dtype=torch.int64)
+        target["keypoints"] = torch.as_tensor(keypoints, dtype=torch.float32)
+        img = F.to_tensor(img)        
+        bboxes_original = torch.as_tensor(bboxes_original, dtype=torch.float32)
+        target_original = {}
+        target_original["boxes"] = bboxes_original
+        target_original["labels"] = torch.as_tensor(labels, dtype=torch.int64) # all objects are glue tubes
+        target_original["image_id"] = torch.tensor([idx])
+        target_original["area"] = (bboxes_original[:, 3] - bboxes_original[:, 1]) * (bboxes_original[:, 2] - bboxes_original[:, 0])
+        target_original["iscrowd"] = torch.zeros(len(bboxes_original), dtype=torch.int64)
+        target_original["keypoints"] = torch.as_tensor(keypoints_original, dtype=torch.float32)        
+        img_original = F.to_tensor(img_original)
+
+        if self.demo:
+            return img, target, img_original, target_original, img_file
+        else:
+            return img, target, img_file
+    
+    def __len__(self):
+        return len(self.imgs_files)
+    
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as func
+import numpy as np
+from torch.autograd import Variable
+import torch_geometric.nn as pyg
+from torch_geometric.data import Data
+
+_EPS = 1e-10
+
+class MLP(nn.Module):
+    def __init__(self, n_in, n_hid, n_out, do_prob=0.):
+        super(MLP, self).__init__()
+        self.fc1 = nn.Linear(n_in, n_hid)
+        self.fc2 = nn.Linear(n_hid, n_out)
+        self.bn = nn.BatchNorm1d(n_out)
+        self.dropout_prob = do_prob
+        self.init_weights()
+
+    def init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_normal_(m.weight.data)
+                m.bias.data.fill_(0.1)
+            elif isinstance(m, nn.BatchNorm1d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+
+    def batch_norm(self, inputs):
+        x = inputs.view(inputs.size(0) * inputs.size(1), -1)
+        x = self.bn(x)
+        return x.view(inputs.size(0), inputs.size(1), -1)
+
+    def forward(self, inputs):
+        x = func.elu(self.fc1(inputs))
+        x = func.dropout(x, self.dropout_prob, training=self.training)
+        x = func.elu(self.fc2(x))
+        return self.batch_norm(x)
+
+class GraphEncoder(nn.Module):
+    def __init__(self, n_in, n_hid, n_out=4, do_prob=0., factor=True):
+        super(GraphEncoder, self).__init__()
+        self.factor = factor
+
+        self.mlp1 = MLP(n_in, n_hid, n_hid, do_prob)
+        self.mlp2 = MLP(n_hid * 2, n_hid, n_hid, do_prob)  # +2 for edge features (distance and angle)
+        self.mlp3 = MLP(n_hid, n_hid, n_hid, do_prob)
+        if self.factor:
+            self.mlp4 = MLP(n_hid * 3, n_hid, n_hid, do_prob)
+        else:
+            self.mlp4 = MLP(n_hid * 2, n_hid, n_hid, do_prob)
+        self.fc_out = nn.Linear(n_hid, n_out)
+
+    def edge2node(self, x, rel_rec, rel_send):
+        incoming = torch.matmul(rel_rec.t(), x)
+        return incoming / incoming.size(1)
+
+    def node2edge(self, x, rel_rec, rel_send):
+        receivers = torch.matmul(rel_rec, x)
+        senders = torch.matmul(rel_send, x)
+        edges = torch.cat([receivers, senders], dim=2)
+        
+        return edges
+
+    def forward(self, inputs, rel_rec, rel_send):
+        x = inputs.view(inputs.size(0), inputs.size(1), -1)
+        x = self.mlp1(x)
+        x = self.node2edge(x, rel_rec, rel_send)
+        x = self.mlp2(x)
+        x_skip = x   
+
+        if self.factor:
+            x = self.edge2node(x, rel_rec, rel_send)
+            x = self.mlp3(x)
+            x = self.node2edge(x, rel_rec, rel_send)
+            x = torch.cat((x, x_skip), dim=2)
+            x = self.mlp4(x)
+        else:
+            x = self.mlp3(x)
+            x = torch.cat((x, x_skip), dim=2)
+            x = self.mlp4(x)
+
+        return self.fc_out(x)
+
+class GraphDecoder(nn.Module):
+    def __init__(self, n_in_node, edge_types, msg_hid, msg_out, n_hid, do_prob=0., skip_first=False):
+        super(GraphDecoder, self).__init__()
+        self.msg_fc1 = nn.ModuleList([nn.Linear(2 * n_in_node, msg_hid) for _ in range(edge_types)])
+        self.msg_fc2 = nn.ModuleList([nn.Linear(msg_hid, msg_out) for _ in range(edge_types)])
+        self.msg_out_shape = msg_out
+        self.skip_first_edge_type = skip_first
+
+        self.out_fc1 = nn.Linear(n_in_node + msg_out, n_hid)
+        self.out_fc2 = nn.Linear(n_hid, n_hid)
+        self.out_fc3 = nn.Linear(n_hid, n_in_node)
+        print('Using learned graph decoder.')
+
+        self.dropout_prob = do_prob
+
+    def single_step_forward(self, single_timestep_inputs, rel_rec, rel_send, single_timestep_rel_type):
+        receivers = torch.matmul(rel_rec, single_timestep_inputs)
+        senders = torch.matmul(rel_send, single_timestep_inputs)
+        pre_msg = torch.cat([receivers, senders], dim=-1)
+
+        all_msgs = Variable(torch.zeros(pre_msg.size(0), pre_msg.size(1), self.msg_out_shape))
+        if single_timestep_inputs.is_cuda:
+            all_msgs = all_msgs.cuda()
+
+        if self.skip_first_edge_type:
+            start_idx = 1
+        else:
+            start_idx = 0
+
+        for i in range(start_idx, len(self.msg_fc2)):
+            msg = func.relu(self.msg_fc1[i](pre_msg))
+            msg = func.dropout(msg, p=self.dropout_prob)
+            msg = func.relu(self.msg_fc2[i](msg))
+            msg = msg * single_timestep_rel_type[:, :, i:i + 1]
+            all_msgs += msg
+
+        agg_msgs = all_msgs.transpose(-2, -1).matmul(rel_rec).transpose(-2, -1)
+        agg_msgs = agg_msgs.contiguous()
+
+        aug_inputs = torch.cat([single_timestep_inputs, agg_msgs], dim=-1)
+
+        pred = func.dropout(func.relu(self.out_fc1(aug_inputs)), p=self.dropout_prob)
+        pred = func.dropout(func.relu(self.out_fc2(pred)), p=self.dropout_prob)
+        pred = self.out_fc3(pred)
+        return single_timestep_inputs + pred
+
+    def forward(self, inputs, rel_type, rel_rec, rel_send, pred_steps=4):
+        last_pred = inputs[:, :, :]
+        curr_rel_type = rel_type[:, :, :]
+        preds = []
+
+        for step in range(0, pred_steps):
+            last_pred = self.single_step_forward(last_pred, rel_rec, rel_send, curr_rel_type)
+            preds.append(last_pred)
+
+        sizes = [preds[0].size(0), preds[0].size(1), preds[0].size(2)]
+        output = Variable(torch.zeros(sizes))
+        if inputs.is_cuda:
+            output = output.cuda()
+
+        for i in range(len(preds)):
+            output[:, :, :] = preds[i]
+
+        pred_all = output[:, :, :]
+        return pred_all
+    
+
+def my_softmax(input, axis=1):
+    trans_input = input.transpose(axis, 0).contiguous()
+    soft_max_1d = func.softmax(trans_input,dim=0)
+    return soft_max_1d.transpose(axis, 0)
+
+def calculate_distance_angle(kp1, kp2):
+    dx = kp2[0] - kp1[0]
+    dy = kp2[1] - kp1[1]
+    distance = torch.sqrt(dx ** 2 + dy ** 2)
+    angle = torch.atan2(dy, dx)
+    return distance, angle
+
+def calculate_gt_distances_angles(keypoints_gt):
+    print(f"keypoints_gt shape: {keypoints_gt.shape}")  # Debug print
+    batch_size, num_keypoints, num_dims = keypoints_gt.shape
+    assert num_keypoints == n_nodes and num_dims == 2, "keypoints_gt must have shape (batch_size, 9, 2)"
+    distances_angles = []
+
+    for b in range(batch_size):
+        batch_distances_angles = torch.zeros((num_keypoints, 4), dtype=torch.float32).to(device)  # Initialize with zeros
+        
+        for i in range(num_keypoints):
+            current_kp = keypoints_gt[b, i]
+            next_i = (i + 1) % num_keypoints
+            prev_i = (i - 1 + num_keypoints) % num_keypoints
+
+            # Calculate distance and angle to the next keypoint
+            dist, angle = calculate_distance_angle(current_kp, keypoints_gt[b, next_i])
+            batch_distances_angles[i, 0] = dist
+            batch_distances_angles[i, 1] = angle
+
+            # Calculate distance and angle to the previous keypoint
+            dist, angle = calculate_distance_angle(current_kp, keypoints_gt[b, prev_i])
+            batch_distances_angles[i, 2] = dist
+            batch_distances_angles[i, 3] = angle
+
+        distances_angles.append(batch_distances_angles)
+
+    distances_angles = torch.stack(distances_angles)
+    return distances_angles
+
+
+class KeypointPipeline(nn.Module):
+    def __init__(self, weights_path):
+        super(KeypointPipeline, self).__init__()  
+        self.keypoint_model = torch.load(weights_path).to(device)
+        self.encoder = GraphEncoder(8,512,4,0.5,False)
+        self.decoder = GraphDecoder(n_in_node=8,
+                                 edge_types=2,
+                                 msg_hid=512,
+                                 msg_out=512,
+                                 n_hid=512,
+                                 do_prob=0.5,
+                                 skip_first=False)
+
+        num_nodes = n_nodes
+        self.off_diag = np.zeros([num_nodes, num_nodes])
+
+        for i in range(num_nodes):
+            next_node = (i + 1) % num_nodes
+            self.off_diag[i, next_node] = 1
+            self.off_diag[next_node, i] = 1
+                       
+        print("Class off diag", self.off_diag)
+            
+        self.rel_rec = np.array(encode_onehot(np.where(self.off_diag)[1]), dtype=np.float32)
+        self.rel_send = np.array(encode_onehot(np.where(self.off_diag)[0]), dtype=np.float32)
+        self.rel_rec = torch.FloatTensor(self.rel_rec).to(device)
+        self.rel_send = torch.FloatTensor(self.rel_send).to(device)
+        self.encoder = self.encoder.cuda()
+        self.decoder = self.decoder.cuda()
+        self.rel_rec = self.rel_rec.cuda()
+        self.rel_send = self.rel_send.cuda()
+
+    def process_model_output(self, output):
+        scores = output[0]['scores'].detach().cpu().numpy()
+        high_scores_idxs = np.where(scores > 0.7)[0].tolist()
+        post_nms_idxs = torchvision.ops.nms(output[0]['boxes'][high_scores_idxs], output[0]['scores'][high_scores_idxs], 0.3).cpu().numpy()
+        confidence = output[0]['scores'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy()
+        labels = output[0]['labels'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy()
+        keypoints = []
+        for idx, kps in enumerate(output[0]['keypoints'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy()):
+            keypoints.append(list(map(int, kps[0, 0:2])) + [confidence[idx]] + [labels[idx]])
+        keypoints.sort(key=lambda x: x[-1])
+        return keypoints  
+
+
+    def keypoints_to_graph(self, keypoints, image_width, image_height):        
+        keypoints = [torch.tensor(kp, dtype=torch.float32).to(device) if not isinstance(kp, torch.Tensor) else kp for kp in keypoints]
+        keypoints = torch.stack(keypoints).to(device)
+        
+        print("kprcnn output", keypoints)
+
+        unique_labels, best_keypoint_indices = torch.unique(keypoints[:, 3], return_inverse=True)
+        best_scores, best_indices = torch.max(keypoints[:, 2].unsqueeze(0) * (best_keypoint_indices == torch.arange(len(unique_labels)).unsqueeze(1).cuda()), dim=1)
+        keypoints = keypoints[best_indices]
+
+        keypoints[:, 0] = (keypoints[:, 0] - image_width / 2) / (image_width / 2)
+        keypoints[:, 1] = (keypoints[:, 1] - image_height / 2) / (image_height / 2)
+
+        # Initialize graph_features tensor
+        graph_features = torch.zeros((n_nodes, 8), dtype=torch.float32).to(device)
+
+        # Fill in the known keypoints in their corresponding positions
+        for kp in keypoints:
+            label = int(kp[3].item()) - 1  # Convert one-based label to zero-based index
+            graph_features[label, :4] = kp[:4]
+
+        # Calculate distances and angles for valid connections
+        for i in range(n_nodes):
+            if graph_features[i, 3] != 0:  # Check if current keypoint exists
+                current_kp = graph_features[i, :2]
+                next_label = (i + 1) % n_nodes
+                prev_label = (i - 1 + n_nodes) % n_nodes
+
+                # Check if next keypoint exists
+                if graph_features[next_label, 3] != 0:
+                    next_kp = graph_features[next_label, :2]
+                    dist, angle = calculate_distance_angle(current_kp, next_kp)
+                    graph_features[i, 4] = dist
+                    graph_features[i, 5] = angle
+                else:
+                    graph_features[i, 4] = 0  # Set distance to 0
+                    graph_features[i, 5] = 0  # Set angle to 0
+
+                # Check if previous keypoint exists
+                if graph_features[prev_label, 3] != 0:
+                    prev_kp = graph_features[prev_label, :2]
+                    dist, angle = calculate_distance_angle(current_kp, prev_kp)
+                    graph_features[i, 6] = dist
+                    graph_features[i, 7] = angle
+                else:
+                    graph_features[i, 6] = 0  # Set distance to 0
+                    graph_features[i, 7] = 0  # Set angle to 0
+
+        return graph_features
+
+
+    def forward(self, imgs):
+        keypoint_model_training = self.keypoint_model.training
+        self.keypoint_model.eval()
+
+        with torch.no_grad():
+            batch_outputs = [self.keypoint_model(img.unsqueeze(0).to(device)) for img in imgs]
+
+        self.keypoint_model.train(mode=keypoint_model_training)
+
+        batch_labeled_keypoints = [self.process_model_output(output) for output in batch_outputs]
+        batch_x = []
+        for labeled_keypoints in batch_labeled_keypoints:
+            keypoints = self.keypoints_to_graph(labeled_keypoints, 640, 480)
+            print("keypoints with distance and angles", keypoints)
+            # Initialize x with zeros for n_nodes nodes with 8 features each
+            x = torch.zeros(1, n_nodes, 8, device=device)
+
+            # Create a dictionary for quick lookup by label
+            keypoint_dict = {int(kp[3].item()): kp for kp in keypoints}
+
+            # Fill x with keypoints arranged according to labels
+            for i in range(n_nodes):
+                label = i + 1
+                if label in keypoint_dict:
+                    x[0, i, :] = keypoint_dict[label]
+                else:
+                    x[0, i, 3] = label  # Set the label in the fourth position
+
+            batch_x.append(x)
+            print("keypoints after label rearranged", batch_x)
+        
+        batch_x = torch.cat(batch_x, dim=0)        
+        logits = self.encoder(batch_x, self.rel_rec, self.rel_send)
+        edges = my_softmax(logits, -1)
+        KGNN2D = self.decoder(batch_x, edges, self.rel_rec, self.rel_send)
+
+        return logits, KGNN2D, batch_labeled_keypoints
+
+
+def loss_edges(valid_points, edges):
+    batch_size, num_nodes = valid_points.shape
+
+    # Initialize off_diag matrix
+    off_diag = np.zeros([num_nodes, num_nodes])
+    for i in range(num_nodes):
+        next_node = (i + 1) % num_nodes
+        off_diag[i, next_node] = 1
+        off_diag[next_node, i] = 1
+    
+    # Convert off_diag to tensor
+    off_diag = torch.tensor(off_diag, dtype=torch.bool, device='cuda')
+    
+    # Create idx tensor to index valid relationships
+    idx = torch.where(off_diag)
+    
+    # Initialize relations tensor
+    relations = torch.zeros((batch_size, num_nodes * 2), device='cuda')
+    
+    for count, vis in enumerate(valid_points):
+        vis = vis.view(-1, 1).float()
+        vis_tran_mat = vis * vis.t()
+        
+        # Debug print to check the shape
+        print(f'vis_tran_mat shape: {vis_tran_mat.shape}')
+#         print(f'idx shape: {idx.shape}')
+        
+        # Gather valid relationships
+        vis_selected = vis_tran_mat[idx].view(-1)
+        
+        # Ensure correct dimensions
+        relations[count, :] = vis_selected[:num_nodes * 2]
+
+    # Ensure correct dtype for loss calculation
+    relations = relations.to(torch.long)
+    
+    # Calculate cross-entropy loss
+    loss_edges = func.cross_entropy(edges.view(-1, 4), relations.view(-1))
+    return loss_edges
+
+
+# def nll_gaussian(preds, target, variance, add_const=False):
+#     neg_log_p = ((preds - target) ** 2 / (2 * variance))
+#     if add_const:
+#         const = 0.5 * np.log(2 * np.pi * variance)
+#         neg_log_p += const
+#     return neg_log_p.sum() / (target.size(0) * target.size(1))
+
+# def kgnn2d_loss(keypoints_gt, valid_points, keypoints_logits):
+#     # Ensure data types are consistent and move tensors to the appropriate device
+#     keypoints_gt = keypoints_gt.type(torch.FloatTensor).cuda()
+#     keypoints_logits = keypoints_logits.type(torch.FloatTensor).cuda()
+#     valid_points = valid_points.type(torch.FloatTensor).cuda()
+
+#     # Print shapes for debugging
+# #     print(f"keypoints_gt.shape: {keypoints_gt.shape}")
+# #     print(f"keypoints_logits.shape: {keypoints_logits.shape}")
+# #     print(f"valid_points.shape: {valid_points.shape}")
+#     keypoints_gt = keypoints_gt.type(torch.FloatTensor)*valid_points.unsqueeze(2).type(torch.FloatTensor)
+#     keypoints_logits = keypoints_logits.type(torch.FloatTensor)*valid_points.unsqueeze(2).type(torch.FloatTensor)
+#     keypoints_gt = keypoints_gt.cuda()
+#     keypoints_logits = keypoints_logits.cuda()
+#     loss_occ = nll_gaussian(keypoints_gt[:,:,0:2], keypoints_logits[:,:,0:2] , 0.1)
+#     return loss_occ
+
+
+
+def kgnn2d_loss(gt_keypoints, pred_keypoints, gt_distances, gt_angles, pred_distances, pred_angles):
+    keypoints_loss = func.mse_loss(pred_keypoints, gt_keypoints)
+    distances_loss = func.mse_loss(pred_distances, gt_distances)
+    angles_loss = func.mse_loss(pred_angles, gt_angles)
+    return keypoints_loss + distances_loss + angles_loss
+
+
+def encode_onehot(labels):
+    classes = set(labels)
+    classes_dict = {c: np.identity(len(classes))[i, :] for i, c in
+                    enumerate(classes)}
+    labels_onehot = np.array(list(map(classes_dict.get, labels)),
+                             dtype=np.int32)
+    return labels_onehot
+def process_batch_keypoints(target_dicts):
+    batch_size = len(target_dicts)
+    keypoints_list = []
+    visibilities_list = []
+    for dict_ in target_dicts:
+        keypoints = dict_['keypoints'].squeeze(1).to(device)
+        xy_coords = keypoints[:, :2]
+        visibilities = keypoints[:, 2]
+        keypoints_list.append(xy_coords)
+        visibilities_list.append(visibilities)
+    keypoints_gt = torch.stack(keypoints_list).float().cuda()
+    visibilities = torch.stack(visibilities_list).cuda()
+    valid_vis_all = (visibilities == 1).long().cuda()
+    valid_invis_all = (visibilities == 0).long().cuda()
+    return keypoints_gt, valid_vis_all, valid_invis_all
+
+def reorder_batch_keypoints(batch_keypoints):
+    batch_size, num_keypoints, num_features = batch_keypoints.shape
+    reordered_keypoints_batch = []
+    for i in range(batch_size):
+        normalized_keypoints = batch_keypoints[i]
+        reordered_normalized_keypoints = torch.zeros(num_keypoints, 2, device=batch_keypoints.device)
+        rounded_labels = torch.round(normalized_keypoints[:, -1]).int()
+        used_indices = []
+        for label in range(1, 10):
+            valid_idx = (rounded_labels == label).nonzero(as_tuple=True)[0]
+            if valid_idx.numel() > 0:
+                reordered_normalized_keypoints[label - 1] = normalized_keypoints[valid_idx[0], :2]
+            else:
+                invalid_idx = ((rounded_labels < 1) | (rounded_labels > 6)).nonzero(as_tuple=True)[0]
+                invalid_idx = [idx for idx in invalid_idx if idx not in used_indices]
+                if invalid_idx:
+                    reordered_normalized_keypoints[label - 1] = normalized_keypoints[invalid_idx[0], :2]
+                    used_indices.append(invalid_idx[0])
+        reordered_keypoints_batch.append(reordered_normalized_keypoints)
+    return torch.stack(reordered_keypoints_batch)
+
+def denormalize_keypoints(batch_keypoints, width=640, height=480):
+    denormalized_keypoints = []
+    for kp in batch_keypoints:
+        denormalized_x = (kp[:, 0] * (width / 2)) + (width / 2)
+        denormalized_y = (kp[:, 1] * (height / 2)) + (height / 2)
+        denormalized_kp = torch.stack((denormalized_x, denormalized_y), dim=1)
+        denormalized_keypoints.append(denormalized_kp)
+    denormalized_keypoints = torch.stack(denormalized_keypoints)
+    return denormalized_keypoints
+
+
+model = KeypointPipeline(weights_path)
+model = model.to(device)
+
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+scaler = GradScaler()
+
+num_epochs = 100
+batch_size = 128
+
+split_folder_path = train_test_split(root_dir)
+KEYPOINTS_FOLDER_TRAIN = split_folder_path +"/train"
+KEYPOINTS_FOLDER_VAL = split_folder_path +"/val"
+KEYPOINTS_FOLDER_TEST = split_folder_path +"/test"
+
+dataset_train = KPDataset(KEYPOINTS_FOLDER_TRAIN, transform=None, demo=False)
+dataset_val = KPDataset(KEYPOINTS_FOLDER_VAL, transform=None, demo=False)
+dataset_test = KPDataset(KEYPOINTS_FOLDER_TEST, transform=None, demo=False)
+
+data_loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+data_loader_val = DataLoader(dataset_val, batch_size=1, shuffle=False, collate_fn=collate_fn)
+data_loader_test = DataLoader(dataset_test, batch_size=1, shuffle=False, collate_fn=collate_fn)
+
+checkpoint_dir = '/home/schatterjee/lama/kprcnn_panda/trained_models/occ_ckpt/'
+checkpoint_path = os.path.join(checkpoint_dir, 'latest_checkpoint.pth')
+
+# Create checkpoint directory if it doesn't exist
+os.makedirs(checkpoint_dir, exist_ok=True)
+
+# Load checkpoint if exists
+start_epoch = 0
+if os.path.isfile(checkpoint_path):
+    checkpoint = torch.load(checkpoint_path)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    scaler.load_state_dict(checkpoint['scaler_state_dict'])
+    start_epoch = checkpoint['epoch'] + 1
+    print(f"Loaded checkpoint from epoch {start_epoch}")
+
+# start_time = time.time()
+for epoch in range(start_epoch, num_epochs):
+    model.train()
+    total_loss = 0
+
+    for imgs, target_dicts, _ in data_loader_train:
+        imgs = [img.to(device) for img in imgs]
+        optimizer.zero_grad()
+        
+        with autocast():
+            logits, KGNN2D, batch_labeled_keypoints = model(imgs)
+            keypoints_gt, valid_vis_all, valid_invis_all = process_batch_keypoints(target_dicts)
+            print("Ground truth keypoints", keypoints_gt)
+            # print("predicted keypoints before reorder", KGNN2D)
+            reordered_normalized_keypoints = reorder_batch_keypoints(KGNN2D)
+            # print("predicted keypoints after reorder", reordered_normalized_keypoints)
+            denormalized_keypoints = denormalize_keypoints(reordered_normalized_keypoints)
+            print("final predicted keypoints", denormalized_keypoints)
+            gt_distances_angles = calculate_gt_distances_angles(keypoints_gt)
+            pred_distances_angles = calculate_gt_distances_angles(denormalized_keypoints)
+            loss_kgnn2d = kgnn2d_loss(keypoints_gt, denormalized_keypoints, gt_distances_angles[:, :, 0], 
+                                      gt_distances_angles[:, :, 1], gt_distances_angles[:, :, 2], 
+                                      gt_distances_angles[:, :, 3], pred_distances_angles[:, :, 0], 
+                                      pred_distances_angles[:, :, 1], pred_distances_angles[:, :, 2], 
+                                      pred_distances_angles[:, :, 3])
+            edge_loss = loss_edges(valid_vis_all, logits)
+            total_batch_loss = edge_loss + loss_kgnn2d
+        
+        scaler.scale(total_batch_loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
+
+        total_loss += total_batch_loss.item()
+    print(f'Epoch {epoch+1}/{num_epochs}, Loss: {total_loss / len(data_loader_train)}')
+
+    # Save checkpoint every epoch
+    if (epoch + 1) % 1 == 0:
+        checkpoint_path = os.path.join(checkpoint_dir, f'kprcnn_occ_net_ckpt_b{batch_size}e{epoch+1}.pth')
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'scaler_state_dict': scaler.state_dict(),
+        }, checkpoint_path)
+        print(f'Checkpoint saved to {checkpoint_path}')
+
+    # Save latest checkpoint
+    torch.save({
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'scaler_state_dict': scaler.state_dict(),
+    }, checkpoint_path)
+
+# end_time = time.time()
+
+# total_time = end_time - start_time
+# print("total time", total_time)
+
+# Save final model
+model_save_path = f"/home/schatterjee/lama/kprcnn_panda/trained_models/kprcnn_occ_b{batch_size}_e{num_epochs}.pth"
+torch.save(model.state_dict(), model_save_path)
+    

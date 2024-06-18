@@ -54,21 +54,21 @@ class VideoInference:
         self.cx5_list = [0.0]
         self.cy5_list = [0.0]
         self.cx6_list = [0.0]
-        # self.cy6_list = [0.0]
+        self.cy6_list = [0.0]
         
         self.measured1_list = []
         self.measured2_list = []
         self.measured3_list = []
         self.measured4_list = []
         self.measured5_list = []
-        # self.measured6_list = []
+        self.measured6_list = []
 
         self.updated1 = None
         self.updated2 = None
         self.updated3 = None
         self.updated4 = None
         self.updated5 = None
-        # self.updated6 = None
+        self.updated6 = None
 
         self.executed = False
         self.corrected_x = None
@@ -506,16 +506,30 @@ class VideoInference:
         labels = []
         for label in output[0]['labels'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy():
             labels.append(label)
-        keypoints_ = [x for _,x in sorted(zip(labels,keypoints))]
+        keypoints_all = [x for _,x in sorted(zip(labels,keypoints))]
+
+        # if len(keypoints_all) > 2:
+        #     x1, y1 = keypoints_all[1]
+        #     x2, y2 = keypoints_all[2]
+        #     midpoint = [(x1 + x2) // 2, (y1 + y2) // 2]
+        #     # Insert the interpolated midpoint into the list at index 2
+        #     keypoints_all.insert(2, midpoint)
+
+        # print(keypoints_all)
+
+        print("current keypoints", keypoints_all)
+
+        # indices = [0,1,2,3,4,5,6,7,8]
+        # keypoints_all = [keypoints_all[i] for i in indices]
 
         # uncomment the next line for 4 feature points
         # indices = [2,3,4,5,6,8]
         # uncomment the next line 3 feature points
-        indices = [1,2,3,4,5]
-        keypoints_ = [keypoints_[i] for i in indices]
+        indices = [3,4,6,7,8]
+        keypoints_ = [keypoints_all[i] for i in indices]
 
-        # print(keypoints)
         print(len(keypoints))
+        print(len(keypoints_all))
         print(len(keypoints_))
         bboxes = []
         for bbox in output[0]['boxes'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy():
@@ -553,6 +567,10 @@ class VideoInference:
             for i in range(len(kp_x)-1):
                kp.append(kp_x[i+1]) 
                kp.append(kp_y[i+1])
+        elif no_of_features==10:
+            for i in range(len(kp_x)):
+                kp.append(kp_x[i]) 
+                kp.append(kp_y[i])
         elif no_of_features==6:
             for i in range(len(kp_x)-2):
                kp.append(kp_x[i+2]) 

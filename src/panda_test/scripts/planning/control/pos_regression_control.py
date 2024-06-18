@@ -38,14 +38,29 @@ class KpVelDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
+    # def __getitem__(self, idx):
+    #     start_kp, next_kp, position = self.data[idx]
+    #     # Ensure start_kp and next_kp have consistent dimensions
+    #     # if not start_kp or not next_kp:
+    #     #     raise ValueError(f"Empty keypoints found at index {idx}")
+    #     start_kp_flat = torch.tensor([kp for sublist in start_kp for kp in sublist[0][:2]], dtype=torch.float)
+    #     next_kp_flat = torch.tensor([kp for sublist in next_kp for kp in sublist[0][:2]], dtype=torch.float)
+    #     position = torch.tensor(position, dtype=torch.float)
+
+    #     return start_kp_flat, next_kp_flat, position
+
     def __getitem__(self, idx):
         start_kp, next_kp, position = self.data[idx]
-        # Ensure start_kp and next_kp have consistent dimensions
-        # if not start_kp or not next_kp:
-        #     raise ValueError(f"Empty keypoints found at index {idx}")
-        start_kp_flat = torch.tensor([kp for sublist in start_kp for kp in sublist[0][:2]], dtype=torch.float)
-        next_kp_flat = torch.tensor([kp for sublist in next_kp for kp in sublist[0][:2]], dtype=torch.float)
-        position = torch.tensor(position, dtype=torch.float)
+        try:
+            start_kp_flat = torch.tensor([kp for sublist in start_kp for kp in sublist[0][:2]], dtype=torch.float)
+            next_kp_flat = torch.tensor([kp for sublist in next_kp for kp in sublist[0][:2]], dtype=torch.float)
+            position = torch.tensor(position, dtype=torch.float)
+            if start_kp_flat.nelement() != 18 or next_kp_flat.nelement() != 18:
+                raise ValueError(f"Invalid number of elements: start_kp {start_kp_flat.nelement()}, next_kp {next_kp_flat.nelement()} at index {idx}")
+        except Exception as e:
+            print(f"Error processing index {idx}: {e}")
+            print(f"Start KP: {start_kp}, Next KP: {next_kp}")
+            raise
         return start_kp_flat, next_kp_flat, position
 
 def train_test_split(src_dir):
@@ -97,98 +112,98 @@ class PosRegModel(nn.Module):
         x = self.fc4(x)
         return x
     
-def evaluate_model(model, data_loader, criterion):
-    model.to(device)
-    model.eval()
-    total_mse = 0
-    total_mae = 0
-    total_count = 0
+# def evaluate_model(model, data_loader, criterion):
+#     model.to(device)
+#     model.eval()
+#     total_mse = 0
+#     total_mae = 0
+#     total_count = 0
 
-    with torch.no_grad():
-        for start_kp, next_kp, position in data_loader:
-            output = model(start_kp.to(device), next_kp.to(device))
-            mse_loss = criterion(output, position.to(device))
-            mae_loss = torch.nn.functional.l1_loss(output, position.to(device), reduction='sum')
+#     with torch.no_grad():
+#         for start_kp, next_kp, position in data_loader:
+#             output = model(start_kp.to(device), next_kp.to(device))
+#             mse_loss = criterion(output, position.to(device))
+#             mae_loss = torch.nn.functional.l1_loss(output, position.to(device), reduction='sum')
 
-            total_mse += mse_loss.item() * position.size(0)
-            total_mae += mae_loss.item()
-            total_count += position.size(0)
+#             total_mse += mse_loss.item() * position.size(0)
+#             total_mae += mae_loss.item()
+#             total_count += position.size(0)
 
-    avg_mse = total_mse / total_count
-    avg_rmse = np.sqrt(avg_mse)
-    avg_mae = total_mae / total_count
+#     avg_mse = total_mse / total_count
+#     avg_rmse = np.sqrt(avg_mse)
+#     avg_mae = total_mae / total_count
 
-    return avg_mse, avg_rmse, avg_mae
+#     return avg_mse, avg_rmse, avg_mae
 
-def plot_and_save_train_loss_metrics(train_mse_loss_history, train_rmse_loss_history, train_mae_loss_history, b_size, num_epochs, v):
-    epochs = range(1, len(train_mse_loss_history) + 1)
-    plt.figure(figsize=(48, 8))
-    plt.subplot(3, 1, 1)
-    plt.plot(epochs, train_mse_loss_history, label='Training MSE')
-    plt.title(f'Training MSE\nBatch: {b_size}, Epochs: {num_epochs}')
-    plt.xlabel('Epochs')
-    plt.ylabel('MSE')
-    plt.legend()
-    plt.grid(True)
+# def plot_and_save_train_loss_metrics(train_mse_loss_history, train_rmse_loss_history, train_mae_loss_history, b_size, num_epochs, v):
+#     epochs = range(1, len(train_mse_loss_history) + 1)
+#     plt.figure(figsize=(48, 8))
+#     plt.subplot(3, 1, 1)
+#     plt.plot(epochs, train_mse_loss_history, label='Training MSE')
+#     plt.title(f'Training MSE\nBatch: {b_size}, Epochs: {num_epochs}')
+#     plt.xlabel('Epochs')
+#     plt.ylabel('MSE')
+#     plt.legend()
+#     plt.grid(True)
     
-    plt.subplot(3, 1, 2)
-    plt.plot(epochs, train_rmse_loss_history, label='Training RMSE', color='orange')
-    plt.title(f'Training RMSE\nBatch: {b_size}, Epochs: {num_epochs}')
-    plt.xlabel('Epochs')
-    plt.ylabel('RMSE')
-    plt.legend()
-    plt.grid(True)
+#     plt.subplot(3, 1, 2)
+#     plt.plot(epochs, train_rmse_loss_history, label='Training RMSE', color='orange')
+#     plt.title(f'Training RMSE\nBatch: {b_size}, Epochs: {num_epochs}')
+#     plt.xlabel('Epochs')
+#     plt.ylabel('RMSE')
+#     plt.legend()
+#     plt.grid(True)
     
-    plt.subplot(3, 1, 3)
-    plt.plot(epochs, train_mae_loss_history, label='Training MAE', color='green')
-    plt.title(f'Training MAE\nBatch: {b_size}, Epochs: {num_epochs}')
-    plt.xlabel('Epochs')
-    plt.ylabel('MAE')
-    plt.legend()
-    plt.grid(True)
+#     plt.subplot(3, 1, 3)
+#     plt.plot(epochs, train_mae_loss_history, label='Training MAE', color='green')
+#     plt.title(f'Training MAE\nBatch: {b_size}, Epochs: {num_epochs}')
+#     plt.xlabel('Epochs')
+#     plt.ylabel('MAE')
+#     plt.legend()
+#     plt.grid(True)
     
-    plt.tight_layout()
-    plt.savefig(f'/home/jc-merlab/Pictures/panda_data/panda_sim_vel/loss_plots/train_metrics_b{b_size}_e{num_epochs}_v{v}.png')
-    # plt.show()
+#     plt.tight_layout()
+#     plt.savefig(f'/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/loss_plots/train_metrics_b{b_size}_e{num_epochs}_v{v}.png')
+#     # plt.show()
 
-def plot_and_save_val_loss_metrics(val_mse_loss_history, val_rmse_loss_history, val_mae_loss_history, b_size, num_epochs, v):
-    epochs = range(1, len(val_mse_loss_history) + 1)
-    plt.figure(figsize=(48, 8))
-    plt.subplot(3, 1, 1)
-    plt.plot(epochs, val_mse_loss_history, label='Validation MSE')
-    plt.title(f'Validation MSE\nBatch: {b_size}, Epochs: {num_epochs}')
-    plt.xlabel('Epochs')
-    plt.ylabel('MSE')
-    plt.legend()
-    plt.grid(True)
+# def plot_and_save_val_loss_metrics(val_mse_loss_history, val_rmse_loss_history, val_mae_loss_history, b_size, num_epochs, v):
+#     epochs = range(1, len(val_mse_loss_history) + 1)
+#     plt.figure(figsize=(48, 8))
+#     plt.subplot(3, 1, 1)
+#     plt.plot(epochs, val_mse_loss_history, label='Validation MSE')
+#     plt.title(f'Validation MSE\nBatch: {b_size}, Epochs: {num_epochs}')
+#     plt.xlabel('Epochs')
+#     plt.ylabel('MSE')
+#     plt.legend()
+#     plt.grid(True)
     
-    plt.subplot(3, 1, 2)
-    plt.plot(epochs, val_rmse_loss_history, label='Validation RMSE', color='orange')
-    plt.title(f'Validation RMSE\nBatch: {b_size}, Epochs: {num_epochs}')
-    plt.xlabel('Epochs')
-    plt.ylabel('RMSE')
-    plt.legend()
-    plt.grid(True)
+#     plt.subplot(3, 1, 2)
+#     plt.plot(epochs, val_rmse_loss_history, label='Validation RMSE', color='orange')
+#     plt.title(f'Validation RMSE\nBatch: {b_size}, Epochs: {num_epochs}')
+#     plt.xlabel('Epochs')
+#     plt.ylabel('RMSE')
+#     plt.legend()
+#     plt.grid(True)
     
-    plt.subplot(3, 1, 3)
-    plt.plot(epochs, val_mae_loss_history, label='Validation MAE', color='green')
-    plt.title(f'Validation MAE\nBatch: {b_size}, Epochs: {num_epochs}')
-    plt.xlabel('Epochs')
-    plt.ylabel('MAE')
-    plt.legend()
-    plt.grid(True)
+#     plt.subplot(3, 1, 3)
+#     plt.plot(epochs, val_mae_loss_history, label='Validation MAE', color='green')
+#     plt.title(f'Validation MAE\nBatch: {b_size}, Epochs: {num_epochs}')
+#     plt.xlabel('Epochs')
+#     plt.ylabel('MAE')
+#     plt.legend()
+#     plt.grid(True)
     
-    plt.tight_layout()
-    plt.savefig(f'/home/jc-merlab/Pictures/panda_data/panda_sim_vel/loss_plots/val_metrics_b{b_size}_e{num_epochs}_v{v}.png')
-    # plt.show()
+#     plt.tight_layout()
+#     plt.savefig(f'/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/loss_plots/val_metrics_b{b_size}_e{num_epochs}_v{v}.png')
+#     # plt.show()
 
 # # # Initialize dataset and data loader
 # # # to generalize home directory. User can change their parent path without entering their home directory
 # epoch_list = [400,500,600]
 # batch_sizes = [32,64,128]
-# v = 1
+# v = 11
 # # parent_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/'
-# root_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/regression_corrected/'
+# root_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/regression_rearranged/'
 # print(root_dir)
 # split_folder_path = train_test_split(root_dir)
 
@@ -208,7 +223,7 @@ def plot_and_save_val_loss_metrics(val_mse_loss_history, val_rmse_loss_history, 
 #         train_loader = DataLoader(train_dataset, batch_size=b_size, shuffle=True)
 #         val_loader = DataLoader(val_dataset, batch_size=b_size, shuffle=False)
 #         # Initialize model
-#         model = PosRegModel(12)  # Adjust input_size as necessary
+#         model = PosRegModel(18)  # Adjust input_size as necessary
 #         model.to(device)
 #         criterion = nn.MSELoss()
 #         optimizer = optim.Adam(model.parameters(), lr=0.005)
@@ -232,7 +247,7 @@ def plot_and_save_val_loss_metrics(val_mse_loss_history, val_rmse_loss_history, 
 #                 loss = criterion(output, position.to(device))
 #                 loss.backward()
 #                 optimizer.step()
-
+    
 #             # Evaluate on the training set
 #             train_mse, train_rmse, train_mae = evaluate_model(model, train_loader, criterion)
 #             train_mse_loss_history.append(train_mse)
@@ -284,7 +299,7 @@ def plot_and_save_val_loss_metrics(val_mse_loss_history, val_rmse_loss_history, 
 
 #         df_summary = pd.DataFrame(summary_results)
 
-#         df_summary.to_csv('/home/jc-merlab/Pictures/panda_data/panda_sim_vel/loss_plots/summary_results.csv', index=False)
+#         df_summary.to_csv('/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/loss_plots/summary_results.csv', index=False)
 
 
 #         plot_and_save_train_loss_metrics(train_mse_loss_history, train_rmse_loss_history, train_mae_loss_history, b_size, num_epochs, v)

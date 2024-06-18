@@ -47,10 +47,10 @@ def draw_green_rectangle(image_path, rectangle_center, half_diagonal, save_path)
     print(f"Image saved with a green rectangle at center {rectangle_center} to {save_path}")
 
 # Example usage
-image_path = '/home/jc-merlab/.ros/dl_published_goal_image_orig.jpg'  # Replace with your image file path
-rectangle_center = (420, 133)  # Example center position (x, y)
+image_path = '/home/jc-merlab/.ros/sim_published_goal_image_orig.jpg'  # Replace with your image file path
+rectangle_center = (480, 133)  # Example center position (x, y)
 half_diagonal = 20  # Example half diagonal length
 # save_path = '/home/jc-merlab/.ros/dl_published_goal_image.jpg'  # Replace with your save file path
-save_path = '/home/jc-merlab/.ros/dl_published_goal_image.jpg'
+save_path = '/home/jc-merlab/.ros/sim_published_goal_image_obs.jpg'
 
 draw_green_rectangle(image_path, rectangle_center, half_diagonal, save_path)

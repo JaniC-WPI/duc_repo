@@ -80,7 +80,7 @@ import os
 import json
 import random
 
-def append_new_combined_json_to_original_set(data_dir, repetitions, last_original_file_num):
+def append_new_combined_json_to_original_set(data_dir, combine_number, repetitions, last_original_file_num):
     original_combined_files = [f for f in sorted(os.listdir(data_dir)) if f.endswith('_combined.json') and int(f.split('_')[0]) <= last_original_file_num]
 
     if len(original_combined_files) < 2:
@@ -99,7 +99,7 @@ def append_new_combined_json_to_original_set(data_dir, repetitions, last_origina
         # Ensure the add number is >3 and <201
         # add_number = random.randint(4, min(200, len(original_combined_files) - start_index - 1))
 
-        add_number = random.randint(4, min(200, max_add_index))
+        add_number = random.randint(4, min(combine_number, max_add_index))
         
         end_index = min(start_index + add_number, len(original_combined_files) - 1)
         
@@ -247,34 +247,40 @@ def combine_and_renumber_folders(source_folders, dest_folder):
 
 if __name__ == "__main__":
     # Load configurations from JSON files
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/1/'
-    out_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/11_out/'
-    # directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/14/'
-    # out_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/14_out/'
+    # directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_plan_kp_phys/'
+    # out_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_plan_kp_phys_combined/'
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/11_kp/'
+    out_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/20_out/'
 
     # update_velocity_json(directory)
     # combine_json_with_velocity(directory, out_dir)
-    # append_new_combined_json_to_original_set(out_dir, 5000, 2212)
+    # append_new_combined_json_to_original_set(out_dir, 100, 1000, 158)
     # clean_and_renumber_json_files(out_dir)
 
     # Define your source folders and destination folder
     source_folders = [
-                    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/1_out/', 
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/2_out/', 
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/3_out/', 
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/4_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/5_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/6_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/7_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/8_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/9_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/10_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/11_out/']
-                    #   '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/12_out/',
-                    #   '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/13_out/',
-                    #   '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/14_out']
+                    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/1_out/', 
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/2_out/', 
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/3_out/', 
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/4_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/5_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/6_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/7_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/8_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/9_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/10_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/11_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/12_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/13_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/14_out',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/15_out',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/16_out',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/17_out',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/18_out',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/19_out',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/20_out']
 
-    destination_folder = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/regression_corrected/'
+    destination_folder = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/regression_rearranged/'
     combine_and_renumber_folders(source_folders, destination_folder)
 
 

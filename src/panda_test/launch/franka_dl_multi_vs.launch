@@ -2,7 +2,7 @@
     <!-- Load YAML -->
     <rosparam file="$(find panda_test)/config/franka_dl_multi_config.yaml" command="load"/>
     <rosparam file="$(find panda_test)/config/dl_multi_features.yaml" command="load"/>
-    <include file="$(find realsense2_camera)/launch/rs_camera.launch"/>
+    <include file="$(find realsense2_camera)/launch/rs_aligned_depth.launch"/>
 
     <!-- Launch Realsense Camera & marker detection -->
     <!-- <include file="$(find panda_test)/launch/rs_origami.launch"/> -->

@@ -24,6 +24,13 @@ mv ~/.ros/cp.csv ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
 
 mv ~/.ros/modelerror.csv ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
 
+mv ~/.ros/individual_model_errors.csv ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+
+mv ~/.ros/qhat.csv ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+
+mv ~/.ros/qhat_feat.csv ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+
+
 mv ~/.ros/*.jpg ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
 
 mv ~/.ros/exp_vid.avi ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
@@ -39,7 +46,8 @@ mv ~/.ros/goal_raw ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
 
 cp ~/duc_repo/src/panda_test/config/franka_sim_config.yaml  ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
 cp ~/duc_repo/src/panda_test/config/dl_multi_features.yaml  ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
-cp ~/duc_repo/src/panda_test/launch/franka_sim.launch  ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
-cp ~/duc_repo/src/panda_test/launch/franka_sim_goal.launch  ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+cp ~/duc_repo/src/panda_test/config/path_configurations.txt  ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+# cp ~/duc_repo/src/panda_test/launch/franka_sim.launch  ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+# cp ~/duc_repo/src/panda_test/launch/franka_sim_goal.launch  ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
 
 

@@ -1,8 +1,8 @@
 <launch>
     <!-- Load YAML -->
-    <rosparam file="$(find panda_test)/config/franka_dl_config.yaml" command="load"/>
-    <rosparam file="$(find panda_test)/config/dl_features.yaml" command="load"/>
-    <include file="$(find realsense2_camera)/launch/rs_camera.launch"/>
+    <rosparam file="$(find panda_test)/config/franka_dl_multi_config.yaml" command="load"/>
+    <rosparam file="$(find panda_test)/config/dl_multi_features.yaml" command="load"/>
+    <include file="$(find realsense2_camera)/launch/rs_aligned_depth.launch"/>
 
     <!-- Launch Realsense Camera & marker detection -->
     <!-- <include file="$(find panda_test)/launch/rs_origami.launch"/> -->
@@ -11,6 +11,8 @@
     <include file="$(find panda_test)/launch/franka_dl_control_service.launch"/>
 
     <node name="set_auto_exposure_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera enable_auto_exposure False"/>
+    <node name="set_brigtness_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera brightness -35"/>
+
 
 
     <!-- Joint publisher interface -->

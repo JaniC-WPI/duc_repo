@@ -51,6 +51,17 @@ void dsCallback(const std_msgs::Float64MultiArray &msg){
         ds_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","<<msg.data.at(3)<<","
         <<msg.data.at(4)<<","<<msg.data.at(5)<<","<<msg.data.at(6)<<","<<msg.data.at(7)<<"\n";
     }  
+    else if (no_of_features==10){
+        ds_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","<<msg.data.at(3)<<","
+        <<msg.data.at(4)<<","<<msg.data.at(5)<<","<<msg.data.at(6)<<","<<msg.data.at(7)<<","
+        <<msg.data.at(8)<<","<<msg.data.at(9)<<"\n";
+    }  
+    else if (no_of_features==12){
+        ds_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","<<msg.data.at(3)<<","
+        <<msg.data.at(4)<<","<<msg.data.at(5)<<","<<msg.data.at(6)<<","<<msg.data.at(7)<<","
+        <<msg.data.at(8)<<","<<msg.data.at(9)<<","
+        <<msg.data.at(10)<<","<<msg.data.at(11)<<"\n";
+    }
     // <<msg.data.at(8)<<","<<msg.data.at(9)<<",";
     //  <<msg.data.at(10)<<","<<msg.data.at(11)<<"\n";
     ds_plotdata.close();
@@ -126,6 +137,18 @@ void qhatFeatCallback(const std_msgs::Float64MultiArray &msg){
     qhat_feat_plotdata.close();
 }
 
+void indModelErrorCallback(const std_msgs::Float64MultiArray &msg) {
+    std::ofstream error_data("individual_model_errors.csv", std::ios::app);
+    if (error_data.is_open()) {
+        for (size_t i = 0; i < msg.data.size(); ++i) {
+            error_data << msg.data[i];
+            if (i < msg.data.size() - 1) error_data << ", ";
+        }
+        error_data << "\n";
+    }
+    error_data.close();
+}
+
 // void j1velCallback(const std_msgs::Float64 &msg){
 //     std::ofstream j1vel_plotdata("j1vel.csv",std::ios::app);
 //     j1vel_plotdata<<msg.data<<"\n";
@@ -195,6 +218,21 @@ void errCallback(const std_msgs::Float64MultiArray &msg){
                     <<msg.data.at(4)<<","<<msg.data.at(5)<<","
                     <<msg.data.at(6)<<","<<msg.data.at(7)<<"\n";
         }
+        if (no_of_features==10){
+            err_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","
+                    <<msg.data.at(2)<<","<<msg.data.at(3)<<","
+                    <<msg.data.at(4)<<","<<msg.data.at(5)<<","
+                    <<msg.data.at(6)<<","<<msg.data.at(7)<<","
+                    <<msg.data.at(8)<<","<<msg.data.at(9)<<"\n";
+        }
+        else if (no_of_features==12){
+            err_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","
+                    <<msg.data.at(2)<<","<<msg.data.at(3)<<","
+                    <<msg.data.at(4)<<","<<msg.data.at(5)<<","
+                    <<msg.data.at(6)<<","<<msg.data.at(7)<<","
+                    <<msg.data.at(8)<<","<<msg.data.at(9)<<","
+                    <<msg.data.at(10)<<","<<msg.data.at(11)<<"\n";
+        }
         else if (no_of_features==6){
             err_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","
                     <<msg.data.at(2)<<","<<msg.data.at(3)<<","
@@ -235,7 +273,18 @@ void errCallback(const std_msgs::Float64MultiArray &msg){
 void cpCallback(const std_msgs::Float64MultiArray &msg){
         if(status>0){
             std::ofstream cp_plotdata("cp.csv", std::ios::app);
-            if (no_of_features==8){
+            if (no_of_features==10){
+                cp_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","
+                <<msg.data.at(3)<<","<<msg.data.at(4)<<","<<msg.data.at(5)<<","<<msg.data.at(6)<<","
+                <<msg.data.at(7)<<","<<msg.data.at(8)<<","<<msg.data.at(9)<<"\n";
+            }
+            else if (no_of_features==12){
+                cp_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","
+                <<msg.data.at(3)<<","<<msg.data.at(4)<<","<<msg.data.at(5)<<","<<msg.data.at(6)<<","
+                <<msg.data.at(7)<<","<<msg.data.at(8)<<","<<msg.data.at(9)<<","
+                <<msg.data.at(10)<<","<<msg.data.at(11)<<"\n";
+            }
+            else if (no_of_features==8){
                 cp_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","
                 <<msg.data.at(3)<<","<<msg.data.at(4)<<","<<msg.data.at(5)<<","<<msg.data.at(6)<<","
                 <<msg.data.at(7)<<"\n";
@@ -285,11 +334,15 @@ int main(int argc, char **argv){
     std::ofstream cp_plot("cp.csv");
     std::ofstream qhat_plot("qhat.csv");
     std::ofstream qhat_feat_plot("qhat_feat.csv");
+    std::ofstream error_data_plot("individual_model_errors.csv");
     // std::ofstream joint_angle_plot("joint_angles.csv");    
 
     // Add column names to files
     J_plot <<"current_goal"<<","<<"Model Error"<<"\n";
     J_plot.close();
+
+    error_data_plot <<"ind_error1"<<","<<"ind_error2"<<"\n";
+    error_data_plot.close();
     // ds_plot <<"ds_x"<<","<<"ds_y"<<"\n";
 
     // Uncomment the next block for 3f 2j
@@ -353,6 +406,7 @@ int main(int argc, char **argv){
     ros::Subscriber joint_sub = n.subscribe<sensor_msgs::JointState>("joint_states", 1, jointCallback);
     ros::Subscriber Qhat_sub = n.subscribe("Qhat_columns", 1, qhatCallback);
     ros::Subscriber Qhat_feat_sub = n.subscribe("Qhat_rows", 1, qhatFeatCallback);
+    ros::Subscriber ind_model_error_sub = n.subscribe("individual_model_error", 1, indModelErrorCallback);
 
 
 

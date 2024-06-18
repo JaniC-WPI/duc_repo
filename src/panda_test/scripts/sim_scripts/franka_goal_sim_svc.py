@@ -78,9 +78,16 @@ def dl_image_service(img):
         for label in output[0]['labels'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy():
             labels.append(label)
 
-        keypoints_ = [x for _,x in sorted(zip(labels,keypoints))]
+        keypoints_all = [x for _,x in sorted(zip(labels,keypoints))]
 
-        print(keypoints_)
+        if len(keypoints_all) > 2:
+            x1, y1 = keypoints_all[1]
+            x2, y2 = keypoints_all[2]
+            midpoint = [(x1 + x2) // 2, (y1 + y2) // 2]
+            # Insert the interpolated midpoint into the list at index 2
+            keypoints_all.insert(2, midpoint)
+
+        print(keypoints_all)
             
         # print(keypoints)
         print("no of keypoints", len(keypoints))
@@ -95,8 +102,8 @@ def dl_image_service(img):
         # uncomment the next line for 4 feature points
         # indices = [0,1,2,3,4,5,6,8]
         # uncomment the next line for 3 feature points
-        indices = [1,2,3,4,5]
-        keypoints_ = [keypoints_[i] for i in indices]
+        indices = [3,4,6,7,8]
+        keypoints_ = [keypoints_all[i] for i in indices]
 
         kp_x = []
         kp_y = []
@@ -113,6 +120,10 @@ def dl_image_service(img):
             for i in range(len(kp_x)-1):
                kp.append(kp_x[i+1]) 
                kp.append(kp_y[i+1])
+        elif no_of_features==10:
+            for i in range(len(kp_x)):
+                kp.append(kp_x[i]) 
+                kp.append(kp_y[i])
         elif no_of_features==6:
             for i in range(len(kp_x)-2):
                kp.append(kp_x[i+2]) 

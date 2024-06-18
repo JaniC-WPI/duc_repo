@@ -5,7 +5,7 @@
 #include <vector>
 
 // #include "encoderless_vs/control_points.h"
-#include "panda_test/energyFuncMsg.h"
+#include "panda_test/energyFuncMsg_plan.h"
 // #include "encoderless_vs/franka_control_points.h"
 #include "panda_test/dl_img.h"
 #include "panda_test/vel_start.h"
@@ -102,7 +102,7 @@ int main(int argc, char **argv){
 
     // ros::service::waitForService("binary_image_output", 1000);
 
-    ros::ServiceClient energyClient = n.serviceClient<panda_test::energyFuncMsg>("computeEnergyFunc");
+    ros::ServiceClient energyClient = n.serviceClient<panda_test::energyFuncMsg_plan>("computeEnergyFunc");
     std::cout<<"Compute Energy func is getting called ?"<<std::endl;
     // ros::ServiceClient cp_client = n.serviceClient<encoderless_vs::franka_control_points>("franka_control_service");
 
@@ -395,7 +395,7 @@ int main(int argc, char **argv){
 
     // Compute Jacobian
     it = 0;
-    panda_test::energyFuncMsg msg;
+    panda_test::energyFuncMsg_plan msg;
     while(it < window){
         // Service request data
         msg.request.gamma = gamma;

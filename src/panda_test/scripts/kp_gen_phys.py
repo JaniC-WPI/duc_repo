@@ -20,9 +20,9 @@ from datetime import datetime
 
 # prefix to the image and json files names
 int_stream = '000000'
-folder = 9
+folder = 1
 # folder for main dataset
-root_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/'
+root_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/'
 
 
 # homogenous tranformation from 4X1 translation and
@@ -230,8 +230,8 @@ class KpDetection():
         #     self.camera_ext = transform(self.camera_ext_trans, self.camera_ext_rot)
         # for physical panda
         if not self.no_kp_gen:
-            self.camera_ext_trans = [-0.15838935, 0.51719157,  1.74013216]#[-0.1406737, 0.51277635, 1.82787528]
-            self.camera_ext_rot =  [0.66974827,  0.04262454, -0.03845967,  0.74036563] #[0.69402915, -0.17008132,  0.15281551,  0.68267365]
+            self.camera_ext_trans = [-0.18, 0.49,  1.55]#[-0.1406737, 0.51277635, 1.82787528]
+            self.camera_ext_rot =  [0.66974827,  0.03, -0.03,  0.74] #[0.69402915, -0.17008132,  0.15281551,  0.68267365]
             self.camera_ext = transform(self.camera_ext_trans, self.camera_ext_rot)
 
     def image_pixels(self, camera_ext, world_coords):

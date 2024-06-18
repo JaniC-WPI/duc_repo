@@ -22,7 +22,7 @@ status = -2
 
 file_path = home + "/Pictures/" + "panda_data/"
 
-rgb_path = file_path + 'ur10_new/39'
+rgb_path = file_path + 'panda_sim_vel/panda_rearranged_data/test/'
 # dep_path = file_path + 'video_images/dep/'
 
 # path = "/home/fearless/Pictures/video_images"s

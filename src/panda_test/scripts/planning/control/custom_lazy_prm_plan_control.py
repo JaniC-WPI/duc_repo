@@ -41,6 +41,23 @@ def load_keypoints_from_json(directory):
     # print("Shape of a single configuration:", configurations[0].shape)  
     return configurations
 
+def load_keypoints_from_truncated_json(directory):
+    configurations = []
+    for filename in os.listdir(directory):
+        # if filename.endswith('.json'):
+        if filename.endswith('.json') and not filename.endswith('_joint_angles.json') and not filename.endswith('_vel.json'):
+            file_index = int(filename.split('.')[0])
+            if file_index >= 10000:
+                file_path = os.path.join(directory, filename)
+                with open(file_path, 'r') as file:
+                    data = json.load(file)
+                    # Convert keypoints to integers
+                    keypoints = [np.array(point[0][:2], dtype=int) for point in data['keypoints']]  # Extracting x, y coordinates
+                    configurations.append(np.array(keypoints))
+
+    return configurations
+
+
 def load_and_sample_configurations(directory, num_samples):
     # Load configurations from JSON files
     configurations = load_keypoints_from_json(directory)
@@ -55,7 +72,7 @@ def load_and_sample_configurations(directory, num_samples):
     return sampled_configurations
 
 def load_model_for_inference(model_path):    
-    model = PosRegModel(12)
+    model = PosRegModel(18)
     model.load_state_dict(torch.load(model_path))
     model.eval()  # Set the model to inference mode
     return model
@@ -212,9 +229,10 @@ def build_lazy_roadmap_with_kdtree(configurations, k_neighbors, model):
     Returns:
     - G: nx.Graph, the constructed roadmap.
     """
-    configurations = configurations[1:9000:10]
-    with open('/home/jc-merlab/Pictures/Dl_Exps/dl_vs/servoing/exps/cust_1/configurations.txt', 'w') as f:
-            f.write(str(configurations))
+    configurations = configurations[1:15000:10]
+
+    # with open('/home/jc-merlab/Pictures/Dl_Exps/dl_vs/servoing/exps/cust_1/configurations.txt', 'w') as f:
+    #         f.write(str(configurations))
     # print("Shape of configurations before building the roadmap:", len(configurations), configurations[0].shape)
 
     flattened_configs = np.vstack([config.flatten() for config in configurations])
@@ -408,16 +426,17 @@ def plot_path_on_image_dir(image_path, path, start_config, goal_config, output_d
 # Main execution
 if __name__ == "__main__":
     # Load configurations from JSON files
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_planning_kprcnn/'  # Replace with the path to your JSON files
-    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b64_e400_v6.pth'
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_rearranged/'  # Replace with the path to your JSON files
+    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b32_e600_v13.pth'
     num_samples = 500
-    configurations = load_keypoints_from_json(directory)
+    # configurations = load_keypoints_from_json(directory)
+    configurations = load_keypoints_from_truncated_json(directory)
     model = load_model_for_inference(model_path)
     # distance_matrix = calculate_model_distances(configurations, model)
     # distance_matrix = np.array([1.0]).reshape(-1,1)
     # configurations = load_and_sample_configurations(directory, num_samples)
     # Parameters for PRM
-    num_neighbors = 25
+    num_neighbors = 50
      # Number of neighbors for each node in the roadmap
     start_time = time.time()
     # Build the roadmap
@@ -427,11 +446,12 @@ if __name__ == "__main__":
     # print("time taken to find the graph", end_time - start_time)      
 
     # Define start and goal configurations as numpy arrays
-    start_config = np.array([[269, 431], [272, 315], [172, 287], [178, 262], [149, 139], [119, 130]])  
-    goal_config = np.array([[263, 430], [268, 314], [257, 209], [284, 205], [399, 273], [414, 299]])
-
-    SAFE_ZONE = 50 
-    obstacle_center = (420, 103)
+    # Define start and goal configurations as numpy arrays
+    start_config = np.array([[250, 442], [252, 311], [260, 252], [267, 193], [298, 196], [373, 203], [448, 209], [483, 205], [487, 249]])
+    goal_config = np.array([[255, 441], [258, 311], [201, 300], [144, 290], [150, 260], [144, 191], [136, 120], [112, 103], [133, 73]])
+    
+    SAFE_ZONE = 30 
+    obstacle_center = (306, 51)
     half_diagonal = 20
     # safe_distance = SAFE_ZONE
 
@@ -454,39 +474,58 @@ if __name__ == "__main__":
     path = find_path(roadmap, start_node, goal_node)
     # path = find_path_heuristic(roadmap, start_node, goal_node, heuristic)
 
+    path = find_path(roadmap, start_node, goal_node)
+
     if path:
-        point_set = []
-        goal_sets = []
-        # Iterate through the path, excluding the first and last configuration
-        for configuration in path[0:-1]:
+         point_set = []
+         goal_sets = []
+         # Iterate through the path, excluding the first and last configuration
+         for configuration in path[0:-1]:
             # Extract the last three keypoints of each configuration
-            last_three_points = configuration[-5:]
-            last_three_points_float = [[float(point[0]), float(point[1])] for point in last_three_points]
+            selected_points = configuration[[3, 4, 6, 7, 8]]
+            selected_points_float = [[float(point[0]), float(point[1])] for point in selected_points]
             # Append these points to the point_set list
-            point_set.append(last_three_points_float)
-        # Iterate through the path, excluding start and goal
-        for configuration in path[1:]: 
-            last_three_points = configuration[-4:]
-            last_three_points_float = [[float(point[0]), float(point[1])] for point in last_three_points]
-            goal_features = []  # Create a new list for each goal set
-            for point in last_three_points_float:
+            point_set.append(selected_points_float)
+
+         # Iterate through the path, excluding start and goal            
+         for configuration in path[1:]: 
+            selected_points = configuration[[3, 4, 6, 7, 8]]
+            selected_points_float = [[float(point[0]), float(point[1])] for point in selected_points]
+            goal_features = []
+            for point in selected_points_float:
                 goal_features.extend(point)  # Add x, y as a pair
             goal_sets.append(goal_features)
-        print("Point Set:", point_set)
-        print("goal sets: ", goal_sets)
 
-        with open("config/dl_multi_features.yaml", "w") as yaml_file:
-            s = "dl_controller:\n"
-            s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
-            for i, goal in enumerate(goal_sets, start=1):
-                # Convert the list of floats into a comma-separated string
-                goal_str = ', '.join(map(str, goal))
-                s += f"  goal_features{i}: [{goal_str}]\n"
+         print("Point Set:", point_set)
+         print("goal sets: ", goal_sets)
+    
+         with open("config/dl_multi_features.yaml", "w") as yaml_file:
+             s = "dl_controller:\n"
+             s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
+             for i, goal in enumerate(goal_sets, start=1):
+                 # Convert the list of floats into a comma-separated string
+                 goal_str = ', '.join(map(str, goal))
+                 s += f"  goal_features{i}: [{goal_str}]\n"
+    
+             # Write the string to the file
+             yaml_file.write(s)
+    
+         print("Data successfully written to config/dl_multi_features.yaml")
 
-            # Write the string to the file
-            yaml_file.write(s)
+         # Save configurations to a .txt file
+         with open("config/path_configurations.txt", "w") as file:
+             file.write("Start Configuration:\n")
+             file.write(str(start_config.tolist()) + "\n\n")
+             file.write("Goal Configuration:\n")
+             file.write(str(goal_config.tolist()) + "\n\n")
+             file.write("Path:\n")
+             for config in path:
+                 file.write(str(config.tolist()) + "\n")
+             file.write("\nPoint Set:\n")
+             for points in point_set:
+                 file.write(str(points) + "\n")
 
-        print("Data successfully written to config/dl_multi_features.yaml")
+         print("Configurations successfully saved to configurations.txt")
 
     
     

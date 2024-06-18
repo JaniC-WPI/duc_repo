@@ -5,7 +5,7 @@
 #include <math.h>
 #include <vector>
 
-#include "panda_test/energyFuncMsg.h"
+#include "panda_test/energyFuncMsg_plan.h"
 #include "std_msgs/Float32MultiArray.h"
 ros::NodeHandle* nh;
 
@@ -15,7 +15,7 @@ float eps; // update threshold or convergence condition
 int no_of_actuators; // qhat, dr column size
 
 
-bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_test::energyFuncMsg::Response &res){
+bool computeEnergyFuncCallback(panda_test::energyFuncMsg_plan::Request &req, panda_test::energyFuncMsg_plan::Response &res){
     
     // std::cout <<"Inside Energy Callback"<<std::endl;
     // std::cout <<"window size: "<<window<<std::endl;

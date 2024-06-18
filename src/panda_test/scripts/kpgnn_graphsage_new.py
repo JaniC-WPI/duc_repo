@@ -99,7 +99,7 @@ def train_test_split(src_dir):
     splitfolders.ratio(src_dir, # The location of dataset
                    output=output, # The output location
                    seed=42, # The number of seed
-                   ratio=(.7, .2, .1), # The ratio of split dataset
+                   ratio=(.8, .1, .1), # The ratio of split dataset
                    group_prefix=None, # If your dataset contains more than one file like ".jpg", ".pdf", etc
                    move=False # If you choose to move, turn this into True
                    )
@@ -137,7 +137,10 @@ class KPDataset(Dataset):
             bboxes_labels_original.append('joint3')
             bboxes_labels_original.append('joint4')
             bboxes_labels_original.append('joint5')
-            bboxes_labels_original.append('joint6')  
+            bboxes_labels_original.append('joint6')
+            bboxes_labels_original.append('joint7')
+            bboxes_labels_original.append('joint8')
+            bboxes_labels_original.append('joint9')
 
         if self.transform:   
             # Converting keypoints from [x,y,visibility]-format to [x, y]-format + Flattening nested list of keypoints            
@@ -174,7 +177,7 @@ class KPDataset(Dataset):
         # Convert everything into a torch tensor        
         bboxes = torch.as_tensor(bboxes, dtype=torch.float32)       
         target = {}
-        labels = [1, 2, 3, 4, 5, 6]            
+        labels = [1, 2, 3, 4, 5, 6, 7, 8, 9]            
         target["boxes"] = bboxes
         target["labels"] = torch.as_tensor(labels, dtype=torch.int64) # all objects are joint positions
         target["image_id"] = torch.tensor([idx])
