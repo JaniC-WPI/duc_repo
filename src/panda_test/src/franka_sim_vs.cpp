@@ -647,7 +647,7 @@ int main(int argc, char **argv){
         
         // float adaptive_gain = p_lam * (1 + alpha_gains * error_magnitude); // Adaptive gain calculation
 
-        float adaptive_gain = (1+(alpha_gains * error_magnitude));
+        // float adaptive_gain = (1+(alpha_gains * error_magnitude));
 
         // std::cout << "Adaptive gain preprocess: " << adaptive_gain << std::endl;
 
@@ -680,8 +680,8 @@ int main(int argc, char **argv){
         // std::cout << "Adaptive gains matrix: " << adaptive_gains_matrix << std::endl;
 
         if (no_of_features == 8 || no_of_features == 10 || no_of_features == 12){
-            // joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
-            joint_vel = (Qhat_inv)*(adaptive_gain*K_diag)*(error_vec);
+            joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
+            // joint_vel = (Qhat_inv)*(adaptive_gain*K_diag)*(error_vec);
             // joint_vel = (Qhat_inv) * (adaptive_gains_matrix * K_diag) * (error_vec);
         }        
         else if (no_of_features==6){
@@ -902,7 +902,7 @@ End of working velocity scaling*/
 
         // j_pub.publish(j_vel);
         float current_thresh;
-
+        // If the current goal is not the last goal the error thresh hold is 25 else it is 10 for now
         if (current_goal_set < num_goal_sets - 1) {
             current_thresh = thresh1; // Use thresh1 for all but the last goal
         } else {
@@ -913,6 +913,7 @@ End of working velocity scaling*/
         std::cout<<"Current Threshold in use is "<<current_thresh<< std::endl;
         std::cout<<"Current Error is "<<err<<std::endl;
 
+        // The following block is to change goals
         if (err < current_thresh) {            
             std::cout << "Goal " << current_goal_set << " reached. Moving to next goal." << std::endl;
             if (current_goal_set < num_goal_sets - 1) {

@@ -125,6 +125,8 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
             if(Ji(i) > eps){    // Update Jacobian if error greater than convergence threshold
                 // float error_magnitude = Ji(i);
                 // std::cout << "Latest Error: " << feature_error_magnitude << std::endl;
+                
+                // learning rate decreases on the basis of feature_error norm
                 float adaptive_gamma = current_gamma / (1 + alpha_gamma * feature_error_magnitude);
 
                 // if (feature_error_magnitude <= 40){

@@ -9,7 +9,7 @@ vsbot :
     epsilon: 1.0e-5 # update threshold or convergence condition
     gamma:  10.0 # learning rate
     gamma2: 50.0 # learning rate during servoing
-    gamma3: 50.0
+    gamma3: 100.0
     window: 50 # window size
     amplitude: 0.1 # amplitude for initial sin velocities
     rate: 10 # initialization loop rate
