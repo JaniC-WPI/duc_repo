@@ -8,8 +8,8 @@ vsbot :
   estimation:
     epsilon: 1.0e-5 # update threshold or convergence condition
     gamma:  10.0 # learning rate
-    gamma2: 50.0 # learning rate during servoing
-    gamma3: 100.0
+    gamma2: 30.0 # learning rate during servoing
+    gamma3: 50.0
     window: 50 # window size
     amplitude: 0.1 # amplitude for initial sin velocities
     rate: 10 # initialization loop rate
@@ -17,11 +17,11 @@ vsbot :
   control:
     saturation: 20      
     gain_sm: -3
-    thresh1: 25 # visual servoing convergence threshold
+    thresh1: 20 # visual servoing convergence threshold
     thresh2: 5
     lam: -0.3 # for 2 joints
     p_lam: 0.5
-    alpha_gamma: 0.1
+    alpha_gamma: 0.2
     alpha_gains: 0.001
     reg_lambda: 0.01
     # jacobian: [19, 47, -79,  7, 89, -13, 71, -59, -23, 61, 41, -67,  -3,  2, -11, 29, -43, -31, 73, 17, -5, 83, 37, 53]
@@ -29,8 +29,8 @@ vsbot :
     # jacobian: [19, 47, -79,  7, 89, -13, 71, -59, -23, 61, 41, -67]  #,-3,  2, -11, 29, -43, -31, 73, 17, -5, 83, 37, 53]
     # jacobian: [19, 47, -79,  7, 89, -13, 71, -59, -23, 61, 41, -67,  -3,  2, -11, 29, -43, -31]
     gains1: [-2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0] # for intermediate configs
-    # gains2: [-1.5, -1.5, -1.5, -1.5, -3.0, -3.0, -2.0, -2.0] # for last config
-    gains2: [-2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0]
+    # gains2: [-1.5, -1.5, -1.5, -1.5, -3.0, -3.0, -5.0, -5.0] # for last config
+    gains2: [-4.0, -4.0, -4.0, -4.0, -4.0, -4.0, -4.0, -4.0, -4.0, -4.0]
 
 # Shape Servoing Parameters -------------------------------------------
   

@@ -647,7 +647,7 @@ int main(int argc, char **argv){
         
         // float adaptive_gain = p_lam * (1 + alpha_gains * error_magnitude); // Adaptive gain calculation
 
-        // float adaptive_gain = (1+(alpha_gains * error_magnitude));
+        float adaptive_gain = (1+(alpha_gains * error_magnitude));
 
         // std::cout << "Adaptive gain preprocess: " << adaptive_gain << std::endl;
 
@@ -673,7 +673,7 @@ int main(int argc, char **argv){
 
         std::cout << "Inverse Jacobian: " << Qhat_inv << std::endl;
 
-        std::cout << "Adaptive gain postprocess: " << adaptive_gain << std::endl;
+        // std::cout << "Adaptive gain postprocess: " << adaptive_gain << std::endl;
 
         // std::cout << "Applied gain: " << adaptive_gain * K_diag << std::endl;
 
@@ -827,7 +827,7 @@ End of working velocity scaling*/
         // std::cout<< "j2 vel: " << j_vel.data.at(1) << std::endl;
         // std::cout<< "j3 vel: " << j_vel.data.at(2) << std::endl;
 
-        std::cout<<"for error magnitude" << error_magnitude <<"published joint_vel: "<< j_vel <<std::endl;
+        std::cout<<"for error magnitude: " << error_magnitude <<" published joint_vel: "<< j_vel <<std::endl;
 
         j_pub.publish(j_vel);
         

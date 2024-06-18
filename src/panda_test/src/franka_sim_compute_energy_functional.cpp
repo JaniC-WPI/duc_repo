@@ -125,7 +125,7 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
             if(Ji(i) > eps){    // Update Jacobian if error greater than convergence threshold
                 // float error_magnitude = Ji(i);
                 // std::cout << "Latest Error: " << feature_error_magnitude << std::endl;
-                
+
                 // learning rate decreases on the basis of feature_error norm
                 float adaptive_gamma = current_gamma / (1 + alpha_gamma * feature_error_magnitude);
 
@@ -138,7 +138,7 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
 
                  // Choose an appropriate alpha value
                 // std::cout << "fixed learning rate: " << current_gamma << std::endl;
-                // std::cout << "latest learning rate: " << adaptive_gamma << std::endl;
+                std::cout << "latest adaptive learning rate: " << adaptive_gamma << std::endl;
                 Eigen::MatrixXf G1 = dRmat*(qhatMat.row(i).transpose()) - dSmat.col(i);
                 float G2 = dRmat.row(it)*(qhatMat.row(i).transpose()) - dSmat(it,i);
                 Eigen::MatrixXf G ((G1.rows()+1),1);
