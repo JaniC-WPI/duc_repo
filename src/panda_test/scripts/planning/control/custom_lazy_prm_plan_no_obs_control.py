@@ -200,7 +200,7 @@ def plot_path_on_image_dir(image_path, path, start_config, goal_config, output_d
 if __name__ == "__main__":
     # Load configurations from JSON files
     directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_rearranged'  # Replace with the path to your JSON files
-    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b32_e600_v13.pth'
+    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b128_e400_v17.pth'
     num_samples = 500
     configurations = load_keypoints_from_truncated_json(directory)
     model = load_model_for_inference(model_path)
@@ -217,8 +217,8 @@ if __name__ == "__main__":
     # start_config = np.array([[255, 441], [258, 311], [201, 300], [144, 290], [150, 260], [144, 191], [136, 120], [112, 103], [133, 73]])
     # goal_config = np.array([[250, 442], [252, 311], [260, 252], [267, 193], [298, 196], [373, 203], [448, 209], [483, 205], [487, 249]])
 
-    start_config = np.array([[249, 442], [251, 312], [222, 262], [191, 211], [217, 194], [271, 145], [325, 96], [340, 67], [376, 81]])
-    goal_config = np.array([[255, 441], [258, 311], [201, 300], [144, 290], [150, 260], [144, 191], [136, 120], [112, 103], [133, 73]])
+    start_config = np.array([[250, 442], [252, 311], [275, 255], [294, 201], [323, 209], [368, 268], [411, 328], [443, 343], [426, 382]])
+    goal_config = np.array([[250, 442], [252, 311], [210, 271], [167, 231], [188, 209], [227, 147], [265, 85], [278, 56], [315, 73]])
 
     # Add start and goal configurations to the roadmap
     start_node, tree = add_config_to_roadmap(start_config, roadmap, tree, num_neighbors)
@@ -226,20 +226,21 @@ if __name__ == "__main__":
         
     # Find and print the path from start to goal
     path = find_path(roadmap, start_node, goal_node)
+    
     if path:
          point_set = []
          goal_sets = []
          # Iterate through the path, excluding the first and last configuration
          for configuration in path[0:-1]:
             # Extract the last three keypoints of each configuration
-            selected_points = configuration[[3, 4, 6, 7, 8]]
+            selected_points = configuration[[3, 4, 5, 6, 7, 8]]
             selected_points_float = [[float(point[0]), float(point[1])] for point in selected_points]
             # Append these points to the point_set list
             point_set.append(selected_points_float)
 
          # Iterate through the path, excluding start and goal            
          for configuration in path[1:]: 
-            selected_points = configuration[[3, 4, 6, 7, 8]]
+            selected_points = configuration[[3, 4, 5, 6, 7, 8]]
             selected_points_float = [[float(point[0]), float(point[1])] for point in selected_points]
             goal_features = []
             for point in selected_points_float:

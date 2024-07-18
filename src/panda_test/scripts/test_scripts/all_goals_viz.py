@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 # Load your image
-image_path = '/home/jc-merlab/.ros/sim_published_goal_image_obs.jpg'  # Replace with the path to your image
+image_path = '/home/jc-merlab/.ros/sim_published_goal_image_orig.jpg'  # Replace with the path to your image
 static_image = cv2.imread(image_path)
 gif_image = static_image.copy()
 
@@ -38,8 +38,9 @@ if not os.path.exists(output_dir):
 
     # [[255, 200], [333, 140], [354, 144], [350, 165]]
         
-points_sets = [[[191.0, 211.0], [217.0, 194.0], [325.0, 96.0], [340.0, 67.0], [376.0, 81.0]], [[167.0, 232.0], [188.0, 209.0], [246.0, 77.0], [263.0, 49.0], [297.0, 71.0]], [[138.0, 283.0], [146.0, 253.0], [103.0, 117.0], [126.0, 94.0], [154.0, 123.0]]]
-
+points_sets = [[[294.0, 201.0], [323.0, 209.0], [368.0, 268.0], [411.0, 328.0], [443.0, 343.0], [426.0, 382.0]],
+            [[267.0, 193.0], [298.0, 196.0], [339.0, 258.0], [380.0, 321.0], [414.0, 325.0], [409.0, 368.0]],
+            [[230.0, 195.0], [260.0, 189.0], [318.0, 234.0], [376.0, 280.0], [408.0, 293.0], [392.0, 333.0]]]
 # 
 # colors = [
 #     (255, 0, 0),  # Blue
@@ -50,7 +51,7 @@ points_sets = [[[191.0, 211.0], [217.0, 194.0], [325.0, 96.0], [340.0, 67.0], [3
 # ]
 
 # Define fixed colors for the points
-fixed_colors = [(0, 0, 255), (255, 0, 0), (0, 255, 0), (255, 255, 0), (0, 255, 255)]
+fixed_colors = [(0, 0, 255), (255, 0, 0), (0, 255, 0), (255, 255, 0), (0, 255, 255), (255, 0, 255)]
 
 colors = np.random.randint(0, 255, (len(points_sets), 3))
 

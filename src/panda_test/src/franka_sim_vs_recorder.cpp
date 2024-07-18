@@ -43,7 +43,14 @@ void dsCallback(const std_msgs::Float64MultiArray &msg){
     // Write ds to excel
     std::ofstream ds_plotdata("ds.csv",std::ios::app);
     // uncomment next line for 3 features
-    if (no_of_features==6){
+    if (no_of_features==2){
+        ds_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<"\n";
+    }
+    else if (no_of_features==4){
+        ds_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","
+        <<msg.data.at(3)<<"\n";
+    }
+    else if (no_of_features==6){
         ds_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","
         <<msg.data.at(3)<<","<<msg.data.at(4)<<","<<msg.data.at(5)<<"\n";
     }
@@ -238,6 +245,13 @@ void errCallback(const std_msgs::Float64MultiArray &msg){
                     <<msg.data.at(2)<<","<<msg.data.at(3)<<","
                     <<msg.data.at(4)<<","<<msg.data.at(5)<<"\n";
         }
+        else if (no_of_features==2){
+            err_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<"\n";
+        }
+        else if (no_of_features==4){
+            err_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","
+                    <<msg.data.at(2)<<","<<msg.data.at(3)<<"\n";
+        }
         
                     // <<msg.data.at(8)<<","<<msg.data.at(9)<<","
                 //    <<msg.data.at(10)<<","<<msg.data.at(11)<<"\n";
@@ -292,6 +306,13 @@ void cpCallback(const std_msgs::Float64MultiArray &msg){
             else if (no_of_features==6){
                 cp_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<","<<msg.data.at(2)<<","
             <<msg.data.at(3)<<","<<msg.data.at(4)<<","<<msg.data.at(5)<<"\n";
+            }
+            else if (no_of_features==2){
+                cp_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<"\n";
+            }
+            else if (no_of_features==4){
+                cp_plotdata<<current_goal_set<<","<<msg.data.at(0)<<","<<msg.data.at(1)<<
+                ","<<msg.data.at(2)<<","<<msg.data.at(3)<<"\n";
             }
             
             // <<msg.data.at(8)<<","<<msg.data.at(9)<<","

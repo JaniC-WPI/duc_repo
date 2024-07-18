@@ -26,14 +26,19 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
     // std::cout <<"no of features: "<<no_of_features<<std::endl;
 
     // Assign Request data
-    float gamma_general = req.gamma_general; //Learning Rate
+    // float gamma_general = req.gamma_general;
+    float gamma_first_actuator = req.gamma_first_actuator; //Learning Rate
+    float gamma_second_actuator = req.gamma_second_actuator;
     float gamma_third_actuator = req.gamma_third_actuator;
     float it = req.it; // iterator
     float feature_error_magnitude = req.feature_error_magnitude;
 
+
     std_msgs::Float32MultiArray dS =  req.dS;
     std_msgs::Float32MultiArray dR = req.dR;
     std_msgs::Float32MultiArray qhat = req.qhat;
+    std_msgs::Float32MultiArray feature_errors_msg = req.feature_errors;    
+    std::vector<float> feature_errors = feature_errors_msg.data;
     // std::cout << "assigned request data"<<std::endl;
 
     // Convert ROS MSG Arrays to Eigen Matrices
@@ -102,7 +107,7 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
     std_msgs::Float64MultiArray error_msg;
     error_msg.data.resize(dSmat.cols());
     // std::cout<<"Declared Ji"<<std::endl;
-
+    
     for(int i=0; i<dSmat.cols();i++){
         // std::cout<<dSmat(it,i)<<std::endl;
         float cur_model_err = pow((dRmat.row(it)*qhatMat.row(i).transpose() - dSmat(it,i)),2);
@@ -115,11 +120,11 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
     }
     model_error_pub.publish(error_msg);
     // std::cout<<"computed energy functional"<<std::endl;
-
     // Updated Jacobian Vectors
     for(int j = 0; j < no_of_actuators; j++){
     // Choose the appropriate learning rate based on the joint index
-    float current_gamma = (j < 2) ? gamma_general : gamma_third_actuator;
+    // float current_gamma = (j < 2) ? gamma_general : gamma_third_actuator;
+    float current_gamma = (j == 0) ? gamma_first_actuator : ((j == 1) ? gamma_second_actuator : gamma_third_actuator);
 
         for(int i=0; i<dSmat.cols(); i++){
             if(Ji(i) > eps){    // Update Jacobian if error greater than convergence threshold
@@ -129,8 +134,12 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
                 // learning rate decreases on the basis of feature_error norm
                 float adaptive_gamma = current_gamma / (1 + alpha_gamma * feature_error_magnitude);
 
-                // if (feature_error_magnitude <= 40){
-                //     adaptive_gamma = current_gamma;
+                // learning rate on the basis of individual feature error
+                float feature_error = feature_errors[i];
+                // float adaptive_gamma = current_gamma / (1 + alpha_gamma * feature_error);
+
+                // if (feature_error_magnitude <= 30){
+                //     adaptive_gamma = 0.00001;
                 // } 
                 // float adaptive_gamma = current_gamma / (1 + alpha_gamma * error_magnitude); // Choose an appropriate alpha value
                 // float adaptive_gamma = current_gamma / (error_magnitude); // Choose an appropriate alpha value
@@ -138,7 +147,7 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
 
                  // Choose an appropriate alpha value
                 // std::cout << "fixed learning rate: " << current_gamma << std::endl;
-                std::cout << "latest adaptive learning rate: " << adaptive_gamma << std::endl;
+                // std::cout << "latest adaptive learning rate: " << adaptive_gamma << " for feature " << feature_error_magnitude << std::endl;
                 Eigen::MatrixXf G1 = dRmat*(qhatMat.row(i).transpose()) - dSmat.col(i);
                 float G2 = dRmat.row(it)*(qhatMat.row(i).transpose()) - dSmat(it,i);
                 Eigen::MatrixXf G ((G1.rows()+1),1);
@@ -150,8 +159,14 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
 
                 Eigen::MatrixXf H = H1.transpose(); 
                 // Apply the selected gamma for this joint update
-                // qhatMat.row(i) = (-current_gamma*(H.transpose())*G).transpose();
-                qhatMat.row(i) = (-adaptive_gamma * (H.transpose()) * G).transpose();
+                qhatMat.row(i) = (-current_gamma*(H.transpose())*G).transpose();
+                // qhatMat.row(i) = (-adaptive_gamma * (H.transpose()) * G).transpose();
+                // if (feature_error_magnitude < 30){
+                //     qhatMat.row(i) = (-0.00001 * (H.transpose()) * G).transpose();
+                // }
+                // else {
+                //     qhatMat.row(i) = (-adaptive_gamma * (H.transpose()) * G).transpose();
+                // }
             }
         }        
     }

@@ -1,8 +1,10 @@
 # Request
-float32 gamma_general
+float32 gamma_first_actuator
+float32 gamma_second_actuator
 float32 gamma_third_actuator
 float32 it
 float32 feature_error_magnitude
+std_msgs/Float32MultiArray feature_errors
 std_msgs/Float32MultiArray dS
 std_msgs/Float32MultiArray dR
 std_msgs/Float32MultiArray qhat

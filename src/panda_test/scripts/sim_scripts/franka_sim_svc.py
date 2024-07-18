@@ -487,7 +487,7 @@ class VideoInference:
             output = model(inf_img)
         inf_img = (inf_img[0].permute(1,2,0).detach().cpu().numpy() * 255).astype(np.uint8)
         scores = output[0]['scores'].detach().cpu().numpy()
-        high_scores_idxs = np.where(scores > 0.7)[0].tolist() # Indexes of boxes with scores > 0.7
+        high_scores_idxs = np.where(scores >= 0.9)[0].tolist() # Indexes of boxes with scores > 0.7
         post_nms_idxs = torchvision.ops.nms(output[0]['boxes'][high_scores_idxs], \
             output[0]['scores'][high_scores_idxs], 0.3).cpu().numpy() # Indexes of boxes left after applying NMS (iou_threshold=0.3)
         # Below, in output[0]['keypoints'][high_scores_idxs][post_nms_idxs] and output[0]['boxes'][high_scores_idxs][post_nms_idxs]
@@ -506,7 +506,17 @@ class VideoInference:
         labels = []
         for label in output[0]['labels'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy():
             labels.append(label)
+        
         keypoints_all = [x for _,x in sorted(zip(labels,keypoints))]
+
+        # unique_labels = set(labels)
+        # best_indices = []
+        # for ul in unique_labels:
+        #     same_label_indices = [i for i, label in enumerate(labels) if label == ul]
+        #     best_index = max(same_label_indices, key=lambda i: scores[high_scores_idxs[post_nms_idxs[i]]])
+        #     best_indices.append(best_index)
+
+        # keypoints_best = [keypoints_all[i] for i in best_indices]
 
         # if len(keypoints_all) > 2:
         #     x1, y1 = keypoints_all[1]
@@ -526,11 +536,14 @@ class VideoInference:
         # indices = [2,3,4,5,6,8]
         # uncomment the next line 3 feature points
         indices = [3,4,6,7,8]
+        # indices = [1,2,4,5,8]
+
         keypoints_ = [keypoints_all[i] for i in indices]
 
         print(len(keypoints))
         print(len(keypoints_all))
         print(len(keypoints_))
+        print("exec keypoints", keypoints_)
         bboxes = []
         for bbox in output[0]['boxes'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy():
             bboxes.append(list(map(int, bbox.tolist())))
@@ -575,6 +588,14 @@ class VideoInference:
             for i in range(len(kp_x)-2):
                kp.append(kp_x[i+2]) 
                kp.append(kp_y[i+2])
+        elif no_of_features==4:
+            for i in range(len(kp_x)-3):
+               kp.append(kp_x[i+3]) 
+               kp.append(kp_y[i+3])
+        elif no_of_features==2:
+            for i in range(len(kp_x)-4):
+               kp.append(kp_x[i+4]) 
+               kp.append(kp_y[i+4])
 
         print("current keypoints", kp)
 

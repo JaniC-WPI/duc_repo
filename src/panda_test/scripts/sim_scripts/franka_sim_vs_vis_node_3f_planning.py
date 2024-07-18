@@ -30,13 +30,24 @@ no_of_features = rospy.get_param('vsbot/shape_control/no_of_features')
 def controlPointCallback(cp_msg):
     global cp1x, cp1y, cp2x, cp2y, cp3x, cp3y, cp4x, cp4y, cp5x, cp5y
 
-    cp1x, cp1y = cp_msg.data[0], cp_msg.data[1]
-    cp2x, cp2y = cp_msg.data[2], cp_msg.data[3]
-    cp3x, cp3y = cp_msg.data[4], cp_msg.data[5]
-
-    if (no_of_features == 8):
+    if (no_of_features ==2):
+        cp1x, cp1y = cp_msg.data[0], cp_msg.data[1]
+    elif (no_of_features == 4):
+        cp1x, cp1y = cp_msg.data[0], cp_msg.data[1]
+        cp2x, cp2y = cp_msg.data[2], cp_msg.data[3]
+    elif (no_of_features == 6):
+        cp1x, cp1y = cp_msg.data[0], cp_msg.data[1]
+        cp2x, cp2y = cp_msg.data[2], cp_msg.data[3]
+        cp3x, cp3y = cp_msg.data[4], cp_msg.data[5]
+    elif (no_of_features == 8):
+        cp1x, cp1y = cp_msg.data[0], cp_msg.data[1]
+        cp2x, cp2y = cp_msg.data[2], cp_msg.data[3]
+        cp3x, cp3y = cp_msg.data[4], cp_msg.data[5]
         cp4x, cp4y = cp_msg.data[6], cp_msg.data[7]
     elif (no_of_features == 10):
+        cp1x, cp1y = cp_msg.data[0], cp_msg.data[1]
+        cp2x, cp2y = cp_msg.data[2], cp_msg.data[3]
+        cp3x, cp3y = cp_msg.data[4], cp_msg.data[5]
         cp4x, cp4y = cp_msg.data[6], cp_msg.data[7]
         cp5x, cp5y = cp_msg.data[8], cp_msg.data[9]
 
@@ -76,12 +87,24 @@ def visCallback(msg):
     if status == 2 and goal_image is not None:
         cv_img = cv2.addWeighted(cv_img, 0.4, goal_image, 0.6, 0)
 
-    cv2.circle(cv_img, (int(cp1x), int(cp1y)), 5, (255,0,0), -1)
-    cv2.circle(cv_img, (int(cp2x), int(cp2y)), 5, (0,255,0), -1)
-    cv2.circle(cv_img, (int(cp3x), int(cp3y)), 5, (255,255,0), -1)
+    if (no_of_features==2):
+        cv2.circle(cv_img, (int(cp1x), int(cp1y)), 5, (255,0,0), -1)
+    elif (no_of_features==4):
+        cv2.circle(cv_img, (int(cp1x), int(cp1y)), 5, (255,0,0), -1)
+        cv2.circle(cv_img, (int(cp2x), int(cp2y)), 5, (0,255,0), -1)
+    elif (no_of_features==6):
+        cv2.circle(cv_img, (int(cp1x), int(cp1y)), 5, (255,0,0), -1)
+        cv2.circle(cv_img, (int(cp2x), int(cp2y)), 5, (0,255,0), -1)
+        cv2.circle(cv_img, (int(cp3x), int(cp3y)), 5, (255,255,0), -1)        
     if (no_of_features==8):
+        cv2.circle(cv_img, (int(cp1x), int(cp1y)), 5, (255,0,0), -1)
+        cv2.circle(cv_img, (int(cp2x), int(cp2y)), 5, (0,255,0), -1)
+        cv2.circle(cv_img, (int(cp3x), int(cp3y)), 5, (255,255,0), -1)
         cv2.circle(cv_img, (int(cp4x), int(cp4y)), 5, (0,255,255), -1)
     elif (no_of_features==10):
+        cv2.circle(cv_img, (int(cp1x), int(cp1y)), 5, (255,0,0), -1)
+        cv2.circle(cv_img, (int(cp2x), int(cp2y)), 5, (0,255,0), -1)
+        cv2.circle(cv_img, (int(cp3x), int(cp3y)), 5, (255,255,0), -1)
         cv2.circle(cv_img, (int(cp4x), int(cp4y)), 5, (0,255,255), -1)
         cv2.circle(cv_img, (int(cp5x), int(cp5y)), 5, (255,0,255), -1)
 

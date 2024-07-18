@@ -36,10 +36,14 @@ int no_of_actuators;
 bool end_flag = false;      // true when servoing is completed. Triggered by user
 bool start_flag = false;    // true when camera stream is ready
 
+std::vector<float> initial_feature_errors;
+std::vector<float> feature_errors;
+std::vector<float> final_qhat_initial_estimation;
+
 // Initialize a counter for iterations after switching goal sets
 int iterations_since_goal_change = 0;
 // Define the number of iterations to publish 0 velocities after a goal set change
-const int zero_velocity_iterations = 3;
+const int zero_velocity_iterations = 5;
 
 
 // Sign function for sliding mode controller
@@ -194,6 +198,8 @@ int main(int argc, char **argv){
     float gamma; // learning rate
     n.getParam("vsbot/estimation/gamma", gamma);
     
+    float gamma1; // learning rate during control loop
+    n.getParam("vsbot/estimation/gamma1", gamma1);
     float gamma2; // learning rate during control loop
     n.getParam("vsbot/estimation/gamma2", gamma2);
 
@@ -263,6 +269,8 @@ int main(int argc, char **argv){
 
     // parameter for generating joint velocities
     float param = 0.3; // starting value for joint velocity
+
+    std::vector<float> initial_feature_errors(no_of_features, 0.0);
     
     // Collecting data for estimation window
     while (it < window){
@@ -335,6 +343,11 @@ int main(int argc, char **argv){
         // dRinitial.push_back(dr[1]);
         // dRinitial.push_back(dr[2]); // Comment for 3rd joint
 
+         for (int i = 0; i < no_of_features; i++) {
+            initial_feature_errors[i] = std::abs(cur_features[i] - old_features[i]);
+        }
+        
+
         // Update state variables
         old_features = cur_features;
 
@@ -368,6 +381,9 @@ int main(int argc, char **argv){
         ros::spinOnce();
         r.sleep();     
     }
+
+    // Save the final Jacobian from the initial estimation loop
+    final_qhat_initial_estimation = qhat;
 
     // Commanding 0 velocity to robot 
     j_vel.data.clear();
@@ -418,22 +434,28 @@ int main(int argc, char **argv){
     for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr){
         // std::cout <<*itr<<std::endl;
         qhatmsg.data.push_back(*itr);
-    }
+    }  
 
     std::cout <<"Pushed initial data to ROS msgs"<<std::endl;
+
+    std_msgs::Float32MultiArray initial_feature_errors_msg;
+    initial_feature_errors_msg.data = initial_feature_errors;
 
     // Compute Jacobian
     it = 0;
     panda_test::energyFuncMsg msg;
     while(it < window){
         // Service request data
-        msg.request.gamma_general = gamma;
+        // msg.request.gamma_general = gamma;
+        msg.request.gamma_first_actuator = gamma;
+        msg.request.gamma_second_actuator = gamma;
         msg.request.gamma_third_actuator = gamma;
         msg.request.it = it;
         msg.request.dS = dSmsg;
         msg.request.dR = dRmsg;
         msg.request.qhat = qhatmsg;
         msg.request.feature_error_magnitude = 1.0;
+        msg.request.feature_errors = initial_feature_errors_msg;
 
         // call compute energy functional
         energyClient.call(msg);
@@ -486,7 +508,6 @@ int main(int argc, char **argv){
 
     // ----------------------- Control Loop for Servoing -----------------------------    
     std_msgs::Int32 current_goal_set_msg; // Message for publishing current goal set index
-    
 
 
     while(ros::ok() && !end_flag && current_goal_set < num_goal_sets){    // convergence condition
@@ -565,11 +586,11 @@ int main(int argc, char **argv){
         float tolerance = 1e-4; // Threshold for considering singular values as zero
         bool is_singular = svd.singularValues().minCoeff() < tolerance;
 
-        std::cout << "Min Coefficient: " << svd.singularValues().minCoeff() << std::endl;
+        // std::cout << "Min Coefficient: " << svd.singularValues().minCoeff() << std::endl;
 
         // Optional: Print the condition number for diagnostics
         float cond_number = svd.singularValues().maxCoeff() / svd.singularValues().minCoeff();
-        std::cout << "Condition number of Qhat: " << cond_number << std::endl;
+        // std::cout << "Condition number of Qhat: " << cond_number << std::endl;
 
         if (is_singular) {
             std::cerr << "Warning: Qhat is singular or close to singular!" << std::endl;
@@ -603,15 +624,15 @@ int main(int argc, char **argv){
         // A_inv = (A.transpose()*A).inverse() * A.transpose()
         Eigen::MatrixXf Qhat_inv = (Qhat.transpose()*Qhat).inverse() * Qhat.transpose();
         // Eigen::MatrixXf Qhat_inv = (Qhat.transpose() * Qhat + reg_lambda * Eigen::MatrixXf::Identity(Qhat.cols(), Qhat.cols())).inverse() * Qhat.transpose();
-        std::cout << "Qhat_inv dimensions: " << Qhat_inv.rows() << "x" << Qhat_inv.cols() << std::endl;
+        // std::cout << "Qhat_inv dimensions: " << Qhat_inv.rows() << "x" << Qhat_inv.cols() << std::endl;
         // std::cout<<"Inverted Jacobian: \n"<<Qhat_inv<<std::endl;
         // Saturating the error vector
-        for(int i=0; i<no_of_features; i++){
-            if(abs(error_vec(i)) > saturation){
-                error_vec(i) = (error_vec(i)/abs(error_vec(i)))*saturation;
-            }
-        }
-        std::cout << "Error vector dimensions: " << error_vec.size() << std::endl;
+        // for(int i=0; i<no_of_features; i++){
+        //     if(abs(error_vec(i)) > saturation){
+        //         error_vec(i) = (error_vec(i)/abs(error_vec(i)))*saturation;
+        //     }
+        // }
+        std::cout << "Error vector with no saturation: " << error_vec << std::endl;
         // IBVS control law (Velocity generator)
         //  With Berk 
         // P Control 
@@ -649,7 +670,7 @@ int main(int argc, char **argv){
 
         float adaptive_gain = (1+(alpha_gains * error_magnitude));
 
-        // std::cout << "Adaptive gain preprocess: " << adaptive_gain << std::endl;
+        std::cout << "Adaptive gain preprocess: " << adaptive_gain << std::endl;
 
         // if ((current_goal_set == num_goal_sets - 1) && (error_magnitude <= 40)){
         //     adaptive_gain = adaptive_gain * 2.5;
@@ -658,16 +679,30 @@ int main(int argc, char **argv){
         //     adaptive_gain = (adaptive_gain + 1)/2.5;
         // }
         Eigen::VectorXf adaptive_gains(no_of_features);
+        feature_errors.clear();
         for (int i = 0; i < no_of_features; i++) {
-            float feature_error = abs(unsaturated_error_vec(i));
-            // adaptive_gains(i) = p_lam * (1 + alpha_gains * feature_error);
-            // adaptive_gains(i) = p_lam * alpha_gains * feature_error;
+            float feature_error = abs(unsaturated_error_vec(i));       
+            // std::cout << "individual_feature_error: " << feature_error << std::endl;     
+            feature_errors.push_back(feature_error);
             adaptive_gains(i) = (alpha_gains * feature_error);
-        }
+            // std::cout << "adaptive gain for feature: " << i << "::" << adaptive_gains(i) << std::endl;  
+        }      
+
+
+        std_msgs::Float32MultiArray feature_errors_msg;
+        feature_errors_msg.data = feature_errors;
 
         // std::cout << "Diagonal adaptive gains: " << adaptive_gains << std::endl;
 
         Eigen::MatrixXf adaptive_gains_matrix = adaptive_gains.asDiagonal();
+
+        // for (int i = 0; i < no_of_features; i++) {
+        //     if (error_vec(i) > 0){
+        //         K(i) = -K[i];
+        //     }
+        // }
+
+        // std::cout << "gains after adjustment: " << K << std::endl;
 
         Eigen::MatrixXf K_diag = K.asDiagonal();
 
@@ -679,14 +714,47 @@ int main(int argc, char **argv){
 
         // std::cout << "Adaptive gains matrix: " << adaptive_gains_matrix << std::endl;
 
-        if (no_of_features == 8 || no_of_features == 10 || no_of_features == 12){
-            joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
-            // joint_vel = (Qhat_inv)*(adaptive_gain*K_diag)*(error_vec);
-            // joint_vel = (Qhat_inv) * (adaptive_gains_matrix * K_diag) * (error_vec);
-        }        
-        else if (no_of_features==6){
-            joint_vel = lam*(Qhat_inv)*(error_vec);
-        } 
+        joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
+        // joint_vel = (Qhat_inv)*(adaptive_gains_matrix*K_diag)*(error_vec);
+        // joint_vel = (Qhat_inv)*(adaptive_gains_matrix*error_vec);
+
+        std::cout << "Error and gain: " << (Eigen::MatrixXf(K.asDiagonal())*error_vec) << std::endl;
+
+
+        // for (int i = 0; i < no_of_actuators; i++){
+        //     if (joint_vel[i] >= 0.2){
+        //         joint_vel[i] = (joint_vel[i]*0.5);
+        //     }
+        // }
+        // float max_velocity = joint_vel.cwiseAbs().maxCoeff();
+        // if (max_velocity > saturation) {
+        //     joint_vel = joint_vel * (saturation / max_velocity);
+        // }
+        // std::cout << "Error_vec last element:"  <<  (error_vec(error_vec.size() - 1)) << std::endl; 
+        // std::cout << "Error_vec second last element:"  <<  (error_vec(error_vec.size() - 2)) << std::endl; 
+        // if ((error_vec(error_vec.size() - 1) < 0) && (error_vec(error_vec.size() - 2) >=0)){
+        //     joint_vel[1] = (joint_vel[1]*2);
+        //     joint_vel[2] = -joint_vel[2];
+        // }
+
+        // joint_vel = (Qhat_inv) * (adaptive_gains_matrix * K_diag) * (error_vec);
+
+        // Implement adaptive gain adjustment without distorting the original control logic
+        // for (int i = 0; i < joint_vel.size(); ++i) {
+        //     if (abs(joint_vel[i]) < 0.001) { // Threshold to detect very slow movement
+        //         joint_vel[i] *= 5.0; // Increase the velocity for the slower joint
+        //     }
+        // }
+
+        // if (no_of_features == 8 || no_of_features == 10 || no_of_features == 12){
+        //     joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
+        //     // joint_vel = (Qhat_inv)*(adaptive_gain*K_diag)*(error_vec);
+        //     // joint_vel = (Qhat_inv) * (adaptive_gains_matrix * K_diag) * (error_vec);
+        // }        
+        // else if (no_of_features==6){
+        //     // joint_vel = lam*(Qhat_inv)*(error_vec);
+        //     joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
+        // } 
                 
         std::cout<<"joint_vel_1: "<<joint_vel[0]<<std::endl;
         std::cout<<"joint_vel_2: "<<joint_vel[1]<<std::endl;
@@ -822,6 +890,23 @@ End of working velocity scaling*/
         //     }
         // }
 
+        // Check if we are in the goal switch pause period
+        if (iterations_since_goal_change < zero_velocity_iterations) {
+            j_vel.data.clear();
+            for (int i = 0; i < no_of_actuators; ++i) {
+                j_vel.data.push_back(0.0); // Insert zero velocity for each actuator
+            }
+            // Increment the counter
+            iterations_since_goal_change++;
+        } else {
+            j_vel.data.clear();
+            j_vel.data.push_back(joint_vel[0]);
+            j_vel.data.push_back(joint_vel[1]);
+            if (no_of_actuators == 3) {
+                j_vel.data.push_back(joint_vel[2]); // Only add j3_vel if no_of_actuators is more than 2
+            }
+        }
+
 
         // std::cout<< "j1 vel: " << j_vel.data.at(0) << std::endl;
         // std::cout<< "j2 vel: " << j_vel.data.at(1) << std::endl;
@@ -914,7 +999,16 @@ End of working velocity scaling*/
         std::cout<<"Current Error is "<<err<<std::endl;
 
         // The following block is to change goals
-        if (err < current_thresh) {            
+        if (err < current_thresh) {  
+            // Commanding 0 velocity to robot 
+            // j_vel.data.clear();
+            // j_vel.data.push_back(0.0);
+            // j_vel.data.push_back(0.0);
+            // if (no_of_actuators==3){
+            //     j_vel.data.push_back(0.0); 
+            // }
+
+            // j_pub.publish(j_vel);
             std::cout << "Goal " << current_goal_set << " reached. Moving to next goal." << std::endl;
             if (current_goal_set < num_goal_sets - 1) {
                 ++current_goal_set; // Move to the next set of goal features
@@ -925,10 +1019,71 @@ End of working velocity scaling*/
                 print_fvector(goal);
                 // Logging
                 std::cout << "Switching to goal set " << current_goal_set << std::endl;
+
+                // Reset qhat to final_qhat_initial_estimation
+                qhat = final_qhat_initial_estimation; // Reset Jacobian to the initial estimation result
+                // it = 0; // Reset window iteration counter  
+                // dSinitial.clear();
+                // dRinitial.clear();
+                // qhat = final_qhat_initial_estimation; // Reset Jacobian to the initial estimation result
+                // it = 0; // Reset window iteration counter
                 // Resetting change in joint angles and shape change vectors for the new goal
                 std::fill(dSinitial.begin(), dSinitial.end(), 0);
                 std::fill(dRinitial.begin(), dRinitial.end(), 0);
-                std::cout << "Switched to goal set " << current_goal_set << std::endl;
+                std::cout << "Switched to goal set " << current_goal_set << std::endl;   
+                
+                for(int i=0; i<no_of_features;i++){
+                    dSinitial[i] = ds[i];
+                }
+                std::rotate(dSinitial.begin(), dSinitial.begin()+no_of_features, dSinitial.end());
+                for(int i=0; i<no_of_actuators;i++){
+                    dRinitial[i] = dr[i];
+                }  
+                std::rotate(dRinitial.begin(), dRinitial.begin()+no_of_actuators, dRinitial.end());
+
+                dSmsg.data.clear();
+                for(std::vector<float>::iterator itr = dSinitial.begin(); itr != dSinitial.end(); ++itr){
+                    dSmsg.data.push_back(*itr);
+                }
+                dRmsg.data.clear();
+                for(std::vector<float>::iterator itr = dRinitial.begin(); itr != dRinitial.end(); ++itr){
+                    dRmsg.data.push_back(*itr);
+                }
+                
+                // Push reset qhat to ROS Msg
+                qhatmsg.data.clear();
+                for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr){
+                    qhatmsg.data.push_back(*itr);
+                }   
+
+                // Print the contents of qhat
+                std::cout << "The qhat inside goal switch: ";
+                for (const auto& val : qhat) {
+                    std::cout << val << " ";
+                }
+                std::cout << std::endl;
+
+                // // Immediately call the service with the reset qhat
+                msg.request.gamma_first_actuator = gamma1;
+                msg.request.gamma_second_actuator = gamma2;
+                msg.request.gamma_third_actuator = gamma3;
+                msg.request.it = window-1;
+                msg.request.dS = dSmsg;
+                msg.request.dR = dRmsg;
+                msg.request.qhat = qhatmsg;
+                msg.request.feature_error_magnitude = error_magnitude;
+                msg.request.feature_errors = feature_errors_msg;
+
+                std::vector<float> qhatdot = msg.response.qhat_dot.data;
+
+                for(int i = 0; i < qhat.size(); i++) {
+                    qhat[i] = qhat[i] + qhatdot[i];
+                }
+
+                qhatmsg.data.clear();
+                for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr) {
+                    qhatmsg.data.push_back(*itr);
+                }    
 
                 // Pause for 2 seconds before continuing to the next goal
                 // ros::Duration(2).sleep();
@@ -971,14 +1126,25 @@ End of working velocity scaling*/
             for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr){
                 qhatmsg.data.push_back(*itr);
             }
+
+            // Print the contents of qhat
+            std::cout << "The qhat outside goal switch: ";
+            for (const auto& val : qhat) {
+                std::cout << val << " ";
+            }
+            std::cout << std::endl;
+
             // populating request data
-            msg.request.gamma_general = gamma2;
+            // msg.request.gamma_general = gamma2;
+            msg.request.gamma_first_actuator = gamma1;
+            msg.request.gamma_second_actuator = gamma2;
             msg.request.gamma_third_actuator = gamma3;
             msg.request.it = window-1;
             msg.request.dS = dSmsg;
             msg.request.dR = dRmsg;
             msg.request.qhat = qhatmsg;
             msg.request.feature_error_magnitude = error_magnitude; 
+            msg.request.feature_errors = feature_errors_msg; 
             // Call energy functional service
             energyClient.call(msg);
             // Populate service response
@@ -992,36 +1158,31 @@ End of working velocity scaling*/
             for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr){
                 qhatmsg.data.push_back(*itr);
             }
-            // Update state variables
-            old_features = cur_features;
-    
-            // Publish ds, dr, J, & error vectors to store
-            // Convrt to Float64multiarray
-            ds_msg.data.clear();
-            for(int i=0; i<no_of_features; i++){
-                // std::cout << "Element " << i << " value: " << ds[i] << std::endl;
-                ds_msg.data.push_back(ds[i]);
-            }
-
-            // for(int i=0; i < ds_msg.data.size(); i++) {
-            //     std::cout << "ds_msg element " << i << " value: " << ds_msg.data[i] << std::endl;
-            // }
-
-            dr_msg.data.clear();
-            for(int i=0; i<no_of_actuators; i++){
-                dr_msg.data.push_back(dr[i]);
-            }
-
-            // dr_msg.data.clear();
-            // dr_msg.data.push_back(dr[0]);
-            // dr_msg.data.push_back(dr[1]);
-            // dr_msg.data.push_back(dr[2]); //comment/uncomment on the basis of 
-
-            dr.clear();
-
-            ds_pub.publish(ds_msg);
-            dr_pub.publish(dr_msg);
         }
+        // Update state variables
+        old_features = cur_features;
+
+        // Publish ds, dr, J, & error vectors to store
+        // Convrt to Float64multiarray
+        ds_msg.data.clear();
+        for(int i=0; i<no_of_features; i++){
+            // std::cout << "Element " << i << " value: " << ds[i] << std::endl;
+            ds_msg.data.push_back(ds[i]);
+        }
+        // for(int i=0; i < ds_msg.data.size(); i++) {
+        //     std::cout << "ds_msg element " << i << " value: " << ds_msg.data[i] << std::endl;
+        // }
+        dr_msg.data.clear();
+        for(int i=0; i<no_of_actuators; i++){
+            dr_msg.data.push_back(dr[i]);
+        }
+        // dr_msg.data.clear();
+        // dr_msg.data.push_back(dr[0]);
+        // dr_msg.data.push_back(dr[1]);
+        // dr_msg.data.push_back(dr[2]); //comment/uncomment on the basis of 
+        dr.clear();
+        ds_pub.publish(ds_msg);
+        dr_pub.publish(dr_msg);        
 
         err_msg.data.clear();
         for(int i = 0; i<no_of_features;i++){

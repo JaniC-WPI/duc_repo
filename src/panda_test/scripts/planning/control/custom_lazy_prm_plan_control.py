@@ -427,7 +427,7 @@ def plot_path_on_image_dir(image_path, path, start_config, goal_config, output_d
 if __name__ == "__main__":
     # Load configurations from JSON files
     directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_rearranged/'  # Replace with the path to your JSON files
-    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b32_e600_v13.pth'
+    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b128_e400_v17.pth'
     num_samples = 500
     # configurations = load_keypoints_from_json(directory)
     configurations = load_keypoints_from_truncated_json(directory)
@@ -436,22 +436,21 @@ if __name__ == "__main__":
     # distance_matrix = np.array([1.0]).reshape(-1,1)
     # configurations = load_and_sample_configurations(directory, num_samples)
     # Parameters for PRM
-    num_neighbors = 50
+    num_neighbors = 20
      # Number of neighbors for each node in the roadmap
     start_time = time.time()
     # Build the roadmap
     roadmap, tree = build_lazy_roadmap_with_kdtree(configurations, num_neighbors, model)   
     end_time = time.time()
 
-    # print("time taken to find the graph", end_time - start_time)      
+    print("time taken to find the graph", end_time - start_time)      
 
     # Define start and goal configurations as numpy arrays
-    # Define start and goal configurations as numpy arrays
-    start_config = np.array([[250, 442], [252, 311], [260, 252], [267, 193], [298, 196], [373, 203], [448, 209], [483, 205], [487, 249]])
-    goal_config = np.array([[255, 441], [258, 311], [201, 300], [144, 290], [150, 260], [144, 191], [136, 120], [112, 103], [133, 73]])
+    start_config = np.array([[250, 442], [252, 311], [275, 255], [294, 201], [323, 209], [368, 268], [411, 328], [443, 343], [426, 382]])
+    goal_config = np.array([[250, 442], [252, 311], [210, 271], [167, 231], [188, 209], [227, 147], [265, 85], [278, 56], [315, 73]])
     
     SAFE_ZONE = 30 
-    obstacle_center = (306, 51)
+    obstacle_center = (400, 150)
     half_diagonal = 20
     # safe_distance = SAFE_ZONE
 
@@ -482,14 +481,14 @@ if __name__ == "__main__":
          # Iterate through the path, excluding the first and last configuration
          for configuration in path[0:-1]:
             # Extract the last three keypoints of each configuration
-            selected_points = configuration[[3, 4, 6, 7, 8]]
+            selected_points = configuration[[3, 4, 5, 6, 7, 8]]
             selected_points_float = [[float(point[0]), float(point[1])] for point in selected_points]
             # Append these points to the point_set list
             point_set.append(selected_points_float)
 
          # Iterate through the path, excluding start and goal            
          for configuration in path[1:]: 
-            selected_points = configuration[[3, 4, 6, 7, 8]]
+            selected_points = configuration[[3, 4, 5, 6, 7, 8]]
             selected_points_float = [[float(point[0]), float(point[1])] for point in selected_points]
             goal_features = []
             for point in selected_points_float:
@@ -518,6 +517,13 @@ if __name__ == "__main__":
              file.write(str(start_config.tolist()) + "\n\n")
              file.write("Goal Configuration:\n")
              file.write(str(goal_config.tolist()) + "\n\n")
+             file.write("Obstacle Parameters:\n")
+             file.write("Safe Zone:\n")
+             file.write(str(SAFE_ZONE) + "\n\n")
+             file.write("Obstacle Center:\n")
+             file.write(str(obstacle_center) + "\n\n")
+             file.write("Half Diagonal:\n")
+             file.write(str(half_diagonal) + "\n\n")
              file.write("Path:\n")
              for config in path:
                  file.write(str(config.tolist()) + "\n")
