@@ -60,7 +60,7 @@ a = torch.cuda.memory_allocated(0)
 print(a)
 # f = r-a  # free inside reserved
 
-weights_path = '/home/schatterjee/lama/kprcnn_panda/trained_models/keypointsrcnn_planning_b1_e100_v4.pth'
+weights_path = '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_planning_b1_e100_v4.pth'
 
 n_nodes = 9
 
@@ -107,7 +107,7 @@ def train_test_split(src_dir):
     for jsonfile in glob.iglob(os.path.join(src_dir, "*.json")):
         shutil.copy(jsonfile, dst_dir_anno)
         
-    output = parent_path + "split_folder_output_occ_gae" + "-" + path.year + "-" + path.month + "-" + path.day
+    output = parent_path + "split_folder_output_occ_sage" + "-" + path.year + "-" + path.month + "-" + path.day
 
     
     splitfolders.ratio(src_dir, # The location of dataset
@@ -218,53 +218,27 @@ class KPDataset(Dataset):
     def __len__(self):
         return len(self.imgs_files)
 
-class GraphEncoder(nn.Module):
-    def __init__(self, in_channels, hidden_channels):
-        super(GraphEncoder, self).__init__()
+class GraphGCN(torch.nn.Module):
+    def __init__(self, in_channels, hidden_channels, out_channels):
+        super(GraphGCN, self).__init__()
         self.conv1 = GCNConv(in_channels, hidden_channels)
         self.conv2 = GCNConv(hidden_channels, hidden_channels)
-        self.conv3 = GCNConv(hidden_channels, hidden_channels)        
-
+        self.conv3 = GCNConv(hidden_channels, hidden_channels)
+        self.fc = torch.nn.Linear(hidden_channels, out_channels)
+    
     def forward(self, x, edge_index):
+        x = x.cuda()
+        edge_index = edge_index.cuda()
         x = self.conv1(x, edge_index)
         x = torch.nn.functional.relu(x)
         x = torch.nn.functional.dropout(x, p=0.5, training=self.training)
         x = self.conv2(x, edge_index)
         x = torch.nn.functional.relu(x)
         x = torch.nn.functional.dropout(x, p=0.5, training=self.training)
-        x = self.conv3(x, edge_index) 
-        
+        x = self.conv3(x, edge_index)
+        x = torch.nn.functional.relu(x)
+        x = self.fc(x)
         return x
-    
-class GraphDecoder(nn.Module):
-    def __init__(self, hidden_channels, out_channels):
-        super(GraphDecoder, self).__init__()
-        self.conv1 = GCNConv(hidden_channels, hidden_channels)
-        self.conv2 = GCNConv(hidden_channels, hidden_channels)
-        self.conv3 = GCNConv(hidden_channels, out_channels)
-
-    def forward(self, z, edge_index):
-        z = self.conv1(z, edge_index)
-        z = torch.nn.functional.relu(z)
-        z = torch.nn.functional.dropout(z, p=0.5, training=self.training)
-        z = self.conv2(z, edge_index)
-        z = torch.nn.functional.relu(z)
-        z = torch.nn.functional.dropout(z, p=0.5, training=self.training)
-        z = self.conv3(z, edge_index)
-        
-        return z
-    
-
-class GraphAutoencoder(nn.Module):
-    def __init__(self, encoder, decoder):
-        super(GraphAutoencoder, self).__init__()
-        self.encoder = encoder
-        self.decoder = decoder
-
-    def forward(self, x, edge_index):
-        z = self.encoder(x, edge_index)
-        x_hat = self.decoder(z, edge_index)
-        return x_hat, z
     
 
 def calculate_distance_angle(kp1, kp2):
@@ -307,28 +281,17 @@ def calculate_gt_distances_angles(keypoints_gt):
 
 class KeypointPipeline(nn.Module):
     def __init__(self, weights_path):
-        super(KeypointPipeline, self).__init__()
+        super(KeypointPipeline, self).__init__()  
         self.keypoint_model = torch.load(weights_path).to(device)
-        self.graph_autoencoder = GraphAutoencoder(
-            encoder=GraphEncoder(8, 512),
-            decoder=GraphDecoder(512, 8)
-        ).to(device)
+        self.graph_gcn = GraphGCN(8,1024,4)
         
     def process_model_output(self, output):
         scores = output[0]['scores'].detach().cpu().numpy()
-        labels = output[0]['labels'].detach().cpu().numpy()
-        keypoints = output[0]['keypoints'].detach().cpu().numpy()
-#         print("keypoints before post_nms", keypoints)
         high_scores_idxs = np.where(scores > 0.01)[0].tolist()
         post_nms_idxs = torchvision.ops.nms(output[0]['boxes'][high_scores_idxs], output[0]['scores'][high_scores_idxs], 0.3).cpu().numpy()
-        confidence_nms = output[0]['scores'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy()
-        labels_nms = output[0]['labels'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy()
         confidence = output[0]['scores'][high_scores_idxs].detach().cpu().numpy()
-        labels =  output[0]['labels'][high_scores_idxs].detach().cpu().numpy()
+        labels = output[0]['labels'][high_scores_idxs].detach().cpu().numpy()
         keypoints = []
-#         for idx, kps in enumerate(output[0]['keypoints'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy()):
-#             keypoints.append(list(map(int, kps[0, 0:2])) + [confidence[idx]] + [labels[idx]])
-            
         for idx, kps in enumerate(output[0]['keypoints'][high_scores_idxs].detach().cpu().numpy()):
             keypoints.append(list(map(int, kps[0, 0:2])) + [confidence[idx]] + [labels[idx]])
         
@@ -381,7 +344,6 @@ class KeypointPipeline(nn.Module):
 
     def keypoints_to_graph(self, keypoints, image_width, image_height):
         node_features = []
-        placeholder_mask = []
         for i, kp in enumerate(keypoints):
             x, y, conf, label = kp
             prev_kp = keypoints[i - 1]
@@ -390,10 +352,9 @@ class KeypointPipeline(nn.Module):
             dist_prev, angle_prev = calculate_distance_angle([x, y], prev_kp[:2])
             node_features.append([x, y, conf, label, dist_next, angle_next, dist_prev, angle_prev])
         node_features = torch.tensor(node_features, dtype=torch.float32).to(device)
-        placeholder_mask = torch.tensor(placeholder_mask, dtype=torch.bool).to(device)
         edge_index = torch.tensor([[i, (i + 1) % len(keypoints)] for i in range(len(keypoints))] + 
                                   [[(i + 1) % len(keypoints), i] for i in range(len(keypoints))], dtype=torch.long).t().contiguous().to(device)
-        return Data(x=node_features, edge_index=edge_index), placeholder_mask
+        return Data(x=node_features, edge_index=edge_index)
     
     def forward(self, imgs):
         keypoint_model_training = self.keypoint_model.training
@@ -413,35 +374,21 @@ class KeypointPipeline(nn.Module):
             normalized_keypoints = self.normalize_keypoints(filled_keypoints, image_width, image_height)
             batch_labeled_keypoints[idx] = normalized_keypoints
        
-        all_graphs, placeholder_masks = [self.keypoints_to_graph(keypoints, 640, 480) for keypoints in batch_labeled_keypoints]
-        all_predictions, latent_reps, all_placeholder_masks = [], [], []
-        for graph, placeholder_mask in zip(all_graphs, placeholder_masks):
-            x_hat, z = self.graph_autoencoder(graph.x, graph.edge_index)
-            all_predictions.append(x_hat)
-            latent_reps.append(graph.x)
-            all_placeholder_masks.append(placeholder_mask)
+        all_graphs = [self.keypoints_to_graph(keypoints, 640, 480) for keypoints in batch_labeled_keypoints]
+        all_predictions = [self.graph_gcn(graph.x, graph.edge_index) for graph in all_graphs]
 
         final_predictions = torch.stack(all_predictions)
-        latent_reps = torch.stack(latent_reps)
-        placeholder_masks = torch.stack(all_placeholder_masks)
-        
-        return final_predictions, latent_reps, placeholder_masks
-        
-def reconstruction_loss(x, x_hat, placeholder_mask):
-    # x final prediction
-    # x_hat latent_reps, that is input for encoder
-    return func.mse_loss(x_hat[~placeholder_mask], x[~placeholder_mask])
 
+        return final_predictions
 
-def kgnn2d_loss(gt_keypoints, pred_keypoints, gt_distances_next, gt_angles_next, gt_distances_prev, gt_angles_prev, pred_distances_next, pred_angles_next, pred_distances_prev, pred_angles_prev, x, x_hat, placeholder_mask):
+def kgnn2d_loss(gt_keypoints, pred_keypoints, gt_distances_next, gt_angles_next, gt_distances_prev, gt_angles_prev, pred_distances_next, pred_angles_next, pred_distances_prev, pred_angles_prev):
     keypoints_loss = func.mse_loss(pred_keypoints, gt_keypoints)
     prev_distances_loss = func.mse_loss(pred_distances_prev, gt_distances_prev)
     prev_angles_loss = func.mse_loss(pred_angles_prev, gt_angles_prev)
     next_distances_loss = func.mse_loss(pred_distances_next, gt_distances_next)
     next_angles_loss = func.mse_loss(pred_angles_next, gt_angles_next)
-    recon_loss = reconstruction_loss(x, x_hat, placeholder_mask)
-    return keypoints_loss + prev_distances_loss + prev_angles_loss + next_distances_loss + next_angles_loss + recon_loss
-    
+    return keypoints_loss + prev_distances_loss + prev_angles_loss + next_distances_loss + next_angles_loss
+
 def process_batch_keypoints(target_dicts):
     batch_size = len(target_dicts)
     keypoints_list = []
@@ -483,101 +430,257 @@ def denormalize_keypoints(batch_keypoints, width=640, height=480):
     denormalized_keypoints = torch.stack(denormalized_keypoints)
     return denormalized_keypoints
 
+# model = KeypointPipeline(weights_path)
+# model = model.to(device)
+
+# optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+# scaler = GradScaler()
+
+# num_epochs = 50
+# batch_size = 128
+
+# split_folder_path = train_test_split(root_dir)
+# KEYPOINTS_FOLDER_TRAIN = split_folder_path +"/train"
+# KEYPOINTS_FOLDER_VAL = split_folder_path +"/val"
+# KEYPOINTS_FOLDER_TEST = split_folder_path +"/test"
+
+# dataset_train = KPDataset(KEYPOINTS_FOLDER_TRAIN, transform=None, demo=False)
+# dataset_val = KPDataset(KEYPOINTS_FOLDER_VAL, transform=None, demo=False)
+# dataset_test = KPDataset(KEYPOINTS_FOLDER_TEST, transform=None, demo=False)
+
+# data_loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+# data_loader_val = DataLoader(dataset_val, batch_size=1, shuffle=False, collate_fn=collate_fn)
+# data_loader_test = DataLoader(dataset_test, batch_size=1, shuffle=False, collate_fn=collate_fn)
+
+# checkpoint_dir = '/home/schatterjee/lama/kprcnn_panda/trained_models/sage_ckpt/'
+# checkpoint_path = os.path.join(checkpoint_dir, 'latest_checkpoint.pth')
+
+# # Create checkpoint directory if it doesn't exist
+# os.makedirs(checkpoint_dir, exist_ok=True)
+
+# # Load checkpoint if exists
+# start_epoch = 0
+# if os.path.isfile(checkpoint_path):
+#     checkpoint = torch.load(checkpoint_path)
+#     model.load_state_dict(checkpoint['model_state_dict'])
+#     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+#     scaler.load_state_dict(checkpoint['scaler_state_dict'])
+#     start_epoch = checkpoint['epoch'] + 1
+#     print(f"Loaded checkpoint from epoch {start_epoch}")
+
+
+# for epoch in range(start_epoch, num_epochs):
+#     model.train()
+#     total_loss = 0
+
+#     for imgs, target_dicts, _ in data_loader_train:
+#         imgs = [img.to(device) for img in imgs]
+#         optimizer.zero_grad()
+        
+#         with autocast():
+#             KGNN2D = model(imgs)            
+#             keypoints_gt = process_batch_keypoints(target_dicts)
+#             # print("Ground truth keypoints", keypoints_gt)
+#             reordered_normalized_keypoints = reorder_batch_keypoints(KGNN2D)
+#             denormalized_keypoints = denormalize_keypoints(reordered_normalized_keypoints)
+#             # print("Final precicted keypoints", denormalized_keypoints)
+#             gt_distances_angles = calculate_gt_distances_angles(keypoints_gt)
+#             pred_distances_angles = calculate_gt_distances_angles(denormalized_keypoints)
+#             loss_kgnn2d = kgnn2d_loss(keypoints_gt, denormalized_keypoints, gt_distances_angles[:, :, 0], 
+#                                       gt_distances_angles[:, :, 1], gt_distances_angles[:, :, 2], 
+#                                       gt_distances_angles[:, :, 3], pred_distances_angles[:, :, 0], 
+#                                       pred_distances_angles[:, :, 1], pred_distances_angles[:, :, 2], 
+#                                       pred_distances_angles[:, :, 3])
+            
+#         scaler.scale(loss_kgnn2d).backward()
+#         scaler.step(optimizer)
+#         scaler.update()
+#         total_loss += loss_kgnn2d.item()
+#     print(f'Epoch {epoch+1}/{num_epochs}, Loss: {total_loss / len(data_loader_train)}')
+    
+# # Save checkpoint every epoch
+#     if (epoch + 1) % 1 == 0:
+#         checkpoint_path = os.path.join(checkpoint_dir, f'kprcnn_occ_sage_ckpt_b{batch_size}e{epoch+1}.pth')
+#         torch.save({
+#             'epoch': epoch,
+#             'model_state_dict': model.state_dict(),
+#             'optimizer_state_dict': optimizer.state_dict(),
+#             'scaler_state_dict': scaler.state_dict(),
+#         }, checkpoint_path)
+#         print(f'Checkpoint saved to {checkpoint_path}')
+
+#     # Save latest checkpoint
+#     torch.save({
+#         'epoch': epoch,
+#         'model_state_dict': model.state_dict(),
+#         'optimizer_state_dict': optimizer.state_dict(),
+#         'scaler_state_dict': scaler.state_dict(),
+#     }, checkpoint_path)
+
+# # end_time = time.time()
+
+# # total_time = end_time - start_time
+# # print("total time", total_time)
+
+# # Save final model
+# model_save_path = f"/home/schatterjee/lama/kprcnn_panda/trained_models/kprcnn_sage_b{batch_size}_e{num_epochs}.pth"
+# torch.save(model.state_dict(), model_save_path)
+
+import cv2
+import os
+import torch
+from torchvision.transforms import functional as F
+import copy
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+# Instantiate the model
 model = KeypointPipeline(weights_path)
 model = model.to(device)
 
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-scaler = GradScaler()
+# Load the checkpoint
+checkpoint_path = '/home/jc-merlab/Pictures/Data/trained_models/gcn_ckpt/kprcnn_occ_gcn_ckpt_b128e7.pth'
+checkpoint = torch.load(checkpoint_path)
 
-num_epochs = 50
-batch_size = 128
+# Extract the state dictionary
+model_state_dict = checkpoint['model_state_dict']
 
-split_folder_path = train_test_split(root_dir)
-KEYPOINTS_FOLDER_TRAIN = split_folder_path +"/train"
-KEYPOINTS_FOLDER_VAL = split_folder_path +"/val"
-KEYPOINTS_FOLDER_TEST = split_folder_path +"/test"
+# Load the state dictionary into the model
+model.load_state_dict(model_state_dict)
 
-dataset_train = KPDataset(KEYPOINTS_FOLDER_TRAIN, transform=None, demo=False)
-dataset_val = KPDataset(KEYPOINTS_FOLDER_VAL, transform=None, demo=False)
-dataset_test = KPDataset(KEYPOINTS_FOLDER_TEST, transform=None, demo=False)
+model.eval()  # Set the model to evaluation mode
 
-data_loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
-data_loader_val = DataLoader(dataset_val, batch_size=1, shuffle=False, collate_fn=collate_fn)
-data_loader_test = DataLoader(dataset_test, batch_size=1, shuffle=False, collate_fn=collate_fn)
+def prepare_image(image_path):
+    img = cv2.imread(image_path)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img_tensor = F.to_tensor(img).to(device)
+    return img_tensor
 
-checkpoint_dir = '/home/schatterjee/lama/kprcnn_panda/trained_models/gae_ckpt/'
-checkpoint_path = os.path.join(checkpoint_dir, 'latest_checkpoint.pth')
+def load_ground_truth(json_path):
+    with open(json_path, 'r') as f:
+        data = json.load(f)
+    # ground_truth_keypoints = [[int(kp[0][0]), int(kp[0][1])] for kp in data['keypoints']]
+    ground_truth_keypoints = [[int(kp[0][0]), int(kp[0][1]), kp[0][2]] for kp in data['keypoints']]
+    return ground_truth_keypoints
 
-# Create checkpoint directory if it doesn't exist
-os.makedirs(checkpoint_dir, exist_ok=True)
-
-# Load checkpoint if exists
-start_epoch = 0
-if os.path.isfile(checkpoint_path):
-    checkpoint = torch.load(checkpoint_path)
-    model.load_state_dict(checkpoint['model_state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    scaler.load_state_dict(checkpoint['scaler_state_dict'])
-    start_epoch = checkpoint['epoch'] + 1
-    print(f"Loaded checkpoint from epoch {start_epoch}")
-
-
-for epoch in range(start_epoch, num_epochs):
-    model.train()
-    total_loss = 0
-
-    for imgs, target_dicts, _ in data_loader_train:
-        imgs = [img.to(device) for img in imgs]
-        optimizer.zero_grad()
+def draw_lines_between_keypoints(image, keypoints, color=(255, 255, 255)):
+    for i in range(len(keypoints) - 1):
+        start_point = (int(keypoints[i][0]), int(keypoints[i][1]))
+        end_point = (int(keypoints[i + 1][0]), int(keypoints[i + 1][1]))
+        cv2.line(image, start_point, end_point, color, thickness=2)
         
-        with autocast():
-            KGNN2D, original_graphs, placeholder_masks = model(imgs)            
-            keypoints_gt = process_batch_keypoints(target_dicts)
-            # print("Ground truth keypoints", keypoints_gt)
-#             reordered_normalized_keypoints = reorder_batch_keypoints(KGNN2D)
-            denormalized_keypoints = denormalize_keypoints(KGNN2D)
-            # print("Final precicted keypoints", denormalized_keypoints)
-            gt_distances_angles = calculate_gt_distances_angles(keypoints_gt)
-            pred_distances_angles = calculate_gt_distances_angles(denormalized_keypoints)
-            loss_kgnn2d = kgnn2d_loss(keypoints_gt, denormalized_keypoints, gt_distances_angles[:, :, 0], 
-                                      gt_distances_angles[:, :, 1], gt_distances_angles[:, :, 2], 
-                                      gt_distances_angles[:, :, 3], pred_distances_angles[:, :, 0], 
-                                      pred_distances_angles[:, :, 1], pred_distances_angles[:, :, 2], 
-                                      pred_distances_angles[:, :, 3], original_graphs, KGNN2D, placeholder_masks)
-            
-        scaler.scale(loss_kgnn2d).backward()
-        scaler.step(optimizer)
-        scaler.update()
-        total_loss += loss_kgnn2d.item()
-    print(f'Epoch {epoch+1}/{num_epochs}, Loss: {total_loss / len(data_loader_train)}')
+    for x, y in keypoints:
+        cv2.circle(image, (x, y), radius=5, color=(0, 0, 255), thickness=-1)
+
+def predict(model, img_tensor):
+    with torch.no_grad():
+        KGNN2D = model([img_tensor])
+    return KGNN2D
+
+def postprocess_keypoints(keypoints, width=640, height=480):
+    denormalized_keypoints = denormalize_keypoints(keypoints, width, height)
+    return denormalized_keypoints
+
+def visualize_keypoints_with_ground_truth(image_path, predicted_keypoints, ground_truth_keypoints, out_dir):
+    img = cv2.imread(image_path)
+    if torch.is_tensor(predicted_keypoints):
+        predicted_keypoints = predicted_keypoints.cpu().numpy()
+    for kp in predicted_keypoints[0]:
+        x, y = int(kp[0]), int(kp[1])
+        cv2.circle(img, (x, y), radius=8, color=(255, 0, 0), thickness=-1)
     
-# Save checkpoint every epoch
-    if (epoch + 1) % 1 == 0:
-        checkpoint_path = os.path.join(checkpoint_dir, f'kprcnn_occ_gae_ckpt_b{batch_size}e{epoch+1}.pth')
-        torch.save({
-            'epoch': epoch,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-            'scaler_state_dict': scaler.state_dict(),
-        }, checkpoint_path)
-        print(f'Checkpoint saved to {checkpoint_path}')
+    for x, y, _ in ground_truth_keypoints:
+        cv2.circle(img, (x, y), radius=6, color=(0, 0, 255), thickness=-1)
+    
+    filename = os.path.basename(image_path)
+    output_path = os.path.join(out_dir, filename)
+    cv2.imwrite(output_path, img)
 
-    # Save latest checkpoint
-    torch.save({
-        'epoch': epoch,
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        'scaler_state_dict': scaler.state_dict(),
-    }, checkpoint_path)
+def calculate_accuracy(predicted_keypoints, ground_truth_keypoints, margin=10):
+    """
+    Calculate the accuracy of predicted keypoints within a margin of 10 pixels.
+    Also calculate accuracy for invisible keypoints within a margin of 5 pixels.
+    """
+    correct = 0
+    total = len(ground_truth_keypoints)
+    
+    correct_invisible = 0
+    total_invisible = 0
 
-# end_time = time.time()
+    for pred_kp, gt_kp in zip(predicted_keypoints[0], ground_truth_keypoints):
+        pred_kp = pred_kp.cpu().numpy()  # Move tensor to CPU and convert to NumPy array
+        dist = np.linalg.norm(np.array(pred_kp[:2]) - np.array(gt_kp[:2]))  # Use only x, y for distance calculation
 
-# total_time = end_time - start_time
-# print("total time", total_time)
+        if gt_kp[2] == 0:  # Invisible keypoint
+            total_invisible += 1
+            if dist <= margin:  # Margin for invisible keypoints
+                correct_invisible += 1
+        else:  # Visible keypoint
+            if dist <= margin:
+                correct += 1
+    
+    correct_total = correct + correct_invisible
+    accuracy = (correct_total / total) * 100
+    invisible_accuracy = (correct_invisible / total_invisible) * 100 if total_invisible > 0 else 0
+    return accuracy, invisible_accuracy, total_invisible
 
-# Save final model
-model_save_path = f"/home/schatterjee/lama/kprcnn_panda/trained_models/kprcnn_gae_b{batch_size}_e{num_epochs}.pth"
-torch.save(model.state_dict(), model_save_path)
+def process_folder(folder_path, output_path, output_path_line):
+
+    accuracies = []
+    invisible_accuracies = []
+    total_invisible_keypoints = 0
+    total_inference_time = []
+
+    for filename in os.listdir(folder_path):
+        if filename.endswith(".jpg") or filename.endswith(".png"):
+            image_path = os.path.join(folder_path, filename)
+            img_tensor = prepare_image(image_path).to(device)
+            start_time = time.time()
+            KGNN2D = predict(model, img_tensor)
+            end_time = time.time()
+            inference_time = end_time - start_time
+            print(f"Inference time for {filename}: {inference_time:.4f} seconds")
+            ordered_keypoints = reorder_batch_keypoints(KGNN2D)
+            denormalized_keypoints = postprocess_keypoints(ordered_keypoints)
+            
+            json_filename = filename.split('.')[0] + '.json'
+            json_path = os.path.join(folder_path, json_filename)
+            ground_truth_keypoints = load_ground_truth(json_path)
+           
+            img = cv2.imread(image_path)
+            img_copy = copy.deepcopy(img)
+
+            # draw_lines_between_keypoints(img_copy, ground_truth_keypoints, (0, 0, 255))
+            
+            cv2.imwrite(os.path.join(output_path_line, filename), img_copy)
+            visualize_keypoints_with_ground_truth(image_path, denormalized_keypoints, ground_truth_keypoints, output_path)
+            img_with_keypoints = cv2.imread(os.path.join(output_path, filename))
+
+            # Calculate and store accuracy
+            accuracy, invisible_accuracy, num_invisible = calculate_accuracy(denormalized_keypoints, ground_truth_keypoints, margin=10)
+            accuracies.append(accuracy)
+            invisible_accuracies.append(invisible_accuracy)
+            total_inference_time.append(inference_time)
+            total_invisible_keypoints += num_invisible
+            print(f"Accuracy for {filename}: {accuracy}%")
+            print(f"Invisible Keypoint Accuracy for {filename}: {invisible_accuracy}%")
+
+            # Save the image with lines
+            cv2.imwrite(os.path.join(output_path, filename), img_with_keypoints)
+
+    # Print overall accuracy
+    overall_accuracy = np.mean(accuracies)
+    overall_invisible_accuracy = np.mean(invisible_accuracies)
+    avg_inference_time = np.mean(total_inference_time)
+    print(f"Overall accuracy: {overall_accuracy}%")
+    print(f"Overall invisible keypoint accuracy: {overall_invisible_accuracy}%")
+    print(f"Total number of invisible keypoints: {total_invisible_keypoints}")
+    print(f"Average inference time: {avg_inference_time}")
+
+folder_path = '/home/jc-merlab/Pictures/Data/occ_phys_test_data/'
+output_path = '/home/jc-merlab/Pictures/Data/occ_phys_test_data/gcn_output/'
+output_path_line = '/home/jc-merlab/Pictures/Data/occ_test_op_line/'
+process_folder(folder_path, output_path, output_path_line)
 
 
 

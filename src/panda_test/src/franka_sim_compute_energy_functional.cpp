@@ -134,6 +134,12 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
                 // learning rate decreases on the basis of feature_error norm
                 float adaptive_gamma = current_gamma / (1 + alpha_gamma * feature_error_magnitude);
 
+                if (feature_error_magnitude > 100){
+                    current_gamma = adaptive_gamma;
+                }
+
+                // std::cout << "Current Gamma" << current_gamma << std::endl;
+
                 // learning rate on the basis of individual feature error
                 float feature_error = feature_errors[i];
                 // float adaptive_gamma = current_gamma / (1 + alpha_gamma * feature_error);

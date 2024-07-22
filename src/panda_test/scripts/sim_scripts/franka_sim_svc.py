@@ -540,10 +540,10 @@ class VideoInference:
 
         keypoints_ = [keypoints_all[i] for i in indices]
 
-        print(len(keypoints))
-        print(len(keypoints_all))
-        print(len(keypoints_))
-        print("exec keypoints", keypoints_)
+        # print(len(keypoints))
+        # print(len(keypoints_all))
+        # print(len(keypoints_))
+        # print("exec keypoints", keypoints_)
         bboxes = []
         for bbox in output[0]['boxes'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy():
             bboxes.append(list(map(int, bbox.tolist())))
@@ -564,7 +564,7 @@ class VideoInference:
             # print("Executed?", self.executed)               
             self.corrected_x = self.input_estimation(self.cv_img, keypoints_, self.corrected_x) 
 
-        print(self.corrected_x)
+        # print(self.corrected_x)
 
         kp_x = []
         kp_y = []
@@ -606,8 +606,8 @@ class VideoInference:
 
         kp_resp = Float64MultiArray()
         kp_resp.data = kp
-        print("keypoints", kp_resp.data)
-        print("type keypoints", type(kp_resp.data))
+        # print("keypoints", kp_resp.data)
+        # print("type keypoints", type(kp_resp.data))
 
         # cv2.imwrite("/home/jc-merlab/Pictures/Data/video_results_full_b1e30/out_image_" + str(self.i) + ".jpg", self.cv_img)        
 

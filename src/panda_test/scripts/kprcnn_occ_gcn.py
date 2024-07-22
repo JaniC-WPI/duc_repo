@@ -107,7 +107,7 @@ def train_test_split(src_dir):
     for jsonfile in glob.iglob(os.path.join(src_dir, "*.json")):
         shutil.copy(jsonfile, dst_dir_anno)
         
-    output = parent_path + "split_folder_output_occ_sage" + "-" + path.year + "-" + path.month + "-" + path.day
+    output = parent_path + "split_folder_output_occ_gcn" + "-" + path.year + "-" + path.month + "-" + path.day
 
     
     splitfolders.ratio(src_dir, # The location of dataset
@@ -218,12 +218,12 @@ class KPDataset(Dataset):
     def __len__(self):
         return len(self.imgs_files)
 
-class GraphSAGE(torch.nn.Module):
+class GraphGCN(torch.nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels):
-        super(GraphSAGE, self).__init__()
-        self.conv1 = SAGEConv(in_channels, hidden_channels)
-        self.conv2 = SAGEConv(hidden_channels, hidden_channels)
-        self.conv3 = SAGEConv(hidden_channels, hidden_channels)
+        super(GraphGCN, self).__init__()
+        self.conv1 = GCNConv(in_channels, hidden_channels)
+        self.conv2 = GCNConv(hidden_channels, hidden_channels)
+        self.conv3 = GCNConv(hidden_channels, hidden_channels)
         self.fc = torch.nn.Linear(hidden_channels, out_channels)
     
     def forward(self, x, edge_index):
@@ -283,16 +283,16 @@ class KeypointPipeline(nn.Module):
     def __init__(self, weights_path):
         super(KeypointPipeline, self).__init__()  
         self.keypoint_model = torch.load(weights_path).to(device)
-        self.graph_sage = GraphSAGE(8,1024,4)
+        self.graph_gcn = GraphGCN(8,1024,4)
         
     def process_model_output(self, output):
         scores = output[0]['scores'].detach().cpu().numpy()
-        high_scores_idxs = np.where(scores > 0.7)[0].tolist()
+        high_scores_idxs = np.where(scores > 0.01)[0].tolist()
         post_nms_idxs = torchvision.ops.nms(output[0]['boxes'][high_scores_idxs], output[0]['scores'][high_scores_idxs], 0.3).cpu().numpy()
-        confidence = output[0]['scores'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy()
-        labels = output[0]['labels'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy()
+        confidence = output[0]['scores'][high_scores_idxs].detach().cpu().numpy()
+        labels = output[0]['labels'][high_scores_idxs].detach().cpu().numpy()
         keypoints = []
-        for idx, kps in enumerate(output[0]['keypoints'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy()):
+        for idx, kps in enumerate(output[0]['keypoints'][high_scores_idxs].detach().cpu().numpy()):
             keypoints.append(list(map(int, kps[0, 0:2])) + [confidence[idx]] + [labels[idx]])
         
         keypoints = [torch.tensor(kp, dtype=torch.float32).to(device) if not isinstance(kp, torch.Tensor) else kp for kp in keypoints]
@@ -375,7 +375,7 @@ class KeypointPipeline(nn.Module):
             batch_labeled_keypoints[idx] = normalized_keypoints
        
         all_graphs = [self.keypoints_to_graph(keypoints, 640, 480) for keypoints in batch_labeled_keypoints]
-        all_predictions = [self.graph_sage(graph.x, graph.edge_index) for graph in all_graphs]
+        all_predictions = [self.graph_gcn(graph.x, graph.edge_index) for graph in all_graphs]
 
         final_predictions = torch.stack(all_predictions)
 
@@ -436,7 +436,7 @@ model = model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 scaler = GradScaler()
 
-num_epochs = 50
+num_epochs = 100
 batch_size = 128
 
 split_folder_path = train_test_split(root_dir)
@@ -452,7 +452,7 @@ data_loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=Tru
 data_loader_val = DataLoader(dataset_val, batch_size=1, shuffle=False, collate_fn=collate_fn)
 data_loader_test = DataLoader(dataset_test, batch_size=1, shuffle=False, collate_fn=collate_fn)
 
-checkpoint_dir = '/home/schatterjee/lama/kprcnn_panda/trained_models/sage_ckpt/'
+checkpoint_dir = '/home/schatterjee/lama/kprcnn_panda/trained_models/gcn_ckpt/'
 checkpoint_path = os.path.join(checkpoint_dir, 'latest_checkpoint.pth')
 
 # Create checkpoint directory if it doesn't exist
@@ -500,7 +500,7 @@ for epoch in range(start_epoch, num_epochs):
     
 # Save checkpoint every epoch
     if (epoch + 1) % 1 == 0:
-        checkpoint_path = os.path.join(checkpoint_dir, f'kprcnn_occ_sage_ckpt_b{batch_size}e{epoch+1}.pth')
+        checkpoint_path = os.path.join(checkpoint_dir, f'kprcnn_occ_gcn_ckpt_b{batch_size}e{epoch+1}.pth')
         torch.save({
             'epoch': epoch,
             'model_state_dict': model.state_dict(),
@@ -523,7 +523,7 @@ for epoch in range(start_epoch, num_epochs):
 # print("total time", total_time)
 
 # Save final model
-model_save_path = f"/home/schatterjee/lama/kprcnn_panda/trained_models/kprcnn_sage_b{batch_size}_e{num_epochs}.pth"
+model_save_path = f"/home/schatterjee/lama/kprcnn_panda/trained_models/kprcnn_gcn_b{batch_size}_e{num_epochs}.pth"
 torch.save(model.state_dict(), model_save_path)
 
 
