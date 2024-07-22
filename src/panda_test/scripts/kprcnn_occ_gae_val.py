@@ -339,7 +339,6 @@ class KeypointPipeline(nn.Module):
         best_scores, best_indices = torch.max(keypoints[:, 2].unsqueeze(0) * (best_keypoint_indices == torch.arange(len(unique_labels)).unsqueeze(1).cuda()), dim=1)
         keypoints = keypoints[best_indices]
         
-        # print("initial predicted keypoints", keypoints)
         
         return keypoints
     
@@ -360,16 +359,22 @@ class KeypointPipeline(nn.Module):
             else:
                 prev_label = i - 1 if i > 1 else 9
                 next_label = i + 1 if i < 9 else 1
-                prev_kp = keypoints_dict.get(prev_label, [image_width / 2, image_height / 2, 0, prev_label])
-                next_kp = keypoints_dict.get(next_label, [image_width / 2, image_height / 2, 0, next_label])
                 
-                if next_label in missing_labels:
-                    next_kp = [image_width / 2, image_height / 2, 0, next_label]
-                avg_x = (prev_kp[0] + next_kp[0]) / 2
-                avg_y = (prev_kp[1] + next_kp[1]) / 2
+                prev_kp = keypoints_dict.get(prev_label, None)
+                next_kp = keypoints_dict.get(next_label, None)
+
+                if prev_kp is None and next_kp is None:
+                    avg_x, avg_y = image_width / 2, image_height / 2
+                elif prev_kp is None:
+                    avg_x, avg_y = (next_kp[0] + image_width / 2) / 2, (next_kp[1] + image_height / 2) / 2
+                elif next_kp is None:
+                    avg_x, avg_y = (prev_kp[0] + image_width / 2) / 2, (prev_kp[1] + image_height / 2) / 2
+                else:
+                    avg_x = (prev_kp[0] + next_kp[0]) / 2
+                    avg_y = (prev_kp[1] + next_kp[1]) / 2
+
                 complete_keypoints.append([avg_x, avg_y, 0, i])
-                
-#         print("filled missing keypoints", complete_keypoints)
+
         
         return torch.tensor(complete_keypoints, dtype=torch.float32).to(device)
 
@@ -381,6 +386,7 @@ class KeypointPipeline(nn.Module):
 
     def keypoints_to_graph(self, keypoints, image_width, image_height):
         node_features = []
+        placeholder_mask = []
         for i, kp in enumerate(keypoints):
             x, y, conf, label = kp
             prev_kp = keypoints[i - 1]
@@ -388,10 +394,14 @@ class KeypointPipeline(nn.Module):
             dist_next, angle_next = calculate_distance_angle([x, y], next_kp[:2])
             dist_prev, angle_prev = calculate_distance_angle([x, y], prev_kp[:2])
             node_features.append([x, y, conf, label, dist_next, angle_next, dist_prev, angle_prev])
+            placeholder_mask.append(conf == 0)  # Assuming placeholder if confidence is 0
+            
         node_features = torch.tensor(node_features, dtype=torch.float32).to(device)
+        placeholder_mask = torch.tensor(placeholder_mask, dtype=torch.bool).to(device)
         edge_index = torch.tensor([[i, (i + 1) % len(keypoints)] for i in range(len(keypoints))] + 
                                   [[(i + 1) % len(keypoints), i] for i in range(len(keypoints))], dtype=torch.long).t().contiguous().to(device)
-        return Data(x=node_features, edge_index=edge_index)
+        
+        return Data(x=node_features, edge_index=edge_index), placeholder_mask
     
     def forward(self, imgs):
         keypoint_model_training = self.keypoint_model.training
@@ -411,31 +421,33 @@ class KeypointPipeline(nn.Module):
             normalized_keypoints = self.normalize_keypoints(filled_keypoints, image_width, image_height)
             batch_labeled_keypoints[idx] = normalized_keypoints
        
-        all_graphs = [self.keypoints_to_graph(keypoints, 640, 480) for keypoints in batch_labeled_keypoints]
-        all_predictions, latent_reps = [], []
-        for graph in all_graphs:
+        all_graphs, placeholder_masks = zip(*[self.keypoints_to_graph(keypoints, 640, 480) for keypoints in batch_labeled_keypoints])
+        all_predictions, latent_reps, all_placeholder_masks = [], [], []
+        for graph, placeholder_mask in zip(all_graphs, placeholder_masks):
             x_hat, z = self.graph_autoencoder(graph.x, graph.edge_index)
             all_predictions.append(x_hat)
             latent_reps.append(graph.x)
+            all_placeholder_masks.append(placeholder_mask)
 
         final_predictions = torch.stack(all_predictions)
         latent_reps = torch.stack(latent_reps)
+        placeholder_masks = torch.stack(all_placeholder_masks)
         
-        return final_predictions, latent_reps
+        return final_predictions, latent_reps, placeholder_masks
         
-def reconstruction_loss(x, x_hat):
+def reconstruction_loss(x, x_hat, placeholder_mask):
     # x final prediction
     # x_hat latent_reps, that is input for encoder
-    return func.mse_loss(x_hat, x)
+    return func.mse_loss(x_hat[~placeholder_mask], x[~placeholder_mask])
 
 
-def kgnn2d_loss(gt_keypoints, pred_keypoints, gt_distances_next, gt_angles_next, gt_distances_prev, gt_angles_prev, pred_distances_next, pred_angles_next, pred_distances_prev, pred_angles_prev, x, x_hat):
+def kgnn2d_loss(gt_keypoints, pred_keypoints, gt_distances_next, gt_angles_next, gt_distances_prev, gt_angles_prev, pred_distances_next, pred_angles_next, pred_distances_prev, pred_angles_prev, x, x_hat, placeholder_mask):
     keypoints_loss = func.mse_loss(pred_keypoints, gt_keypoints)
     prev_distances_loss = func.mse_loss(pred_distances_prev, gt_distances_prev)
     prev_angles_loss = func.mse_loss(pred_angles_prev, gt_angles_prev)
     next_distances_loss = func.mse_loss(pred_distances_next, gt_distances_next)
     next_angles_loss = func.mse_loss(pred_angles_next, gt_angles_next)
-    recon_loss = reconstruction_loss(x, x_hat)
+    recon_loss = reconstruction_loss(x, x_hat, placeholder_mask)
     return keypoints_loss + prev_distances_loss + prev_angles_loss + next_distances_loss + next_angles_loss + recon_loss
     
 def process_batch_keypoints(target_dicts):
@@ -448,26 +460,26 @@ def process_batch_keypoints(target_dicts):
     keypoints_gt = torch.stack(keypoints_list).float().cuda()
     return keypoints_gt
 
-# def reorder_batch_keypoints(batch_keypoints):
-#     batch_size, num_keypoints, num_features = batch_keypoints.shape
-#     reordered_keypoints_batch = []
-#     for i in range(batch_size):
-#         normalized_keypoints = batch_keypoints[i]
-#         reordered_normalized_keypoints = torch.zeros(num_keypoints, 2, device=batch_keypoints.device)
-#         rounded_labels = torch.round(normalized_keypoints[:, -1]).int()
-#         used_indices = []
-#         for label in range(1, 10):
-#             valid_idx = (rounded_labels == label).nonzero(as_tuple=True)[0]
-#             if valid_idx.numel() > 0:
-#                 reordered_normalized_keypoints[label - 1] = normalized_keypoints[valid_idx[0], :2]
-#             else:
-#                 invalid_idx = ((rounded_labels < 1) | (rounded_labels > 6)).nonzero(as_tuple=True)[0]
-#                 invalid_idx = [idx for idx in invalid_idx if idx not in used_indices]
-#                 if invalid_idx:
-#                     reordered_normalized_keypoints[label - 1] = normalized_keypoints[invalid_idx[0], :2]
-#                     used_indices.append(invalid_idx[0])
-#         reordered_keypoints_batch.append(reordered_normalized_keypoints)
-#     return torch.stack(reordered_keypoints_batch)
+def reorder_batch_keypoints(batch_keypoints):
+    batch_size, num_keypoints, num_features = batch_keypoints.shape
+    reordered_keypoints_batch = []
+    for i in range(batch_size):
+        normalized_keypoints = batch_keypoints[i]
+        reordered_normalized_keypoints = torch.zeros(num_keypoints, 2, device=batch_keypoints.device)
+        rounded_labels = torch.round(normalized_keypoints[:, -1]).int()
+        used_indices = []
+        for label in range(1, 10):
+            valid_idx = (rounded_labels == label).nonzero(as_tuple=True)[0]
+            if valid_idx.numel() > 0:
+                reordered_normalized_keypoints[label - 1] = normalized_keypoints[valid_idx[0], :2]
+            else:
+                invalid_idx = ((rounded_labels < 1) | (rounded_labels > 6)).nonzero(as_tuple=True)[0]
+                invalid_idx = [idx for idx in invalid_idx if idx not in used_indices]
+                if invalid_idx:
+                    reordered_normalized_keypoints[label - 1] = normalized_keypoints[invalid_idx[0], :2]
+                    used_indices.append(invalid_idx[0])
+        reordered_keypoints_batch.append(reordered_normalized_keypoints)
+    return torch.stack(reordered_keypoints_batch)
 
 def denormalize_keypoints(batch_keypoints, width=640, height=480):
     denormalized_keypoints = []
@@ -623,7 +635,7 @@ def draw_lines_between_keypoints(image, keypoints, color=(255, 255, 255)):
 
 def predict(model, img_tensor):
     with torch.no_grad():
-        KGNN2D, original_graphs = model([img_tensor])
+        KGNN2D, original_graphs, placeholder_masks = model([img_tensor])
     return KGNN2D
 
 def postprocess_keypoints(keypoints, width=640, height=480):
@@ -685,12 +697,12 @@ def process_folder(folder_path, output_path, output_path_line):
             image_path = os.path.join(folder_path, filename)
             img_tensor = prepare_image(image_path).to(device)
             start_time = time.time()
-            KGNN2D = predict(model, img_tensor)
+            KGNN2D, og_graph, mask = predict(model, img_tensor)
             end_time = time.time()
             inference_time = end_time - start_time
             print(f"Inference time for {filename}: {inference_time:.4f} seconds")
-            # ordered_keypoints = reorder_batch_keypoints(KGNN2D)
-            denormalized_keypoints = postprocess_keypoints(KGNN2D)
+            ordered_keypoints = reorder_batch_keypoints(KGNN2D)
+            denormalized_keypoints = postprocess_keypoints(ordered_keypoints)
             
             json_filename = filename.split('.')[0] + '.json'
             json_path = os.path.join(folder_path, json_filename)

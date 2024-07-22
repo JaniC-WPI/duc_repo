@@ -389,10 +389,13 @@ class KeypointPipeline(nn.Module):
             dist_next, angle_next = calculate_distance_angle([x, y], next_kp[:2])
             dist_prev, angle_prev = calculate_distance_angle([x, y], prev_kp[:2])
             node_features.append([x, y, conf, label, dist_next, angle_next, dist_prev, angle_prev])
+            placeholder_mask.append(conf == 0)
+            
         node_features = torch.tensor(node_features, dtype=torch.float32).to(device)
         placeholder_mask = torch.tensor(placeholder_mask, dtype=torch.bool).to(device)
         edge_index = torch.tensor([[i, (i + 1) % len(keypoints)] for i in range(len(keypoints))] + 
                                   [[(i + 1) % len(keypoints), i] for i in range(len(keypoints))], dtype=torch.long).t().contiguous().to(device)
+        
         return Data(x=node_features, edge_index=edge_index), placeholder_mask
     
     def forward(self, imgs):
@@ -413,7 +416,7 @@ class KeypointPipeline(nn.Module):
             normalized_keypoints = self.normalize_keypoints(filled_keypoints, image_width, image_height)
             batch_labeled_keypoints[idx] = normalized_keypoints
        
-        all_graphs, placeholder_masks = [self.keypoints_to_graph(keypoints, 640, 480) for keypoints in batch_labeled_keypoints]
+        all_graphs, placeholder_masks = zip(*[self.keypoints_to_graph(keypoints, 640, 480) for keypoints in batch_labeled_keypoints])
         all_predictions, latent_reps, all_placeholder_masks = [], [], []
         for graph, placeholder_mask in zip(all_graphs, placeholder_masks):
             x_hat, z = self.graph_autoencoder(graph.x, graph.edge_index)
