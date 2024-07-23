@@ -540,7 +540,7 @@ model = KeypointPipeline(weights_path)
 model = model.to(device)
 
 # Load the checkpoint
-checkpoint_path = '/home/jc-merlab/Pictures/Data/trained_models/sage_ckpt/kprcnn_occ_sage_ckpt_b128e20.pth'
+checkpoint_path = '/home/jc-merlab/Pictures/Data/trained_models/sage_ckpt_hundred_k/kprcnn_occ_sage_ckpt_hundred_k_b64e50.pth'
 checkpoint = torch.load(checkpoint_path)
 
 # Extract the state dictionary
@@ -679,7 +679,7 @@ def process_folder(folder_path, output_path, output_path_line):
     print(f"Average inference time: {avg_inference_time}")
 
 folder_path = '/home/jc-merlab/Pictures/Data/occ_phys_test_data/'
-output_path = '/home/jc-merlab/Pictures/Data/occ_phys_test_data/sage_output/'
+output_path = '/home/jc-merlab/Pictures/Data/occ_phys_test_data/sage_output_hundred_k/'
 output_path_line = '/home/jc-merlab/Pictures/Data/occ_test_op_line/'
 process_folder(folder_path, output_path, output_path_line)
 
