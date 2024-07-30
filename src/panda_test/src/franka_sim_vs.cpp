@@ -537,18 +537,28 @@ int main(int argc, char **argv){
         // std::cout<<" norm:"<<err<<std::endl;
 
         std::vector<float> current_gains;
-        if ((num_goal_sets == 1) || (current_goal_set < num_goal_sets - 1)) {
-            current_gains = gains1; // Use the first set of gains for all but the last goal
-        } 
-        else {
-            current_gains = gains2; // Use the second set of gains for the last goal
-        }
+        // if ((num_goal_sets == 1) || (current_goal_set < num_goal_sets - 1)) {
+        //     current_gains = gains1; // Use the first set of gains for all but the last goal
+        // } 
+        // else {
+        //     current_gains = gains2; // Use the second set of gains for the last goal
+        // }
+        // if (err > 40) {
+        //     current_gains = gains1;
+        // }
+        // else {
+        //     current_gains = gains2; // Use the second set of gains for the last goal
+        // }
+
+        current_gains = gains1;
 
         // Convert gains to Eigen vector
         Eigen::VectorXf K(no_of_features);
         for(int i=0; i<no_of_features; i++){
             K[i] = current_gains[i];
         }
+
+        std::cout << "Gain applied: " << K << std::endl;
 
         // Generate velocity
         // Convert qhat vector into matrix format
@@ -1008,15 +1018,6 @@ End of working velocity scaling*/
 
         // The following block is to change goals
         if (err < current_thresh) {  
-            // Commanding 0 velocity to robot 
-            // j_vel.data.clear();
-            // j_vel.data.push_back(0.0);
-            // j_vel.data.push_back(0.0);
-            // if (no_of_actuators==3){
-            //     j_vel.data.push_back(0.0); 
-            // }
-
-            // j_pub.publish(j_vel);
             std::cout << "Goal " << current_goal_set << " reached. Moving to next goal." << std::endl;
             if (current_goal_set < num_goal_sets - 1) {
                 ++current_goal_set; // Move to the next set of goal features
@@ -1031,79 +1032,146 @@ End of working velocity scaling*/
                 // // Reset qhat to final_qhat_initial_estimation
                 // qhat = final_qhat_initial_estimation; // Reset Jacobian to the initial estimation result
                 // // it = 0; // Reset window iteration counter  
-                // // dSinitial.clear();
-                // // dRinitial.clear();
-                qhat = final_qhat_initial_estimation; // Reset Jacobian to the initial estimation result
+                // dSinitial.clear();
+                // dRinitial.clear();          
                 // // it = 0; // Reset window iteration counter
                 // // Resetting change in joint angles and shape change vectors for the new goal
-                std::fill(dSinitial.begin(), dSinitial.end(), 0);
-                std::fill(dRinitial.begin(), dRinitial.end(), 0);
-                std::cout << "Switched to goal set " << current_goal_set << std::endl;   
+                // std::fill(dSinitial.begin(), dSinitial.end(), 0);
+                // std::fill(dRinitial.begin(), dRinitial.end(), 0);
+                std::cout << "Switched to goal set " << current_goal_set << std::endl; 
 
-                if (err > 250) {
-                    for(int i=0; i<no_of_features;i++){
-                        dSinitial[i] = ds[i];
-                    }
-                    std::rotate(dSinitial.begin(), dSinitial.begin()+no_of_features, dSinitial.end());
-                    for(int i=0; i<no_of_actuators;i++){
-                        dRinitial[i] = dr[i];
-                    }  
-                    std::rotate(dRinitial.begin(), dRinitial.begin()+no_of_actuators, dRinitial.end());
-
-                    dSmsg.data.clear();
-                    for(std::vector<float>::iterator itr = dSinitial.begin(); itr != dSinitial.end(); ++itr){
-                        dSmsg.data.push_back(*itr);
-                    }
-                    dRmsg.data.clear();
-                    for(std::vector<float>::iterator itr = dRinitial.begin(); itr != dRinitial.end(); ++itr){
-                        dRmsg.data.push_back(*itr);
-                    }
-                
-                    // Push reset qhat to ROS Msg
-                    qhatmsg.data.clear();
-                    for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr){
-                        qhatmsg.data.push_back(*itr);
-                    }   
-
-                    // Print the contents of qhat
-                    std::cout << "The qhat inside goal switch: ";
-                    for (const auto& val : qhat) {
-                        std::cout << val << " ";
-                    }
-                    std::cout << std::endl;
-
-                    // // Immediately call the service with the reset qhat
-                    msg.request.gamma_first_actuator = gamma1;
-                    msg.request.gamma_second_actuator = gamma2;
-                    msg.request.gamma_third_actuator = gamma3;
-                    msg.request.it = window-1;
-                    msg.request.dS = dSmsg;
-                    msg.request.dR = dRmsg;
-                    msg.request.qhat = qhatmsg;
-                    msg.request.feature_error_magnitude = error_magnitude;
-                    msg.request.feature_errors = feature_errors_msg;
-
-                    std::vector<float> qhatdot = msg.response.qhat_dot.data;
-
-                    for(int i = 0; i < qhat.size(); i++) {
-                        qhat[i] = qhat[i] + qhatdot[i];
-                    }
-
-                    qhatmsg.data.clear();
-                    for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr) {
-                        qhatmsg.data.push_back(*itr);
-                    }    
-
-                    // Print the contents of qhat
-                    std::cout << "Updated qhat inside goal switch: ";
-                    for (const auto& val : qhat) {
-                        std::cout << val << " ";
-                    }
-                    std::cout << std::endl;
-
+                // Calculate the error immediately after goal switch
+                for(int i = 0; i < no_of_features; i++){
+                    error[i] = cur_features[i] - goal[i];
                 }
+
+                Eigen::VectorXf error_vec(no_of_features);
+                for(int i=0; i<no_of_features; i++){
+                    error_vec(i) = error[i];
+                }
+
+                float err_mag = error_vec.norm();                
+
+                std::cout << "error right after goal switch: " << err_mag << std::endl;
+
+                qhat = final_qhat_initial_estimation; // Resetting the Jacobian as the goal switched
                 
-                // 
+                for(int i=0; i<no_of_features;i++){
+                    dSinitial[i] = ds[i];
+                }
+                std::rotate(dSinitial.begin(), dSinitial.begin()+no_of_features, dSinitial.end());
+                for(int i=0; i<no_of_actuators;i++){
+                    dRinitial[i] = dr[i];
+                }  
+                std::rotate(dRinitial.begin(), dRinitial.begin()+no_of_actuators, dRinitial.end());
+                dSmsg.data.clear();
+                for(std::vector<float>::iterator itr = dSinitial.begin(); itr != dSinitial.end(); ++itr){
+                    dSmsg.data.push_back(*itr);
+                }
+                dRmsg.data.clear();
+                for(std::vector<float>::iterator itr = dRinitial.begin(); itr != dRinitial.end(); ++itr){
+                    dRmsg.data.push_back(*itr);
+                }
+                // Push reset qhat to ROS Msg
+                qhatmsg.data.clear();
+                for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr){
+                    qhatmsg.data.push_back(*itr);
+                }   
+                // Print the contents of qhat
+                std::cout << "The qhat inside goal switch: ";
+                for (const auto& val : qhat) {
+                    std::cout << val << " ";
+                }
+                std::cout << std::endl;
+                // // Immediately call the service with the reset qhat
+                msg.request.gamma_first_actuator = gamma1;
+                msg.request.gamma_second_actuator = gamma2;
+                msg.request.gamma_third_actuator = gamma3;
+                msg.request.it = window-1;
+                msg.request.dS = dSmsg;
+                msg.request.dR = dRmsg;
+                msg.request.qhat = qhatmsg;
+                msg.request.feature_error_magnitude = error_magnitude;
+                msg.request.feature_errors = feature_errors_msg;
+                std::vector<float> qhatdot = msg.response.qhat_dot.data;
+                for(int i = 0; i < qhat.size(); i++) {
+                    qhat[i] = qhat[i] + qhatdot[i];
+                }
+                qhatmsg.data.clear();
+                for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr) {
+                    qhatmsg.data.push_back(*itr);
+                }    
+                // Print the contents of qhat
+                std::cout << "Updated qhat inside goal switch: ";
+                for (const auto& val : qhat) {
+                    std::cout << val << " ";
+                }
+                std::cout << std::endl;
+
+                // if (err_mag > 200) {
+                //     qhat = final_qhat_initial_estimation; // Resetting the Jacobian as the goal switched
+                
+                //     for(int i=0; i<no_of_features;i++){
+                //         dSinitial[i] = ds[i];
+                //     }
+                //     std::rotate(dSinitial.begin(), dSinitial.begin()+no_of_features, dSinitial.end());
+                //     for(int i=0; i<no_of_actuators;i++){
+                //         dRinitial[i] = dr[i];
+                //     }  
+                //     std::rotate(dRinitial.begin(), dRinitial.begin()+no_of_actuators, dRinitial.end());
+
+                //     dSmsg.data.clear();
+                //     for(std::vector<float>::iterator itr = dSinitial.begin(); itr != dSinitial.end(); ++itr){
+                //         dSmsg.data.push_back(*itr);
+                //     }
+                //     dRmsg.data.clear();
+                //     for(std::vector<float>::iterator itr = dRinitial.begin(); itr != dRinitial.end(); ++itr){
+                //         dRmsg.data.push_back(*itr);
+                //     }
+
+                //     // Push reset qhat to ROS Msg
+                //     qhatmsg.data.clear();
+                //     for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr){
+                //         qhatmsg.data.push_back(*itr);
+                //     }   
+
+                //     // Print the contents of qhat
+                //     std::cout << "The qhat inside goal switch: ";
+                //     for (const auto& val : qhat) {
+                //         std::cout << val << " ";
+                //     }
+                //     std::cout << std::endl;
+
+                //     // // Immediately call the service with the reset qhat
+                //     msg.request.gamma_first_actuator = gamma1;
+                //     msg.request.gamma_second_actuator = gamma2;
+                //     msg.request.gamma_third_actuator = gamma3;
+                //     msg.request.it = window-1;
+                //     msg.request.dS = dSmsg;
+                //     msg.request.dR = dRmsg;
+                //     msg.request.qhat = qhatmsg;
+                //     msg.request.feature_error_magnitude = error_magnitude;
+                //     msg.request.feature_errors = feature_errors_msg;
+
+                //     std::vector<float> qhatdot = msg.response.qhat_dot.data;
+
+                //     for(int i = 0; i < qhat.size(); i++) {
+                //         qhat[i] = qhat[i] + qhatdot[i];
+                //     }
+
+                //     qhatmsg.data.clear();
+                //     for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr) {
+                //         qhatmsg.data.push_back(*itr);
+                //     }    
+
+                //     // Print the contents of qhat
+                //     std::cout << "Updated qhat inside goal switch: ";
+                //     for (const auto& val : qhat) {
+                //         std::cout << val << " ";
+                //     }
+                //     std::cout << std::endl;
+
+                    // }                
 
                 // Pause for 2 seconds before continuing to the next goal
                 // ros::Duration(2).sleep();
@@ -1116,6 +1184,7 @@ End of working velocity scaling*/
             // current_goal_set_msg.data = current_goal_set;
             // current_goal_set_pub.publish(current_goal_set_msg);
         }
+        
         else{         
             // could change ds_norm to error_norm and stop updating near goal
         

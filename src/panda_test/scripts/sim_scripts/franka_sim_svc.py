@@ -388,12 +388,12 @@ class VideoInference:
             # cv2.putText(img, str(self.updated5[4:]), org5, font, fontScale, red, 1, cv2.LINE_AA)
             # cv2.circle(img, (upd_x, upd_y), 5, red, 4)
 
-            print("next frame"+str(self.j))
+            # print("next frame"+str(self.j))
 
             cv2.imwrite("/home/jc-merlab/Pictures/Data/video_results_live_b2e25_kalman/out_image_"+str(self.j)+".jpg", img)                 
 
             self.j= self.j + 1
-            print(self.j)
+            # print(self.j)
 
             # latest_corrected_x = np.array([[self.updated1[0][0], self.updated1[1][0]], [self.updated2[0][0], self.updated2[1][0]], [self.updated3[0][0], self.updated3[1][0]], 
             #                                 [self.updated4[0][0], self.updated4[1][0]], [self.updated5[0][0], self.updated5[1][0]], [self.updated6[0][0], self.updated6[1][0]]])
@@ -404,7 +404,7 @@ class VideoInference:
 
         # runs only once, when all 5 joints are identified for the first time
     def first_input_estimate(self, img, key_points):
-            print("first filter is called")
+            # print("first filter is called")
             # print("Actual first first key points", key_points)
             self.marker_flag= [True, True, True, True, True, True]
             first_corrected_x = self.kalman_estimate(img, key_points)        
@@ -413,7 +413,7 @@ class VideoInference:
 
         # this is the function where the missing joints are identified for 
     def input_estimation(self, img, key_points, corrected_x):
-            print("filters are called")        
+            # print("filters are called")        
             # print("key points input after the first iteration", key_points)
             # print("corredtec_x after first iteration", corrected_x)
 
@@ -473,8 +473,8 @@ class VideoInference:
 
     def dl_sim_image_service(self, img):
 
-        print("svc ros image", type(self.ros_img))
-        print("is keypoint service getting called")
+        # print("svc ros image", type(self.ros_img))
+        # print("is keypoint service getting called")
         # if kp_flag:
         self.cv_img = self.bridge.imgmsg_to_cv2(self.ros_img, "bgr8")
         inf_img = Img.fromarray(self.cv_img)
@@ -527,7 +527,7 @@ class VideoInference:
 
         # print(keypoints_all)
 
-        print("current keypoints", keypoints_all)
+        # print("current keypoints", keypoints_all)
 
         # indices = [0,1,2,3,4,5,6,7,8]
         # keypoints_all = [keypoints_all[i] for i in indices]
@@ -597,7 +597,7 @@ class VideoInference:
                kp.append(kp_x[i+4]) 
                kp.append(kp_y[i+4])
 
-        print("current keypoints", kp)
+        # print("current keypoints", kp)
 
         # Uncomment the next block for 4 features
         # for i in range(len(kp_x)):
