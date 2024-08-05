@@ -8,8 +8,8 @@ static_image = cv2.imread(image_path)
 gif_image = static_image.copy()
 
 # Save the result
-output_path = '/home/jc-merlab/.ros/sim_published_goal_image.jpg'
-output_dir = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/euc_4/path/'
+output_path = '/home/jc-merlab/.ros/sim_published_goal_image_all.jpg'
+output_dir = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/1/path/'
 if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -38,9 +38,7 @@ if not os.path.exists(output_dir):
 
     # [[255, 200], [333, 140], [354, 144], [350, 165]]
         
-points_sets = [[[294.0, 201.0], [323.0, 209.0], [368.0, 268.0], [411.0, 328.0], [443.0, 343.0], [426.0, 382.0]],
-            [[267.0, 193.0], [298.0, 196.0], [339.0, 258.0], [380.0, 321.0], [414.0, 325.0], [409.0, 368.0]],
-            [[230.0, 195.0], [260.0, 189.0], [318.0, 234.0], [376.0, 280.0], [408.0, 293.0], [392.0, 333.0]]]
+points_sets = [[[294.0, 201.0], [323.0, 209.0], [411.0, 328.0], [443.0, 343.0], [426.0, 382.0]], [[195.0, 208.0], [222.0, 193.0], [367.0, 220.0], [400.0, 215.0], [406.0, 257.0]], [[153.0, 249.0], [169.0, 223.0], [296.0, 147.0], [325.0, 130.0], [346.0, 166.0]], [[178.0, 221.0], [201.0, 201.0], [257.0, 66.0], [281.0, 44.0], [309.0, 75.0]]]
 # 
 # colors = [
 #     (255, 0, 0),  # Blue

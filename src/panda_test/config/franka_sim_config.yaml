@@ -2,17 +2,17 @@ vsbot :
 # Deep learning parameters
   deeplearning:
     # weights_path: '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_weights_ld_b1_e30.pth'
-    weights_path: '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_planning_b1_e100_v4.pth'
+    weights_path: '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_planning_b1_e50_v8.pth'
 
 # Jacobian Estimation Parameters ------------------------------------
   estimation:
     epsilon: 1.0e-5 # update threshold or convergence condition
     gamma:  10.0 # learning rate
-    gamma1: 20.0
-    gamma2: 1.0 # learning rate during servoing
-    gamma3: 60.0
+    gamma1: 8.61
+    gamma2: 0.4293 # learning rate during servoing
+    gamma3: 25.821
     window: 50 # window size
-    amplitude: 0.1 # amplitude for initial sin velocities
+    amplitude: 0.1 # amplitude for initial sin velocitiess
     rate: 10 # initialization loop rate
 
   control:
@@ -20,23 +20,23 @@ vsbot :
     gain_sm: -3
     thresh1: 25 # visual servoing convergence threshold
     thresh2: 10
-    lam: -2.0 # for 2 joints
-    p_lam: 3.0
-    alpha_gamma: 0.0001
-    alpha_gains: 0.02
-    reg_lambda: 0.01
+    # lam: -0.8 # for 2 joints
+    # p_lam: 3.0
+    alpha_gamma: 0.0005
+    # alpha_gains: 0.02
+    # reg_lambda: 0.01
     # jacobian: [19, 47, -79,  7, 89, -13, 71, -59, -23, 61, 41, -67, -3, 2, -11, 29, -43, -31, 73, 17, -5, 83, 37, 53]
     jacobian: [19, 17, -47, 31, -89, 41, 151, -97, -73, 163, 139, 149, -173, 103, 83, -53, 79, 7, -29, 67, 113, -109, 2, 37, 107, -59, 13, 127, 71, 137] #10X3 features
     # jacobian: [19, 47, -79,  7, 89, -13, 71, -59, -23, 61, 41, -67] #4X3 or 6X2  features
     # jacobian: [19, 47, -79,  7, 89, -13, 71, -59, -23, 61, 41, -67,  -3,  2, -11, 29, -43, -31] #6X3 features
     # jacobian: [19, 47, -79,  7, 89, -13] # 2X3 features
-    # gains1: [-2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0] # for intermediate configs
-    # # gains2: [-2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -7.0, -7.0] # for last config
-    # gains2: [-2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0]
+    # gains1: [-0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8] # for intermediate configs
+    # # gains2: [-0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -7.0, -7.0] # for last config
+    # gains2: [-0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8]
 
-    gains1: [-1.5, -1.5, -1.5, -1.5, -1.5, -1.5, -1.5, -1.5, -1.5, -1.5] # for intermediate configs
-    # gains2: [-2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -7.0, -7.0] # for last config
-    gains2: [-2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0]
+    gains1: [-1.5, -1.5, -1.5, -1.5, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8]  # for intermediate configs
+    # gains2: [-0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -7.0, -7.0] # for last config
+    # gains2: [-0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8, -0.8]
 
 # Shape Servoing Parameters -------------------------------------------
   

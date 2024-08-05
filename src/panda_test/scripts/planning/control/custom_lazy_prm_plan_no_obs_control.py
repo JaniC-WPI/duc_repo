@@ -205,7 +205,7 @@ if __name__ == "__main__":
     configurations = load_keypoints_from_truncated_json(directory)
     model = load_model_for_inference(model_path)
     # Parameters for PRM
-    num_neighbors = 50  # Number of neighbors for each node in the roadmap
+    num_neighbors = 20  # Number of neighbors for each node in the roadmap
     start_time = time.time()
     # Build the roadmap
     roadmap, tree = build_lazy_roadmap_with_kdtree(configurations, num_neighbors, model)   
@@ -233,14 +233,14 @@ if __name__ == "__main__":
          # Iterate through the path, excluding the first and last configuration
          for configuration in path[0:-1]:
             # Extract the last three keypoints of each configuration
-            selected_points = configuration[[3, 4, 5, 6, 7, 8]]
+            selected_points = configuration[[3, 4, 6, 7, 8]]
             selected_points_float = [[float(point[0]), float(point[1])] for point in selected_points]
             # Append these points to the point_set list
             point_set.append(selected_points_float)
 
          # Iterate through the path, excluding start and goal            
          for configuration in path[1:]: 
-            selected_points = configuration[[3, 4, 5, 6, 7, 8]]
+            selected_points = configuration[[3, 4, 6, 7, 8]]
             selected_points_float = [[float(point[0]), float(point[1])] for point in selected_points]
             goal_features = []
             for point in selected_points_float:
@@ -263,8 +263,19 @@ if __name__ == "__main__":
     
          print("Data successfully written to config/dl_multi_features.yaml")
 
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/1/dl_multi_features.yaml", "w") as yaml_file:
+             s = "dl_controller:\n"
+             s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
+             for i, goal in enumerate(goal_sets, start=1):
+                 # Convert the list of floats into a comma-separated string
+                 goal_str = ', '.join(map(str, goal))
+                 s += f"  goal_features{i}: [{goal_str}]\n"
+    
+             # Write the string to the file
+             yaml_file.write(s)
+
          # Save configurations to a .txt file
-         with open("config/path_configurations.txt", "w") as file:
+         with open("config/path_configurations_no_obs.txt", "w") as file:
              file.write("Start Configuration:\n")
              file.write(str(start_config.tolist()) + "\n\n")
              file.write("Goal Configuration:\n")
@@ -275,6 +286,20 @@ if __name__ == "__main__":
              file.write("\nPoint Set:\n")
              for points in point_set:
                  file.write(str(points) + "\n")
+
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/1/path_configurations_no_obs.txt", "w") as file:
+             file.write("Start Configuration:\n")
+             file.write(str(start_config.tolist()) + "\n\n")
+             file.write("Goal Configuration:\n")
+             file.write(str(goal_config.tolist()) + "\n\n")
+             file.write("Path:\n")
+             for config in path:
+                 file.write(str(config.tolist()) + "\n")
+             file.write("\nPoint Set:\n")
+             for points in point_set:
+                 file.write(str(points) + "\n")
+
+        
 
          print("Configurations successfully saved to configurations.txt")
     # print("time taken to find the graph", end_time - start_time)  

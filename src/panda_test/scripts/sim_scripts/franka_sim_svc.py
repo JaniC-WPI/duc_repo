@@ -527,7 +527,7 @@ class VideoInference:
 
         # print(keypoints_all)
 
-        # print("current keypoints", keypoints_all)
+        print("current keypoints", keypoints_all)
 
         # indices = [0,1,2,3,4,5,6,7,8]
         # keypoints_all = [keypoints_all[i] for i in indices]
@@ -543,7 +543,7 @@ class VideoInference:
         # print(len(keypoints))
         # print(len(keypoints_all))
         # print(len(keypoints_))
-        # print("exec keypoints", keypoints_)
+        print("exec keypoints", keypoints_)
         bboxes = []
         for bbox in output[0]['boxes'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy():
             bboxes.append(list(map(int, bbox.tolist())))
