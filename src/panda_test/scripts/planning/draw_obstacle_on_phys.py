@@ -48,7 +48,11 @@ def draw_green_rectangle(image_path, rectangle_center, half_diagonal, save_path)
 
 # Example usage
 image_path = '/home/jc-merlab/.ros/sim_published_goal_image_all.jpg'  # Replace with your image file path
+<<<<<<< HEAD
 rectangle_center = (400, 120)  # Example center position (x, y)
+=======
+rectangle_center = (380, 120)  # Example center position (x, y)
+>>>>>>> 3048ed4cf017610408a8c4c32588a17e56d0ddb6
 half_diagonal = 20  # Example half diagonal length
 # save_path = '/home/jc-merlab/.ros/dl_published_goal_image.jpg'  # Replace with your save file path
 save_path = '/home/jc-merlab/.ros/sim_published_goal_image.jpg'
