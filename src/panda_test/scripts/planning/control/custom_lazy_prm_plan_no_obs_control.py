@@ -96,7 +96,7 @@ def build_lazy_roadmap_with_kdtree(configurations, k_neighbors, model):
     Returns:
     - G: nx.Graph, the constructed roadmap.
     """
-    configurations = configurations[1:15000:10]
+    configurations = configurations[1:15000:5]
     # print("Shape of configurations before building the roadmap:", len(configurations), configurations[0].shape)
 
     flattened_configs = np.vstack([config.flatten() for config in configurations])
@@ -205,7 +205,7 @@ if __name__ == "__main__":
     configurations = load_keypoints_from_truncated_json(directory)
     model = load_model_for_inference(model_path)
     # Parameters for PRM
-    num_neighbors = 20  # Number of neighbors for each node in the roadmap
+    num_neighbors = 10  # Number of neighbors for each node in the roadmap
     start_time = time.time()
     # Build the roadmap
     roadmap, tree = build_lazy_roadmap_with_kdtree(configurations, num_neighbors, model)   

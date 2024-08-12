@@ -229,7 +229,7 @@ def build_lazy_roadmap_with_kdtree(configurations, k_neighbors, model):
     Returns:
     - G: nx.Graph, the constructed roadmap.
     """
-    # configurations = configurations[1:15000:10]
+    configurations = configurations[1:15000:5]
 
     # with open('/home/jc-merlab/Pictures/Dl_Exps/dl_vs/servoing/exps/cust_1/configurations.txt', 'w') as f:
     #         f.write(str(configurations))
@@ -436,7 +436,7 @@ if __name__ == "__main__":
     # distance_matrix = np.array([1.0]).reshape(-1,1)
     # configurations = load_and_sample_configurations(directory, num_samples)
     # Parameters for PRM
-    num_neighbors = 25
+    num_neighbors = 20
      # Number of neighbors for each node in the roadmap
     start_time = time.time()
     # Build the roadmap
@@ -450,7 +450,7 @@ if __name__ == "__main__":
     goal_config = np.array([[250, 442], [252, 311], [210, 271], [167, 231], [188, 209], [227, 147], [265, 85], [278, 56], [315, 73]])
 
     SAFE_ZONE = 30 
-    obstacle_center = (325, 130)
+    obstacle_center = (360, 120)
     half_diagonal = 20
     # safe_distance = SAFE_ZONE
 
@@ -458,7 +458,7 @@ if __name__ == "__main__":
         (obstacle_center[0] - (half_diagonal + SAFE_ZONE), obstacle_center[1] - (half_diagonal + SAFE_ZONE)),
         (obstacle_center[0] + (half_diagonal + SAFE_ZONE), obstacle_center[1] - (half_diagonal + SAFE_ZONE)),
         (obstacle_center[0] + (half_diagonal + SAFE_ZONE), obstacle_center[1] + (half_diagonal + SAFE_ZONE)),
-        (obstacle_center[0] - (half_diagonal + SAFE_ZONE), obstacle_center[1] + (half_diagonal + SAFE_ZONE)),
+        (obstacle_center[0] - (half_diagonal + SAFE_ZONE), obstacle_center[1] + (half_diagonal + SAFE_ZONE)), 
     ])
 
     # Add start and goal configurations to the roadmap
