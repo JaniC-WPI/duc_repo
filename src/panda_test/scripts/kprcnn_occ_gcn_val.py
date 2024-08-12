@@ -412,7 +412,7 @@ def reorder_batch_keypoints(batch_keypoints):
             if valid_idx.numel() > 0:
                 reordered_normalized_keypoints[label - 1] = normalized_keypoints[valid_idx[0], :2]
             else:
-                invalid_idx = ((rounded_labels < 1) | (rounded_labels > 6)).nonzero(as_tuple=True)[0]
+                invalid_idx = ((rounded_labels < 1) | (rounded_labels > 9)).nonzero(as_tuple=True)[0]
                 invalid_idx = [idx for idx in invalid_idx if idx not in used_indices]
                 if invalid_idx:
                     reordered_normalized_keypoints[label - 1] = normalized_keypoints[invalid_idx[0], :2]
@@ -539,7 +539,7 @@ model = KeypointPipeline(weights_path)
 model = model.to(device)
 
 # Load the checkpoint
-checkpoint_path = '/home/jc-merlab/Pictures/Data/trained_models/gcn_ckpt/kprcnn_occ_gcn_ckpt_b128e20.pth'
+checkpoint_path = '/home/jc-merlab/Pictures/Data/trained_models/gcn_ckpt_hundred_k/kprcnn_occ_gcn_ckpt_hundred_k_b128e55.pth'
 checkpoint = torch.load(checkpoint_path)
 
 # Extract the state dictionary
@@ -678,9 +678,75 @@ def process_folder(folder_path, output_path, output_path_line):
     print(f"Average inference time: {avg_inference_time}")
 
 folder_path = '/home/jc-merlab/Pictures/Data/occ_phys_test_data/'
-output_path = '/home/jc-merlab/Pictures/Data/occ_phys_test_data/gcn_output/'
+output_path = '/home/jc-merlab/Pictures/Data/occ_phys_test_data/gcn_output_v2/'
 output_path_line = '/home/jc-merlab/Pictures/Data/occ_test_op_line/'
 process_folder(folder_path, output_path, output_path_line)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

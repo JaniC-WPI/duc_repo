@@ -281,41 +281,46 @@ def calculate_gt_distances_angles(keypoints_gt):
 
 class KeypointPipeline(nn.Module):
     def __init__(self, weights_path):
-        super(KeypointPipeline, self).__init__()  
+        super(KeypointPipeline, self).__init__()
         self.keypoint_model = torch.load(weights_path).to(device)
         self.graph_sage = GraphSAGE(8,1024,4)
-        
+
     def process_model_output(self, output):
         scores = output[0]['scores'].detach().cpu().numpy()
-        high_scores_idxs = np.where(scores > 0.7)[0].tolist()
+        high_scores_idxs = np.where(scores > 0.01)[0].tolist()
         post_nms_idxs = torchvision.ops.nms(output[0]['boxes'][high_scores_idxs], output[0]['scores'][high_scores_idxs], 0.3).cpu().numpy()
-        confidence = output[0]['scores'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy()
-        labels = output[0]['labels'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy()
+        # confidence = output[0]['scores'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy()
+        confidence = output[0]['scores'][high_scores_idxs].detach().cpu().numpy()
+        # labels = output[0]['labels'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy()
+        labels = output[0]['labels'][high_scores_idxs].detach().cpu().numpy()
         keypoints = []
-        for idx, kps in enumerate(output[0]['keypoints'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy()):
+        # for idx, kps in enumerate(output[0]['keypoints'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy()):
+        #    keypoints.append(list(map(int, kps[0, 0:2])) + [confidence[idx]] + [labels[idx]])
+
+        for idx, kps in enumerate(output[0]['keypoints'][high_scores_idxs].detach().cpu().numpy()):
             keypoints.append(list(map(int, kps[0, 0:2])) + [confidence[idx]] + [labels[idx]])
-        
+
         keypoints = [torch.tensor(kp, dtype=torch.float32).to(device) if not isinstance(kp, torch.Tensor) else kp for kp in keypoints]
         keypoints = torch.stack(keypoints).to(device)
-        
+
         unique_labels, best_keypoint_indices = torch.unique(keypoints[:, 3], return_inverse=True)
         best_scores, best_indices = torch.max(keypoints[:, 2].unsqueeze(0) * (best_keypoint_indices == torch.arange(len(unique_labels)).unsqueeze(1).cuda()), dim=1)
         keypoints = keypoints[best_indices]
-        
+
 #         print("initial predicted keypoints", keypoints)
-        
+
         return keypoints
     
     def fill_missing_keypoints(self, keypoints, image_width, image_height):
         keypoints_dict = {int(kp[3]): kp for kp in keypoints}
         complete_keypoints = []
         labels = [int(kp[3]) for kp in keypoints]
-        
+
         # Identify missing labels
         all_labels = set(range(1, 10))
         missing_labels = list(all_labels - set(labels))
         missing_labels.sort()
-        
+
         # Handle consecutive missing labels by placing them at the midpoint or image center
         for i in range(1, 10):
             if i in keypoints_dict:
@@ -323,18 +328,26 @@ class KeypointPipeline(nn.Module):
             else:
                 prev_label = i - 1 if i > 1 else 9
                 next_label = i + 1 if i < 9 else 1
-                prev_kp = keypoints_dict.get(prev_label, [image_width / 2, image_height / 2, 0, prev_label])
-                next_kp = keypoints_dict.get(next_label, [image_width / 2, image_height / 2, 0, next_label])
-                
-                if next_label in missing_labels:
-                    next_kp = [image_width / 2, image_height / 2, 0, next_label]
-                avg_x = (prev_kp[0] + next_kp[0]) / 2
-                avg_y = (prev_kp[1] + next_kp[1]) / 2
+
+                prev_kp = keypoints_dict.get(prev_label, None)
+                next_kp = keypoints_dict.get(next_label, None)
+
+                if prev_kp is None and next_kp is None:
+                    avg_x, avg_y = image_width / 2, image_height / 2
+                elif prev_kp is None:
+                    avg_x, avg_y = (next_kp[0] + image_width / 2) / 2, (next_kp[1] + image_height / 2) / 2
+                elif next_kp is None:
+                    avg_x, avg_y = (prev_kp[0] + image_width / 2) / 2, (prev_kp[1] + image_height / 2) / 2
+                else:
+                    avg_x = (prev_kp[0] + next_kp[0]) / 2
+                    avg_y = (prev_kp[1] + next_kp[1]) / 2
+
                 complete_keypoints.append([avg_x, avg_y, 0, i])
-                
+
 #         print("filled missing keypoints", complete_keypoints)
-        
+
         return torch.tensor(complete_keypoints, dtype=torch.float32).to(device)
+
 
     def normalize_keypoints(self, keypoints, image_width, image_height):
         keypoints[:, 0] = (keypoints[:, 0] - image_width / 2) / (image_width / 2)
@@ -540,7 +553,7 @@ model = KeypointPipeline(weights_path)
 model = model.to(device)
 
 # Load the checkpoint
-checkpoint_path = '/home/jc-merlab/Pictures/Data/trained_models/sage_ckpt_hundred_k/kprcnn_occ_sage_ckpt_hundred_k_b64e50.pth'
+checkpoint_path = '/home/jc-merlab/Pictures/Data/trained_models/sage_ckpt_v2/kprcnn_occ_sage_ckpt_v2_b128e18.pth'
 checkpoint = torch.load(checkpoint_path)
 
 # Extract the state dictionary

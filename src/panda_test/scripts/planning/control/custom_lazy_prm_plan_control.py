@@ -229,7 +229,7 @@ def build_lazy_roadmap_with_kdtree(configurations, k_neighbors, model):
     Returns:
     - G: nx.Graph, the constructed roadmap.
     """
-    # configurations = configurations[1:15000:10]
+    configurations = configurations[1:15000:5]
 
     # with open('/home/jc-merlab/Pictures/Dl_Exps/dl_vs/servoing/exps/cust_1/configurations.txt', 'w') as f:
     #         f.write(str(configurations))
@@ -436,7 +436,7 @@ if __name__ == "__main__":
     # distance_matrix = np.array([1.0]).reshape(-1,1)
     # configurations = load_and_sample_configurations(directory, num_samples)
     # Parameters for PRM
-    num_neighbors = 25
+    num_neighbors = 10
      # Number of neighbors for each node in the roadmap
     start_time = time.time()
     # Build the roadmap
@@ -450,7 +450,7 @@ if __name__ == "__main__":
     goal_config = np.array([[250, 442], [252, 311], [210, 271], [167, 231], [188, 209], [227, 147], [265, 85], [278, 56], [315, 73]])
 
     SAFE_ZONE = 30 
-    obstacle_center = (325, 130)
+    obstacle_center = (400, 120)
     half_diagonal = 20
     # safe_distance = SAFE_ZONE
 
@@ -498,7 +498,7 @@ if __name__ == "__main__":
          print("Point Set:", point_set)
          print("goal sets: ", goal_sets)
     
-         with open("config/dl_multi_features.yaml", "w") as yaml_file:
+         with open("/home/jc-merlab/duc_repo/src/panda_test/config/dl_multi_features.yaml", "w") as yaml_file:
              s = "dl_controller:\n"
              s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
              for i, goal in enumerate(goal_sets, start=1):
@@ -509,7 +509,7 @@ if __name__ == "__main__":
              # Write the string to the file
              yaml_file.write(s)
 
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/2/dl_multi_features.yaml", "w") as yaml_file:
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/8/dl_multi_features.yaml", "w") as yaml_file:
              s = "dl_controller:\n"
              s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
              for i, goal in enumerate(goal_sets, start=1):
@@ -523,7 +523,7 @@ if __name__ == "__main__":
          print("Data successfully written to config/dl_multi_features.yaml")
 
          # Save configurations to a .txt file
-         with open("config/path_configurations.txt", "w") as file:
+         with open("/home/jc-merlab/duc_repo/src/panda_test/config/path_configurations.txt", "w") as file:
              file.write("Start Configuration:\n")
              file.write(str(start_config.tolist()) + "\n\n")
              file.write("Goal Configuration:\n")
@@ -542,7 +542,8 @@ if __name__ == "__main__":
              for points in point_set:
                  file.write(str(points) + "\n")
 
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/2/path_configurations.txt", "w") as file:
+
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/8/path_configurations.txt", "w") as file:
              file.write("Start Configuration:\n")
              file.write(str(start_config.tolist()) + "\n\n")
              file.write("Goal Configuration:\n")

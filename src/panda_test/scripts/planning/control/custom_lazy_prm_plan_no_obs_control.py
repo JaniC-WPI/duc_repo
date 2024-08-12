@@ -96,7 +96,7 @@ def build_lazy_roadmap_with_kdtree(configurations, k_neighbors, model):
     Returns:
     - G: nx.Graph, the constructed roadmap.
     """
-    configurations = configurations[1:15000:10]
+    configurations = configurations[1:15000:5]
     # print("Shape of configurations before building the roadmap:", len(configurations), configurations[0].shape)
 
     flattened_configs = np.vstack([config.flatten() for config in configurations])
@@ -205,7 +205,7 @@ if __name__ == "__main__":
     configurations = load_keypoints_from_truncated_json(directory)
     model = load_model_for_inference(model_path)
     # Parameters for PRM
-    num_neighbors = 20  # Number of neighbors for each node in the roadmap
+    num_neighbors = 10  # Number of neighbors for each node in the roadmap
     start_time = time.time()
     # Build the roadmap
     roadmap, tree = build_lazy_roadmap_with_kdtree(configurations, num_neighbors, model)   
@@ -250,7 +250,7 @@ if __name__ == "__main__":
          print("Point Set:", point_set)
          print("goal sets: ", goal_sets)
     
-         with open("config/dl_multi_features.yaml", "w") as yaml_file:
+         with open("/home/jc-merlab/duc_repo/src/panda_test/config/dl_multi_features.yaml", "w") as yaml_file:
              s = "dl_controller:\n"
              s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
              for i, goal in enumerate(goal_sets, start=1):
@@ -263,7 +263,7 @@ if __name__ == "__main__":
     
          print("Data successfully written to config/dl_multi_features.yaml")
 
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/1/dl_multi_features.yaml", "w") as yaml_file:
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/7/dl_multi_features.yaml", "w") as yaml_file:
              s = "dl_controller:\n"
              s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
              for i, goal in enumerate(goal_sets, start=1):
@@ -275,7 +275,7 @@ if __name__ == "__main__":
              yaml_file.write(s)
 
          # Save configurations to a .txt file
-         with open("config/path_configurations_no_obs.txt", "w") as file:
+         with open("/home/jc-merlab/duc_repo/src/panda_test/config/path_configurations_no_obs.txt", "w") as file:
              file.write("Start Configuration:\n")
              file.write(str(start_config.tolist()) + "\n\n")
              file.write("Goal Configuration:\n")
@@ -287,7 +287,7 @@ if __name__ == "__main__":
              for points in point_set:
                  file.write(str(points) + "\n")
 
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/1/path_configurations_no_obs.txt", "w") as file:
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/7/path_configurations_no_obs.txt", "w") as file:
              file.write("Start Configuration:\n")
              file.write(str(start_config.tolist()) + "\n\n")
              file.write("Goal Configuration:\n")
