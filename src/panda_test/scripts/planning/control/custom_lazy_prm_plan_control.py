@@ -230,6 +230,10 @@ def build_lazy_roadmap_with_kdtree(configurations, k_neighbors, model):
     - G: nx.Graph, the constructed roadmap.
     """
     # configurations = configurations[1:15000:5]
+<<<<<<< HEAD
+=======
+    configurations = configurations[1:13000:2]
+>>>>>>> 85c4687586e3a6ac79359f8acc531e4354698352
 
     # with open('/home/jc-merlab/Pictures/Dl_Exps/dl_vs/servoing/exps/cust_1/configurations.txt', 'w') as f:
     #         f.write(str(configurations))
@@ -426,17 +430,27 @@ def plot_path_on_image_dir(image_path, path, start_config, goal_config, output_d
 # Main execution
 if __name__ == "__main__":
     # Load configurations from JSON files
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_rearranged/'  # Replace with the path to your JSON files
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_clean_dup/'  # Replace with the path to your JSON files
     model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b128_e400_v17.pth'
     num_samples = 500
     # configurations = load_keypoints_from_json(directory)
-    configurations = load_keypoints_from_truncated_json(directory)
+    configurations = load_keypoints_from_json(directory)
     model = load_model_for_inference(model_path)
     # distance_matrix = calculate_model_distances(configurations, model)
     # distance_matrix = np.array([1.0]).reshape(-1,1)
     # configurations = load_and_sample_configurations(directory, num_samples)
     # Parameters for PRM
     num_neighbors = 10
+<<<<<<< HEAD
+=======
+=======
+<<<<<<< HEAD
+    num_neighbors = 10
+=======
+    num_neighbors = 20
+>>>>>>> 3048ed4cf017610408a8c4c32588a17e56d0ddb6
+>>>>>>> 8c1d0cff8326e15ac7b7b0d8d489e6495ce4e7fd
+>>>>>>> 85c4687586e3a6ac79359f8acc531e4354698352
      # Number of neighbors for each node in the roadmap
     start_time = time.time()
     # Build the roadmap
@@ -447,10 +461,25 @@ if __name__ == "__main__":
 
     # Define start and goal configurations as numpy arrays
     start_config = np.array([[250, 442], [252, 311], [215, 273], [172, 234], [192, 212], [220, 147], [249, 82], [248, 52], [286, 48]])
+<<<<<<< HEAD
     goal_config = np.array([[250, 442], [252, 311], [275, 255], [294, 200], [322, 209], [394, 194], [468, 181], [494, 158], [522, 187]])
 
     SAFE_ZONE = 30 
     obstacle_center = (400, 120)
+=======
+    goal_config = np.array([[250, 442], [252, 311], [293, 267], [334, 223], [357, 244], [434, 254], [511, 263], [547, 259], [552, 303]])
+
+    SAFE_ZONE = 30 
+<<<<<<< HEAD
+    obstacle_center = (415, 140)
+=======
+<<<<<<< HEAD
+    obstacle_center = (400, 120)
+=======
+    obstacle_center = (360, 120)
+>>>>>>> 3048ed4cf017610408a8c4c32588a17e56d0ddb6
+>>>>>>> 8c1d0cff8326e15ac7b7b0d8d489e6495ce4e7fd
+>>>>>>> 85c4687586e3a6ac79359f8acc531e4354698352
     half_diagonal = 20
     # safe_distance = SAFE_ZONE
 
@@ -509,7 +538,15 @@ if __name__ == "__main__":
              # Write the string to the file
              yaml_file.write(s)
 
+<<<<<<< HEAD
          with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/12/dl_multi_features.yaml", "w") as yaml_file:
+=======
+<<<<<<< HEAD
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/14/dl_multi_features.yaml", "w") as yaml_file:
+=======
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/8/dl_multi_features.yaml", "w") as yaml_file:
+>>>>>>> 8c1d0cff8326e15ac7b7b0d8d489e6495ce4e7fd
+>>>>>>> 85c4687586e3a6ac79359f8acc531e4354698352
              s = "dl_controller:\n"
              s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
              for i, goal in enumerate(goal_sets, start=1):
@@ -542,8 +579,16 @@ if __name__ == "__main__":
              for points in point_set:
                  file.write(str(points) + "\n")
 
+<<<<<<< HEAD
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/14/path_configurations.txt", "w") as file:
+=======
 
+<<<<<<< HEAD
          with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/12/path_configurations.txt", "w") as file:
+=======
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/8/path_configurations.txt", "w") as file:
+>>>>>>> 8c1d0cff8326e15ac7b7b0d8d489e6495ce4e7fd
+>>>>>>> 85c4687586e3a6ac79359f8acc531e4354698352
              file.write("Start Configuration:\n")
              file.write(str(start_config.tolist()) + "\n\n")
              file.write("Goal Configuration:\n")

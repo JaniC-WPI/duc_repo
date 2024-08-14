@@ -22,7 +22,7 @@ vsbot :
     thresh2: 10
     # lam: -2.5 # for 2 joints
     # p_lam: 3.0
-    alpha_gamma: 0.0003
+    alpha_gamma: 0.0001
     # alpha_gains: 0.02
     # reg_lambda: 0.01
     # jacobian: [19, 47, -79,  7, 89, -13, 71, -59, -23, 61, 41, -67, -3, 2, -11, 29, -43, -31, 73, 17, -5, 83, 37, 53]

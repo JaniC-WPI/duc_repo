@@ -97,6 +97,11 @@ def build_lazy_roadmap_with_kdtree(configurations, k_neighbors, model):
     - G: nx.Graph, the constructed roadmap.
     """
     # configurations = configurations[1:15000:5]
+<<<<<<< HEAD
+=======
+    configurations = configurations[1:13000:2]
+
+>>>>>>> 85c4687586e3a6ac79359f8acc531e4354698352
     # print("Shape of configurations before building the roadmap:", len(configurations), configurations[0].shape)
     configurations = configurations[1:13000:2]
 
@@ -204,6 +209,10 @@ if __name__ == "__main__":
     directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_clean_dup/'  # Replace with the path to your JSON files
     model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b128_e400_v17.pth'
     num_samples = 500
+<<<<<<< HEAD
+=======
+    # configurations = load_keypoints_from_truncated_json(directory)
+>>>>>>> 85c4687586e3a6ac79359f8acc531e4354698352
     configurations = load_keypoints_from_json(directory)
     model = load_model_for_inference(model_path)
     # Parameters for PRM
@@ -220,7 +229,11 @@ if __name__ == "__main__":
     # goal_config = np.array([[250, 442], [252, 311], [260, 252], [267, 193], [298, 196], [373, 203], [448, 209], [483, 205], [487, 249]])
 
     start_config = np.array([[250, 442], [252, 311], [215, 273], [172, 234], [192, 212], [220, 147], [249, 82], [248, 52], [286, 48]])
+<<<<<<< HEAD
     goal_config = np.array([[250, 442], [252, 311], [275, 255], [294, 200], [322, 209], [394, 194], [468, 181], [494, 158], [522, 187]])
+=======
+    goal_config = np.array([[250, 442], [252, 311], [293, 267], [334, 223], [357, 244], [434, 254], [511, 263], [547, 259], [552, 303]])
+>>>>>>> 85c4687586e3a6ac79359f8acc531e4354698352
 
     # Add start and goal configurations to the roadmap
     start_node, tree = add_config_to_roadmap(start_config, roadmap, tree, num_neighbors)
@@ -265,7 +278,15 @@ if __name__ == "__main__":
     
          print("Data successfully written to config/dl_multi_features.yaml")
 
+<<<<<<< HEAD
          with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/11/dl_multi_features.yaml", "w") as yaml_file:
+=======
+<<<<<<< HEAD
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/13/dl_multi_features.yaml", "w") as yaml_file:
+=======
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/7/dl_multi_features.yaml", "w") as yaml_file:
+>>>>>>> 8c1d0cff8326e15ac7b7b0d8d489e6495ce4e7fd
+>>>>>>> 85c4687586e3a6ac79359f8acc531e4354698352
              s = "dl_controller:\n"
              s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
              for i, goal in enumerate(goal_sets, start=1):
@@ -289,7 +310,15 @@ if __name__ == "__main__":
              for points in point_set:
                  file.write(str(points) + "\n")
 
+<<<<<<< HEAD
          with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/11/path_configurations_no_obs.txt", "w") as file:
+=======
+<<<<<<< HEAD
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/13/path_configurations_no_obs.txt", "w") as file:
+=======
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/7/path_configurations_no_obs.txt", "w") as file:
+>>>>>>> 8c1d0cff8326e15ac7b7b0d8d489e6495ce4e7fd
+>>>>>>> 85c4687586e3a6ac79359f8acc531e4354698352
              file.write("Start Configuration:\n")
              file.write(str(start_config.tolist()) + "\n\n")
              file.write("Goal Configuration:\n")
