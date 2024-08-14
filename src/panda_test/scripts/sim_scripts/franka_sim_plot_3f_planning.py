@@ -17,7 +17,7 @@ def main(args):
 
     err_data = []
     # read feature error
-    with open('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/20/err.csv', 'r') as csvfile:
+    with open('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/6/err.csv', 'r') as csvfile:
         plots = csv.reader(csvfile, delimiter=',')
         for row in plots:
             err_data.append(row)
@@ -85,7 +85,7 @@ def main(args):
     secax2.set_xticks(all_ticks_err)
     secax2.set_xticklabels(iteration_labels, fontsize=6)
 
-    plt.savefig('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/20/error_norm.png', dpi=300)
+    plt.savefig('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/6/error_norm.png', dpi=300)
     plt.close()
 
     # Plot individual feature errors
@@ -96,7 +96,7 @@ def main(args):
     ax2.margins(x=0.0, y=0.0)
     ax2.set_ylabel('Feature errors (px)', fontsize=10)
     ax2.grid()
-    yticks = np.arange(-200, 100, 20)
+    yticks = np.arange(-60, 200, 20)
     yticks = np.append(yticks, 0)
     yticks = np.sort(yticks)
     ax2.set_yticks(yticks)
@@ -117,12 +117,12 @@ def main(args):
     secax2.set_xticks(all_ticks_err)
     secax2.set_xticklabels(iteration_labels, fontsize=6)
 
-    plt.savefig('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/20/feature_errors.png', dpi=300)
+    plt.savefig('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/6/feature_errors.png', dpi=300)
     plt.close()
 
     mod_err_data = []
     # read feature error
-    with open('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/20/individual_model_errors.csv', 'r') as csvfile:
+    with open('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/6/individual_model_errors.csv', 'r') as csvfile:
         csv_reader = csv.reader(csvfile, delimiter=',')
         headers = next(csv_reader)  # Assuming the first row is headers
         for row in csv_reader:
@@ -169,7 +169,7 @@ def main(args):
     secax2.set_xticks(all_ticks_err)
     secax2.set_xticklabels(iteration_labels, fontsize=6)
 
-    plt.savefig('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/20/ind_mod_error.png', dpi=300)
+    plt.savefig('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/6/ind_mod_error.png', dpi=300)
     plt.close()
 
     model_error = []
@@ -177,23 +177,23 @@ def main(args):
     j2_vel = []
     j3_vel = []
     # Read the model error
-    with open('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/20/modelerror.csv', 'r') as csvfile:
+    with open('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/6/modelerror.csv', 'r') as csvfile:
         plots = csv.reader(csvfile, delimiter=',')
         for row in plots:
             model_error.append(row)
 
     # # Read joint velocities
-    with open('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/20/j1vel.csv', 'r') as csvfile:
+    with open('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/6/j1vel.csv', 'r') as csvfile:
         plots = csv.reader(csvfile, delimiter=',')
         for row in plots:
             j1_vel.append(row)
 
-    with open('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/20/j2vel.csv', 'r') as csvfile:
+    with open('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/6/j2vel.csv', 'r') as csvfile:
         plots = csv.reader(csvfile, delimiter=',')
         for row in plots:
             j2_vel.append(row)
 
-    with open('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/20/j3vel.csv', 'r') as csvfile:
+    with open('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/6/j3vel.csv', 'r') as csvfile:
         plots = csv.reader(csvfile, delimiter=',')
         for row in plots:
             j3_vel.append(row)
@@ -252,7 +252,7 @@ def main(args):
     secax2.set_xticks(all_ticks_err)
     secax2.set_xticklabels(iteration_labels, fontsize=6)
 
-    plt.savefig('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/20/model_error.png', dpi=300)
+    plt.savefig('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/6/model_error.png', dpi=300)
     plt.close()
 
     # fig, axes = plt.subplots(nrows=3, ncols=1)
@@ -306,7 +306,7 @@ def main(args):
     #     secax2.set_xticks(all_ticks_err)
     #     secax2.set_xticklabels(iteration_labels, fontsize=8)
 
-    # plt.savefig('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/20/plot.png', dpi=400)
+    # plt.savefig('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/6/plot.png', dpi=400)
     # plt.close()
 
     # Joint 1 Velocity Plot
@@ -334,7 +334,7 @@ def main(args):
 
     # ax.set_title('Joint 1 Velocity over Time')
     # plt.tight_layout()
-    plt.savefig('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/20/j1_velocity.png', dpi=300)
+    plt.savefig('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/6/j1_velocity.png', dpi=300)
     plt.close()
 
     # # Joint 2 Velocity Plot
@@ -362,7 +362,7 @@ def main(args):
 
     # ax.set_title('Joint 2 Velocity over Time')
     plt.tight_layout()
-    plt.savefig('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/20/j2_velocity.png', dpi=300)
+    plt.savefig('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/6/j2_velocity.png', dpi=300)
     plt.close()
 
     # # Joint 3 Velocity Plot
@@ -390,7 +390,7 @@ def main(args):
 
     # ax.set_title('Joint 3 Velocity over Time')
     # plt.tight_layout()
-    plt.savefig('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/20/j3_velocity.png', dpi=300)
+    plt.savefig('/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/6/j3_velocity.png', dpi=300)
     plt.close()
 
     print("Plotting complete")
