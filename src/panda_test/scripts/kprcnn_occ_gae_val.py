@@ -600,7 +600,7 @@ model = KeypointPipeline(weights_path)
 model = model.to(device)
 
 # Load the checkpoint
-checkpoint_path = '/home/jc-merlab/Pictures/Data/trained_models/gae_ckpt_hundred_k/kprcnn_occ_gae_ckpt_hundred_k_b128e11.pth'
+checkpoint_path = '/home/jc-merlab/Pictures/Data/trained_models/gae_ckpt/kprcnn_occ_gae_ckpt_b128e25.pth'
 checkpoint = torch.load(checkpoint_path)
 
 # Extract the state dictionary
@@ -697,7 +697,7 @@ def process_folder(folder_path, output_path, output_path_line):
             image_path = os.path.join(folder_path, filename)
             img_tensor = prepare_image(image_path).to(device)
             start_time = time.time()
-            KGNN2D, og_graph, mask = predict(model, img_tensor)
+            KGNN2D = predict(model, img_tensor)
             end_time = time.time()
             inference_time = end_time - start_time
             print(f"Inference time for {filename}: {inference_time:.4f} seconds")
@@ -739,7 +739,7 @@ def process_folder(folder_path, output_path, output_path_line):
     print(f"Average inference time: {avg_inference_time}")
 
 folder_path = '/home/jc-merlab/Pictures/Data/occ_phys_test_data/'
-output_path = '/home/jc-merlab/Pictures/Data/occ_phys_test_data/gae_output_hundred_k/'
+output_path = '/home/jc-merlab/Pictures/Data/occ_phys_test_data/sage_op_v2/'
 output_path_line = '/home/jc-merlab/Pictures/Data/occ_test_op_line/'
 process_folder(folder_path, output_path, output_path_line)
 

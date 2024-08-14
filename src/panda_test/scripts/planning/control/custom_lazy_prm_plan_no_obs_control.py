@@ -253,7 +253,7 @@ if __name__ == "__main__":
          print("Point Set:", point_set)
          print("goal sets: ", goal_sets)
     
-         with open("config/dl_multi_features.yaml", "w") as yaml_file:
+         with open("/home/jc-merlab/duc_repo/src/panda_test/config/dl_multi_features.yaml", "w") as yaml_file:
              s = "dl_controller:\n"
              s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
              for i, goal in enumerate(goal_sets, start=1):
@@ -266,7 +266,11 @@ if __name__ == "__main__":
     
          print("Data successfully written to config/dl_multi_features.yaml")
 
+<<<<<<< HEAD
          with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/13/dl_multi_features.yaml", "w") as yaml_file:
+=======
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/7/dl_multi_features.yaml", "w") as yaml_file:
+>>>>>>> 8c1d0cff8326e15ac7b7b0d8d489e6495ce4e7fd
              s = "dl_controller:\n"
              s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
              for i, goal in enumerate(goal_sets, start=1):
@@ -278,7 +282,7 @@ if __name__ == "__main__":
              yaml_file.write(s)
 
          # Save configurations to a .txt file
-         with open("config/path_configurations_no_obs.txt", "w") as file:
+         with open("/home/jc-merlab/duc_repo/src/panda_test/config/path_configurations_no_obs.txt", "w") as file:
              file.write("Start Configuration:\n")
              file.write(str(start_config.tolist()) + "\n\n")
              file.write("Goal Configuration:\n")
@@ -290,7 +294,11 @@ if __name__ == "__main__":
              for points in point_set:
                  file.write(str(points) + "\n")
 
+<<<<<<< HEAD
          with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/13/path_configurations_no_obs.txt", "w") as file:
+=======
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/7/path_configurations_no_obs.txt", "w") as file:
+>>>>>>> 8c1d0cff8326e15ac7b7b0d8d489e6495ce4e7fd
              file.write("Start Configuration:\n")
              file.write(str(start_config.tolist()) + "\n\n")
              file.write("Goal Configuration:\n")
