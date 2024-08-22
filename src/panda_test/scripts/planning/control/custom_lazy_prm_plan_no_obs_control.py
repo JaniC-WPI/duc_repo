@@ -97,7 +97,7 @@ def build_lazy_roadmap_with_kdtree(configurations, k_neighbors, model):
     - G: nx.Graph, the constructed roadmap.
     """
     # configurations = configurations[1:15000:5]
-    configurations = configurations[1:13000:2]
+    configurations = configurations[1:13000:5]
 
     # print("Shape of configurations before building the roadmap:", len(configurations), configurations[0].shape)
 
@@ -220,8 +220,8 @@ if __name__ == "__main__":
     # start_config = np.array([[255, 441], [258, 311], [201, 300], [144, 290], [150, 260], [144, 191], [136, 120], [112, 103], [133, 73]])
     # goal_config = np.array([[250, 442], [252, 311], [260, 252], [267, 193], [298, 196], [373, 203], [448, 209], [483, 205], [487, 249]])
 
-    start_config = np.array([[250, 442], [252, 311], [215, 273], [172, 234], [192, 212], [220, 147], [249, 82], [248, 52], [286, 48]])
-    goal_config = np.array([[250, 442], [252, 311], [293, 267], [334, 223], [357, 244], [434, 254], [511, 263], [547, 259], [552, 303]])
+    start_config = np.array([[250, 442], [252, 311], [275, 255], [294, 201], [323, 209], [368, 268], [411, 328], [443, 343], [426, 382]])
+    goal_config = np.array([[250, 442], [252, 311], [210, 271], [167, 231], [188, 209], [227, 147], [265, 85], [278, 56], [315, 73]])
 
     # Add start and goal configurations to the roadmap
     start_node, tree = add_config_to_roadmap(start_config, roadmap, tree, num_neighbors)
@@ -266,11 +266,7 @@ if __name__ == "__main__":
     
          print("Data successfully written to config/dl_multi_features.yaml")
 
-<<<<<<< HEAD
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/13/dl_multi_features.yaml", "w") as yaml_file:
-=======
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/7/dl_multi_features.yaml", "w") as yaml_file:
->>>>>>> 8c1d0cff8326e15ac7b7b0d8d489e6495ce4e7fd
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/25/dl_multi_features.yaml", "w") as yaml_file:
              s = "dl_controller:\n"
              s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
              for i, goal in enumerate(goal_sets, start=1):
@@ -294,11 +290,7 @@ if __name__ == "__main__":
              for points in point_set:
                  file.write(str(points) + "\n")
 
-<<<<<<< HEAD
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/13/path_configurations_no_obs.txt", "w") as file:
-=======
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/7/path_configurations_no_obs.txt", "w") as file:
->>>>>>> 8c1d0cff8326e15ac7b7b0d8d489e6495ce4e7fd
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/25/path_configurations_no_obs.txt", "w") as file:
              file.write("Start Configuration:\n")
              file.write(str(start_config.tolist()) + "\n\n")
              file.write("Goal Configuration:\n")

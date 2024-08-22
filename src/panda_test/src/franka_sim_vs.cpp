@@ -339,11 +339,8 @@ int main(int argc, char **argv){
         for(int i = 0; i < no_of_actuators;i++){
             dRinitial.push_back(dr[i]);
         }
-        // dRinitial.push_back(dr[0]);
-        // dRinitial.push_back(dr[1]);
-        // dRinitial.push_back(dr[2]); // Comment for 3rd joint
-
-         for (int i = 0; i < no_of_features; i++) {
+        
+        for (int i = 0; i < no_of_features; i++) {
             initial_feature_errors[i] = std::abs(cur_features[i] - old_features[i]);
         }
         
@@ -651,11 +648,7 @@ int main(int argc, char **argv){
         //     }
         // }
         // std::cout << "Error vector with no saturation: " << error_vec << std::endl;
-        // IBVS control law (Velocity generator)
-        //  With Berk 
-        // P Control 
-        // std::cout<<"Qhat_inv: "<<Qhat_inv<<std::endl;
-
+        
         std_msgs::Float64MultiArray Qhat_feat_msg;
         Qhat_feat_msg.layout.dim.push_back(std_msgs::MultiArrayDimension());
         Qhat_feat_msg.layout.dim[0].label = "Qhat_row_elements";
@@ -690,12 +683,6 @@ int main(int argc, char **argv){
 
         // std::cout << "Adaptive gain preprocess: " << adaptive_gain << std::endl;
 
-        // if ((current_goal_set == num_goal_sets - 1) && (error_magnitude <= 40)){
-        //     adaptive_gain = adaptive_gain * 2.5;
-        // }
-        // if (error_magnitude <= 40){
-        //     adaptive_gain = (adaptive_gain + 1)/2.5;
-        // }
         Eigen::VectorXf adaptive_gains(no_of_features);
         feature_errors.clear();
         for (int i = 0; i < no_of_features; i++) {
@@ -714,14 +701,6 @@ int main(int argc, char **argv){
 
         Eigen::MatrixXf adaptive_gains_matrix = adaptive_gains.asDiagonal();
 
-        // for (int i = 0; i < no_of_features; i++) {
-        //     if (error_vec(i) > 0){
-        //         K(i) = -K[i];
-        //     }
-        // }
-
-        // std::cout << "gains after adjustment: " << K << std::endl;
-
         Eigen::MatrixXf K_diag = K.asDiagonal();
 
         // std::cout << "Inverse Jacobian: " << Qhat_inv << std::endl;
@@ -736,103 +715,14 @@ int main(int argc, char **argv){
         // joint_vel = (Qhat_inv)*(adaptive_gains_matrix*K_diag)*(error_vec);
         // joint_vel = (Qhat_inv)*(adaptive_gains_matrix*error_vec);
 
-        // std::cout << "Error and gain: " << (Eigen::MatrixXf(K.asDiagonal())*error_vec) << std::endl;
+        // std::cout << "Error and gain: " << (Eigen::MatrixXf(K.asDiagonal())*error_vec) << std::endl;        
 
-
-        // for (int i = 0; i < no_of_actuators; i++){
-        //     if (joint_vel[i] >= 0.2){
-        //         joint_vel[i] = (joint_vel[i]*0.5);
-        //     }
-        // }
-        // float max_velocity = joint_vel.cwiseAbs().maxCoeff();
-        // if (max_velocity > saturation) {
-        //     joint_vel = joint_vel * (saturation / max_velocity);
-        // }
-        // std::cout << "Error_vec last element:"  <<  (error_vec(error_vec.size() - 1)) << std::endl; 
-        // std::cout << "Error_vec second last element:"  <<  (error_vec(error_vec.size() - 2)) << std::endl; 
-        // if ((error_vec(error_vec.size() - 1) < 0) && (error_vec(error_vec.size() - 2) >=0)){
-        //     joint_vel[1] = (joint_vel[1]*2);
-        //     joint_vel[2] = -joint_vel[2];
-        // }
-
-        // joint_vel = (Qhat_inv) * (adaptive_gains_matrix * K_diag) * (error_vec);
-
-        // Implement adaptive gain adjustment without distorting the original control logic
-        // for (int i = 0; i < joint_vel.size(); ++i) {
-        //     if (abs(joint_vel[i]) < 0.001) { // Threshold to detect very slow movement
-        //         joint_vel[i] *= 5.0; // Increase the velocity for the slower joint
-        //     }
-        // }
-
-        // if (no_of_features == 8 || no_of_features == 10 || no_of_features == 12){
-        //     joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
-        //     // joint_vel = (Qhat_inv)*(adaptive_gain*K_diag)*(error_vec);
-        //     // joint_vel = (Qhat_inv) * (adaptive_gains_matrix * K_diag) * (error_vec);
-        // }        
-        // else if (no_of_features==6){
-        //     // joint_vel = lam*(Qhat_inv)*(error_vec);
-        //     joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
-        // } 
-                
-        // std::cout<<"joint_vel_1: "<<joint_vel[0]<<std::endl;
-        // std::cout<<"joint_vel_2: "<<joint_vel[1]<<std::endl;
-        // if (no_of_actuators==3){
-        //     std::cout<<"joint_vel_3: "<<joint_vel[2]<<std::endl; 
-        // }
-        //uncomment - possible change for 3 joints
-        // end of with Berk
-        
-        // std::cout<<"joint_vel: "<<joint_vel<<std::endl;
-        // with Berk Sliding mode control
-        // Eigen::VectorXf u_sliding_mode(no_of_features);
-        // Eigen::VectorXf gain_sm_vec(no_of_features);
-        // gain_sm_vec = gain_sm*(gain_sm_vec.setOnes(no_of_features));
-        // // gain_sm_mat << 2*gain_sm, gain_sm, gain_sm, gain_sm;
-
-        // for(int i=0; i<no_of_features; i++){
-        //     u_sliding_mode[i] = gain_sm_vec[i]*sign(error_vec[i]);
-        // }
-        // joint_vel = Qhat_inv*u_sliding_mode;
-        // end of with Berk Sliding mode control
-/*      Working code for velocity scaling for results uptil 2-21-2022
-        // Normalizing joint velocities
-        float vel_sum = abs(joint_vel[0]) + abs(joint_vel[1]);
-        // vel_sum is always +ve
-        if(vel_sum > 0){
-            joint_vel[0] = joint_vel[0]/(vel_sum);
-            // std::cout<<"normalized joint1 vel:"<<joint_vel[0]<<"\n";
-            joint_vel[0] = joint_vel[0]*(amplitude);
-            // std::cout<<"capped normalized joint1 vel:"<<joint_vel[0]<<"\n";
-            joint_vel[1] = joint_vel[1]/(vel_sum);
-            // std::cout<<"normalized joint2 vel:"<<joint_vel[1]<<"\n";
-            joint_vel[1] = joint_vel[1]*(amplitude);
-            // std::cout<<"capped normalized joint2 vel:"<<joint_vel[1]<<"\n";
-        }
-End of working velocity scaling*/
-
-        // Abhinav implementing a saturated P-controller 2-21-2022
-        // This controller acts as SM controller for large errors
-        // and converts to a P-controller closer to the ref
-        // In the if blocks, first term determines the sign of the vel
-
-/*        if(abs(joint_vel[0]) > amplitude){
-            joint_vel[0] = (joint_vel[0]/abs(joint_vel[0])) * amplitude;
-        }
-        if(abs(joint_vel[1]) > amplitude){
-            joint_vel[1] = (joint_vel[1]/abs(joint_vel[1])) * amplitude;
-        }
-*/
         // Publish velocity to robot
 
         // Check for NaNs in the computed velocities
         if (!joint_vel.allFinite()) {
             std::cerr << "Warning: NaN detected in joint velocities. Applying minimal velocities." << std::endl;
-            // bool end_flag = true;
-            // Apply a very small velocity to each joint as a fallback
-            // joint_vel[0] = 0.001;
-            // joint_vel[1] = 0.001;
-            // joint_vel[2] = 0.0001;
-            // No need to skip the iteration; we apply minimal velocities instead
+            
         }
 
         j_vel.data.clear();
@@ -842,72 +732,7 @@ End of working velocity scaling*/
             j_vel.data.push_back(joint_vel[2]); // Only add j3_vel if no_of_actuators is more than 2
         }
         
-        // if ((error_magnitude <= 100) && (current_goal_set < (num_goal_sets - 1))){
-        //     j_vel.data.clear();
-        //     j_vel.data.push_back(joint_vel[0]);
-        //     j_vel.data.push_back(joint_vel[1]);
-        //     if (no_of_actuators==3) {
-        //         j_vel.data.push_back(joint_vel[2]*0.1); // Only add j3_vel if no_of_actuators is more than 2
-        //     }
-        // }
-        // // else if ((error_magnitude <= 70) && (current_goal_set == (num_goal_sets - 1))){
-        // //     j_vel.data.clear();
-        // //     j_vel.data.push_back(joint_vel[0]);
-        // //     j_vel.data.push_back(joint_vel[1]);
-        // //     if (no_of_actuators==3) {
-        // //         j_vel.data.push_back(joint_vel[2]); // Only add j3_vel if no_of_actuators is more than 2
-        // //     }
-        // // }
-        // else if ((error_magnitude <= 50) && (current_goal_set < (num_goal_sets - 1))){
-        //     j_vel.data.clear();
-        //     j_vel.data.push_back(joint_vel[0]);
-        //     j_vel.data.push_back(joint_vel[1]);
-        //         if (no_of_actuators==3) {
-        //             j_vel.data.push_back(joint_vel[2]); // Only add j3_vel if no_of_actuators is more than 2
-        //         }
-        // }       
-        // else if ((error_magnitude > 20) && (current_goal_set == (num_goal_sets - 1))){
-        //     j_vel.data.clear();
-        //     j_vel.data.push_back(joint_vel[0]);
-        //     j_vel.data.push_back(joint_vel[1]);
-        //     if (no_of_actuators==3) {
-        //         j_vel.data.push_back(-joint_vel[2]); // Only add j3_vel if no_of_actuators is more than 2
-        //     }
-        // }
-        // else if ((error_magnitude <= 20) && (current_goal_set == (num_goal_sets - 1))){
-        //     j_vel.data.clear();
-        //     j_vel.data.push_back(joint_vel[0]);
-        //     j_vel.data.push_back(joint_vel[1]);
-        //     if (no_of_actuators==3) {
-        //         j_vel.data.push_back(joint_vel[2]); // Only add j3_vel if no_of_actuators is more than 2
-        //     }
-        // }
-        // else {
-        //     j_vel.data.clear();
-        //     j_vel.data.push_back(joint_vel[0]);
-        //     j_vel.data.push_back(joint_vel[1]);
-        //     if (no_of_actuators==3) {
-        //         j_vel.data.push_back(0); // Only add j3_vel if no_of_actuators is more than 2
-        //     }
-        // }
         
-        // j_vel.data.clear();
-        // j_vel.data.push_back(joint_vel[0]);
-        // j_vel.data.push_back(joint_vel[1]);
-
-        // // Add the third joint velocity based on the number of actuators and conditions
-        // if (no_of_actuators == 3) {
-        //     if (error_magnitude <= 100) {
-        //         j_vel.data.push_back(joint_vel[2] * 0.1); // Scale down j3_vel if error_magnitude <= 100
-        //     } else if ((error_magnitude <= 50) && (current_goal_set < num_goal_sets - 1)) {
-        //         j_vel.data.push_back(joint_vel[2]); // Use full j3_vel if error_magnitude <= 50 and not the last goal set
-        //     } else if ((error_magnitude <= 70) && (current_goal_set == num_goal_sets - 1)) {
-        //         j_vel.data.push_back(joint_vel[2]); // Use full j3_vel if error_magnitude <= 70 and it's the last goal set
-        //     } else {
-        //         j_vel.data.push_back(0); // Set j3_vel to 0 for all other cases
-        //     }
-        // }
-
         // Check if we are in the goal switch pause period
         if (iterations_since_goal_change < zero_velocity_iterations) {
             j_vel.data.clear();
@@ -926,10 +751,6 @@ End of working velocity scaling*/
         }
 
 
-        // std::cout<< "j1 vel: " << j_vel.data.at(0) << std::endl;
-        // std::cout<< "j2 vel: " << j_vel.data.at(1) << std::endl;
-        // std::cout<< "j3 vel: " << j_vel.data.at(2) << std::endl;
-
         std::cout<<"for error magnitude: " << error_magnitude <<" published joint_vel: "<< j_vel <<std::endl;
 
         j_pub.publish(j_vel);
@@ -939,10 +760,14 @@ End of working velocity scaling*/
         // cp_client.call(cp_msg);
         kp_client.call(cp_msg);
         for(int i = 0; i<no_of_features; i++){
-            // cur_features[i] = cp_msg.response.cp.data.at(i);
             cur_features[i] = cp_msg.response.kp.data.at(i);
             control_points.data.push_back(cur_features[i]);
         }
+
+        // for(int i = 0; i < no_of_features; i++){
+        //     std::cout << "Old Features" << old_features[i] << std::endl; 
+        //     std::cout << "Current Features" << cur_features[i] << std::endl; 
+        // }
 
         // Compute change in state
         ds.clear();
@@ -967,42 +792,7 @@ End of working velocity scaling*/
         float ds_norm = sqrt(ds_accumulator);
 
         float err = sqrt(std::inner_product(error.begin(), error.end(), error.begin(), 0.0));
-        // if (err < thresh) {
-        //     ++current_goal_set; // Move to the next set of goal features
-        //     // Publish the updated current goal set index
-        //     current_goal_set_msg.data = current_goal_set;
-        //     current_goal_set_pub.publish(current_goal_set_msg);
-        //     if (current_goal_set < num_goal_sets) {
-        //         old_features = cur_features;
-
-        //         // Resetting change in joint angles and shape change vectors for the new goal
-        //         std::fill(dSinitial.begin(), dSinitial.end(), 0);
-        //         std::fill(dRinitial.begin(), dRinitial.end(), 0);
-        //     }
-        // }
-
-        // Check if we should publish 0 velocities or calculated velocities
-        // if (iterations_since_goal_change < zero_velocity_iterations) {
-        //     // Publish 0 velocities
-        //     j_vel.data.clear();
-        //     for (int i = 0; i < no_of_actuators; ++i) {
-        //         j_vel.data.push_back(0.0); // Insert zero velocity for each actuator
-        //     }
-        //     // Increment the counter
-        //     iterations_since_goal_change++;
-        // } else {
-        //     // Publish calculated velocities
-        //     j_vel.data.clear();
-        //     j_vel.data.push_back(joint_vel[0]);
-        //     j_vel.data.push_back(joint_vel[1]);
-        //     j_vel.data.push_back(joint_vel[2]); // Adjust based on the number of actuators
-
-        //     // Reset the counter if we just finished publishing zero velocities
-        //     if (iterations_since_goal_change == zero_velocity_iterations) {
-        //         iterations_since_goal_change = 0; // Reset counter
-        //     }
-        // }
-
+        
         // j_pub.publish(j_vel);
         float current_thresh;
         // If the current goal is not the last goal the error thresh hold is 25 else it is 10 for now
@@ -1028,6 +818,40 @@ End of working velocity scaling*/
                 print_fvector(goal);
                 // Logging
                 std::cout << "Switching to goal set " << current_goal_set << std::endl;
+                // // Clear ds and dr windows
+                ds.clear();
+                dr.clear();
+
+                // Immediately calculate ds based on new goal set
+                // for(int i = 0; i<no_of_features; i++){
+                //     // ds.push_back(0.0);
+                //     ds.push_back(cur_features[i] - old_features[i]);
+                // }
+
+                // // for (int i = 0; i < no_of_actuators; ++i) {
+                // //     dr.push_back(0.0);                    
+                // // }
+
+                // dr[0] += joint_vel[0]*t;
+                // dr[1] += joint_vel[1]*t;
+                // if (no_of_actuators==3){
+                //     dr[2] += joint_vel[2]*t; 
+                // }
+
+                // // Publish the cleared and recalculated ds and dr vectors
+                // ds_msg.data.clear();
+                // for(int i = 0; i<no_of_features; i++){
+                //     ds_msg.data.push_back(ds[i]);
+                // }
+                // dr_msg.data.clear();
+                // for(int i = 0; i<no_of_actuators; i++){
+                //     dr_msg.data.push_back(dr[i]);
+                // }
+
+                // ds_pub.publish(ds_msg);
+                // dr_pub.publish(dr_msg);
+
+                // old_features = cur_features;  // Update old_features for the next iteration
 
                 // // Reset qhat to final_qhat_initial_estimation
                 // qhat = final_qhat_initial_estimation; // Reset Jacobian to the initial estimation result
@@ -1038,9 +862,16 @@ End of working velocity scaling*/
                 // // Resetting change in joint angles and shape change vectors for the new goal
                 // std::fill(dSinitial.begin(), dSinitial.end(), 0);
                 // std::fill(dRinitial.begin(), dRinitial.end(), 0);
-                std::cout << "Switched to goal set " << current_goal_set << std::endl; 
+                std::cout << "Switched to goal set " << current_goal_set << std::endl;                
 
-                // Calculate the error immediately after goal switch
+
+                // for(int i = 0; i < no_of_features; i++){
+                //     std::cout << "Old Features" << old_features[i] << std::endl; 
+                //     std::cout << "Current Features" << cur_features[i] << std::endl; 
+                // }
+                
+
+                // // Calculate the error immediately after goal switch
                 for(int i = 0; i < no_of_features; i++){
                     error[i] = cur_features[i] - goal[i];
                 }
@@ -1054,66 +885,10 @@ End of working velocity scaling*/
 
                 std::cout << "error right after goal switch: " << err_mag << std::endl;
 
-                // Resetting for every goal switch
+                // // Resetting for every goal switch
 
                     // qhat = final_qhat_initial_estimation; // Resetting the Jacobian as the goal switched
 
-                    // for(int i=0; i<no_of_features;i++){
-                    //     dSinitial[i] = ds[i];
-                    // }
-                    // std::rotate(dSinitial.begin(), dSinitial.begin()+no_of_features, dSinitial.end());
-                    // for(int i=0; i<no_of_actuators;i++){
-                    //     dRinitial[i] = dr[i];
-                    // }  
-                    // std::rotate(dRinitial.begin(), dRinitial.begin()+no_of_actuators, dRinitial.end());
-                    // dSmsg.data.clear();
-                    // for(std::vector<float>::iterator itr = dSinitial.begin(); itr != dSinitial.end(); ++itr){
-                    //     dSmsg.data.push_back(*itr);
-                    // }
-                    // dRmsg.data.clear();
-                    // for(std::vector<float>::iterator itr = dRinitial.begin(); itr != dRinitial.end(); ++itr){
-                    //     dRmsg.data.push_back(*itr);
-                    // }
-                    // // Push reset qhat to ROS Msg
-                    // qhatmsg.data.clear();
-                    // for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr){
-                    //     qhatmsg.data.push_back(*itr);
-                    // }   
-                    // // Print the contents of qhat
-                    // std::cout << "The qhat inside goal switch: ";
-                    // for (const auto& val : qhat) {
-                    //     std::cout << val << " ";
-                    // }
-                    // std::cout << std::endl;
-                    // // // Immediately call the service with the reset qhat
-                    // msg.request.gamma_first_actuator = gamma1;
-                    // msg.request.gamma_second_actuator = gamma2;
-                    // msg.request.gamma_third_actuator = gamma3;
-                    // msg.request.it = window-1;
-                    // msg.request.dS = dSmsg;
-                    // msg.request.dR = dRmsg;
-                    // msg.request.qhat = qhatmsg;
-                    // msg.request.feature_error_magnitude = error_magnitude;
-                    // msg.request.feature_errors = feature_errors_msg;
-                    // std::vector<float> qhatdot = msg.response.qhat_dot.data;
-                    // for(int i = 0; i < qhat.size(); i++) {
-                    //     qhat[i] = qhat[i] + qhatdot[i];
-                    // }
-                    // qhatmsg.data.clear();
-                    // for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr) {
-                    //     qhatmsg.data.push_back(*itr);
-                    // }    
-                    // // Print the contents of qhat
-                    // std::cout << "Updated qhat inside goal switch: ";
-                    // for (const auto& val : qhat) {
-                    //     std::cout << val << " ";
-                    // }
-                    // std::cout << std::endl;
-
-                // Resetting only in case of large error after goal switch
-                if ((err_mag >= 40 && err_mag < 150) && (current_goal_set < num_goal_sets - 1))  {
-                    qhat = final_qhat_initial_estimation; // Resetting the Jacobian as the goal switched
-                
                     for(int i=0; i<no_of_features;i++){
                         dSinitial[i] = ds[i];
                     }
@@ -1122,7 +897,6 @@ End of working velocity scaling*/
                         dRinitial[i] = dr[i];
                     }  
                     std::rotate(dRinitial.begin(), dRinitial.begin()+no_of_actuators, dRinitial.end());
-
                     dSmsg.data.clear();
                     for(std::vector<float>::iterator itr = dSinitial.begin(); itr != dSinitial.end(); ++itr){
                         dSmsg.data.push_back(*itr);
@@ -1131,20 +905,17 @@ End of working velocity scaling*/
                     for(std::vector<float>::iterator itr = dRinitial.begin(); itr != dRinitial.end(); ++itr){
                         dRmsg.data.push_back(*itr);
                     }
-
                     // Push reset qhat to ROS Msg
                     qhatmsg.data.clear();
                     for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr){
                         qhatmsg.data.push_back(*itr);
                     }   
-
                     // Print the contents of qhat
                     std::cout << "The qhat inside goal switch: ";
                     for (const auto& val : qhat) {
                         std::cout << val << " ";
                     }
                     std::cout << std::endl;
-
                     // // Immediately call the service with the reset qhat
                     msg.request.gamma_first_actuator = gamma1;
                     msg.request.gamma_second_actuator = gamma2;
@@ -1155,18 +926,14 @@ End of working velocity scaling*/
                     msg.request.qhat = qhatmsg;
                     msg.request.feature_error_magnitude = error_magnitude;
                     msg.request.feature_errors = feature_errors_msg;
-
                     std::vector<float> qhatdot = msg.response.qhat_dot.data;
-
                     for(int i = 0; i < qhat.size(); i++) {
                         qhat[i] = qhat[i] + qhatdot[i];
                     }
-
                     qhatmsg.data.clear();
                     for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr) {
                         qhatmsg.data.push_back(*itr);
                     }    
-
                     // Print the contents of qhat
                     std::cout << "Updated qhat inside goal switch: ";
                     for (const auto& val : qhat) {
@@ -1174,10 +941,103 @@ End of working velocity scaling*/
                     }
                     std::cout << std::endl;
 
-                    }                
+                // Resetting only in case of large error after goal switch
+                // if ((err_mag >=40 && err_mag < 300) && (current_goal_set < num_goal_sets - 1))  {
+                //     // qhat = final_qhat_initial_estimation; // Resetting the Jacobian as the goal switched
+                //     // Clear ds and dr windows
+                //     ds.clear();
+                //     dr.clear();
+
+                //     // Immediately calculate ds based on new goal set
+                //     for(int i = 0; i<no_of_features; i++){
+                //         ds.push_back(cur_features[i] - old_features[i]);
+                //         // ds.push_back(0.0);
+                //     }
+
+                //     for (int i = 0; i < no_of_actuators; ++i) {
+                //         dr.push_back(joint_vel[i] * t);
+                //         // dr.push_back(0.0);
+                //     }
+
+                //     // Publish the cleared and recalculated ds and dr vectors
+                //     // ds_msg.data.clear();
+                //     // for(int i = 0; i<no_of_features; i++){
+                //     //     ds_msg.data.push_back(ds[i]);
+                //     // }
+                //     // dr_msg.data.clear();
+                //     // for(int i = 0; i<no_of_actuators; i++){
+                //     //     dr_msg.data.push_back(dr[i]);
+                //     // }
+
+                //     // ds_pub.publish(ds_msg);
+                //     // dr_pub.publish(dr_msg);
+
+                //     // old_features = cur_features;  
+                
+                    // for(int i=0; i<no_of_features;i++){
+                    //     dSinitial[i] = ds[i];
+                    // }
+                    // std::rotate(dSinitial.begin(), dSinitial.begin()+no_of_features, dSinitial.end());
+                    // for(int i=0; i<no_of_actuators;i++){
+                    //     dRinitial[i] = dr[i];
+                    // }  
+                    // std::rotate(dRinitial.begin(), dRinitial.begin()+no_of_actuators, dRinitial.end());
+
+                    // dSmsg.data.clear();
+                    // for(std::vector<float>::iterator itr = dSinitial.begin(); itr != dSinitial.end(); ++itr){
+                    //     dSmsg.data.push_back(*itr);
+                    // }
+                    // dRmsg.data.clear();
+                    // for(std::vector<float>::iterator itr = dRinitial.begin(); itr != dRinitial.end(); ++itr){
+                    //     dRmsg.data.push_back(*itr);
+                    // }
+
+                    // // Push reset qhat to ROS Msg
+                    // qhatmsg.data.clear();
+                    // for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr){
+                    //     qhatmsg.data.push_back(*itr);
+                    // }   
+
+                    // // Print the contents of qhat
+                    // std::cout << "The qhat inside goal switch: ";
+                    // for (const auto& val : qhat) {
+                    //     std::cout << val << " ";
+                    // }
+                    // std::cout << std::endl;
+
+                    // // // Immediately call the service with the reset qhat
+                    // msg.request.gamma_first_actuator = gamma1;
+                    // msg.request.gamma_second_actuator = gamma2;
+                    // msg.request.gamma_third_actuator = gamma3;
+                    // msg.request.it = window-1;
+                    // msg.request.dS = dSmsg;
+                    // msg.request.dR = dRmsg;
+                    // msg.request.qhat = qhatmsg;
+                    // msg.request.feature_error_magnitude = error_magnitude;
+                    // msg.request.feature_errors = feature_errors_msg;
+
+                    // std::vector<float> qhatdot = msg.response.qhat_dot.data;
+
+                    // for(int i = 0; i < qhat.size(); i++) {
+                    //     qhat[i] = qhat[i] + qhatdot[i];
+                    // }
+
+                    // qhatmsg.data.clear();
+                    // for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr) {
+                    //     qhatmsg.data.push_back(*itr);
+                    // }    
+
+                    // // Print the contents of qhat
+                    // std::cout << "Updated qhat inside goal switch: ";
+                    // for (const auto& val : qhat) {
+                    //     std::cout << val << " ";
+                    // }
+                    // std::cout << std::endl;
+
+                    // }                
 
                 // Pause for 2 seconds before continuing to the next goal
-                // ros::Duration(2).sleep();
+                // ros::Duration(10).sleep();
             } else {
                 // All goals reached
                 std::cout << "All goals reached" << std::endl;

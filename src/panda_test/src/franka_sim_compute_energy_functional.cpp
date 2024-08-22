@@ -43,14 +43,17 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
 
     // Convert ROS MSG Arrays to Eigen Matrices
     
+    // Checking the number of visuo-motor data pairs
+    int data_size = dS.size();
+
     //dS
     std::vector<float> dSdata = dS.data;
     // Declare dS matrix
-    Eigen::MatrixXf dSmat(window,no_of_features);
+    Eigen::MatrixXf dSmat(data_size,no_of_features);
     // Push data to dS matrix
     int row_count = 0;
     int itr = 0;
-    while(row_count < window){
+    while(row_count < data_size){
         for (int col = 0; col < no_of_features; col++) {
             dSmat(row_count, col) = dSdata[itr + col];
         }     
@@ -68,11 +71,11 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
     //dR
     std::vector<float> dRdata = dR.data;
     // Declare dR matrix
-    Eigen::MatrixXf dRmat(window,no_of_actuators);
+    Eigen::MatrixXf dRmat(data_size,no_of_actuators);
     // Push data to dR matrix
     row_count = 0;
     itr = 0;
-    while(row_count < window){
+    while(row_count < data_size){
         for (int j = 0; j < no_of_actuators; j++) {
             dRmat(row_count, j) = dRdata[itr + j];
         }
@@ -134,11 +137,11 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
                 // learning rate decreases on the basis of feature_error norm
                 float adaptive_gamma = current_gamma / (1 + alpha_gamma * feature_error_magnitude);
 
-                if (feature_error_magnitude > 100){
-                    current_gamma = adaptive_gamma;
-                }
+                // if (feature_error_magnitude > 100){
+                //     current_gamma = adaptive_gamma;
+                // }
 
-                // std::cout << "Current Gamma" << current_gamma << std::endl;
+                // std::cout << "Current Gamma" << adaptive_gamma << std::endl;
 
                 // learning rate on the basis of individual feature error
                 float feature_error = feature_errors[i];
@@ -165,8 +168,8 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
 
                 Eigen::MatrixXf H = H1.transpose(); 
                 // Apply the selected gamma for this joint update
-                qhatMat.row(i) = (-current_gamma*(H.transpose())*G).transpose();
-                // qhatMat.row(i) = (-adaptive_gamma * (H.transpose()) * G).transpose();
+                // qhatMat.row(i) = (-current_gamma*(H.transpose())*G).transpose();
+                qhatMat.row(i) = (-adaptive_gamma * (H.transpose()) * G).transpose();
                 // if (feature_error_magnitude < 30){
                 //     qhatMat.row(i) = (-0.00001 * (H.transpose()) * G).transpose();
                 // }

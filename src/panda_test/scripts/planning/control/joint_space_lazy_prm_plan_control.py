@@ -19,15 +19,11 @@ from pos_regression_control import PosRegModel
 import matplotlib.pyplot as plt
 from descartes import PolygonPatch
 
-
-# Parameters
-IMAGE_WIDTH, IMAGE_HEIGHT = 640, 480
-
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(device)
 
 IMAGE_WIDTH, IMAGE_HEIGHT = 640, 480
-SAFE_DISTANCE = 50  # Safe distance from the obstacle
+SAFE_DISTANCE = 30  # Safe distance from the obstacle
 
 def load_matched_configurations(directory):
     # Initialize empty lists for configurations
@@ -59,7 +55,7 @@ def load_matched_configurations(directory):
     return kp_configurations, jt_configurations
 
 def load_model_for_inference(model_path):    
-    model = PosRegModel(12)
+    model = PosRegModel(18)
     model.load_state_dict(torch.load(model_path))
     model.eval()  # Set the model to inference mode
     return model
@@ -88,8 +84,10 @@ def build_lazy_roadmap(kp_configurations, jt_configurations, k_neighbors, model)
     Returns:
     - G: nx.Graph, the constructed roadmap.
     """
-    kp_configurations = kp_configurations[1:9000:10]
-    jt_configurations = jt_configurations[1:9000:10]
+    kp_configurations = kp_configurations[1:13000:2]
+    jt_configurations = jt_configurations[1:13000:2]
+
+    print(jt_configurations)
 
     flattened_kp_configs = np.vstack([config.flatten() for config in kp_configurations])
     tree1 = KDTree(flattened_kp_configs)
@@ -184,7 +182,7 @@ def validate_and_remove_invalid_edges(G, obstacle_center, half_diagonal, safe_di
         if not is_collision_free(config_u, config_v, obstacle_center, half_diagonal, safe_distance):
             # If the edge is not collision-free, remove it from the graph
             G.remove_edge(u, v)
-            print(f"Removed invalid edge: {u} <-> {v}")
+            # print(f"Removed invalid edge: {u} <-> {v}")
 
 def visualize_interactions(config1, config2, obstacle_boundary):
     fig, ax = plt.subplots()
@@ -276,7 +274,7 @@ def is_collision_free(configuration1, configuration2, obstacle_center, half_diag
         for i in range(len(config) - 1):
             segment = geom.LineString([config[i], config[i+1]])
             if segment.intersects(obstacle_boundary):
-                print("collision detected")
+                # print("collision detected")
                 # If any segment intersects, the configuration is not collision-free
                 return False
         
@@ -328,13 +326,13 @@ def plot_path_on_image_dir(image_path, path, start_config, goal_config, output_d
 # Main execution
 if __name__ == "__main__":
     # Load configurations from JSON files
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_planning_kprcnn/'  # Replace with the path to your JSON files
-    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b64_e400_v6.pth'
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_clean_dup/'  # Replace with the path to your JSON files
+    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b128_e400_v17.pth'
     num_samples = 500
     kp_configurations, joint_angles = load_matched_configurations(directory)
     model = load_model_for_inference(model_path)    
     # Parameters for PRM
-    num_neighbors = 50 # Number of neighbors for each node in the roadmap
+    num_neighbors = 10 # Number of neighbors for each node in the roadmap
     start_time = time.time()
     # Build the roadmap
     roadmap3, tree3, roadmap1 = build_lazy_roadmap(kp_configurations, joint_angles, num_neighbors, model)   
@@ -343,11 +341,11 @@ if __name__ == "__main__":
     print("time taken to find the graph", end_time - start_time)      
 
     # Define start and goal configurations as numpy arrays
-    start_config = np.array([[267, 432], [270, 315], [167, 294], [173, 266], [160, 138], [132, 118]]) 
-    goal_config = np.array([[267, 432], [271, 315], [317, 218], [342, 231], [463, 293], [494, 281]])
+    start_config = np.array([[250, 442], [252, 311], [215, 273], [172, 234], [192, 212], [220, 147], [249, 82], [248, 52], [286, 48]])
+    goal_config = np.array([[250, 442], [252, 311], [275, 255], [294, 200], [322, 209], [394, 194], [468, 181], [494, 158], [522, 187]])
 
-    SAFE_ZONE = 50  # Safe distance from the obstacle
-    obstacle_center = (450, 103)
+    SAFE_ZONE = 30  # Safe distance from the obstacle
+    obstacle_center = (400, 120)
     half_diagonal = 20
 
     start_angle, goal_angle = convert_configs(kp_configurations, joint_angles, start_config, goal_config)
@@ -378,42 +376,96 @@ if __name__ == "__main__":
     validate_and_remove_invalid_edges(roadmap1, obstacle_center, half_diagonal, SAFE_ZONE)
         
     # Find and print the path from start to goal
-    path = find_path(roadmap1, start_node_config, goal_node_config)
+    path = find_path(roadmap3, start_node_angle, goal_node_angle)
     # path = find_path_heuristic(roadmap, start_node, goal_node, heuristic)
 
     if path:
-        point_set = []
-        goal_sets = []
-        # Iterate through the path, excluding the first and last configuration
-        for configuration in path[0:-1]:
+         point_set = []
+         goal_sets = []
+         # Iterate through the path, excluding the first and last configuration
+         for configuration in path[0:-1]:
             # Extract the last three keypoints of each configuration
-            last_three_points = configuration[-4:]
-            last_three_points_float = [[float(point[0]), float(point[1])] for point in last_three_points]
+            selected_points = configuration[[3, 4, 6, 7, 8]]
+            selected_points_float = [[float(point[0]), float(point[1])] for point in selected_points]
             # Append these points to the point_set list
-            point_set.append(last_three_points_float)
-        # Iterate through the path, excluding start and goal
-        for configuration in path[1:]: 
-            last_three_points = configuration[-4:]
-            last_three_points_float = [[float(point[0]), float(point[1])] for point in last_three_points]
-            goal_features = []  # Create a new list for each goal set
-            for point in last_three_points_float:
+            point_set.append(selected_points_float)
+
+         # Iterate through the path, excluding start and goal            
+         for configuration in path[1:]: 
+            selected_points = configuration[[3, 4, 6, 7, 8]]
+            selected_points_float = [[float(point[0]), float(point[1])] for point in selected_points]
+            goal_features = []
+            for point in selected_points_float:
                 goal_features.extend(point)  # Add x, y as a pair
             goal_sets.append(goal_features)
-        print("Point Set:", point_set)
-        print("goal sets: ", goal_sets)
 
-        with open("config/dl_multi_features.yaml", "w") as yaml_file:
-            s = "dl_controller:\n"
-            s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
-            for i, goal in enumerate(goal_sets, start=1):
-                # Convert the list of floats into a comma-separated string
-                goal_str = ', '.join(map(str, goal))
-                s += f"  goal_features{i}: [{goal_str}]\n"
+         print("Point Set:", point_set)
+         print("goal sets: ", goal_sets)
+    
+         with open("/home/jc-merlab/duc_repo/src/panda_test/config/dl_multi_features.yaml", "w") as yaml_file:
+             s = "dl_controller:\n"
+             s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
+             for i, goal in enumerate(goal_sets, start=1):
+                 # Convert the list of floats into a comma-separated string
+                 goal_str = ', '.join(map(str, goal))
+                 s += f"  goal_features{i}: [{goal_str}]\n"
+    
+             # Write the string to the file
+             yaml_file.write(s)
 
-            # Write the string to the file
-            yaml_file.write(s)
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/22/dl_multi_features.yaml", "w") as yaml_file:
+             s = "dl_controller:\n"
+             s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
+             for i, goal in enumerate(goal_sets, start=1):
+                 # Convert the list of floats into a comma-separated string
+                 goal_str = ', '.join(map(str, goal))
+                 s += f"  goal_features{i}: [{goal_str}]\n"
+    
+             # Write the string to the file
+             yaml_file.write(s)
+    
+         print("Data successfully written to config/dl_multi_features.yaml")
 
-        print("Data successfully written to config/dl_multi_features.yaml")
+         # Save configurations to a .txt file
+         with open("/home/jc-merlab/duc_repo/src/panda_test/config/path_configurations.txt", "w") as file:
+             file.write("Start Configuration:\n")
+             file.write(str(start_config.tolist()) + "\n\n")
+             file.write("Goal Configuration:\n")
+             file.write(str(goal_config.tolist()) + "\n\n")
+             file.write("Obstacle Parameters:\n")
+             file.write("Safe Zone:\n")
+             file.write(str(SAFE_ZONE) + "\n\n")
+             file.write("Obstacle Center:\n")
+             file.write(str(obstacle_center) + "\n\n")
+             file.write("Half Diagonal:\n")
+             file.write(str(half_diagonal) + "\n\n")
+             file.write("Path:\n")
+             for config in path:
+                 file.write(str(config.tolist()) + "\n")
+             file.write("\nPoint Set:\n")
+             for points in point_set:
+                 file.write(str(points) + "\n")
+
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/22/path_configurations.txt", "w") as file:
+             file.write("Start Configuration:\n")
+             file.write(str(start_config.tolist()) + "\n\n")
+             file.write("Goal Configuration:\n")
+             file.write(str(goal_config.tolist()) + "\n\n")
+             file.write("Obstacle Parameters:\n")
+             file.write("Safe Zone:\n")
+             file.write(str(SAFE_ZONE) + "\n\n")
+             file.write("Obstacle Center:\n")
+             file.write(str(obstacle_center) + "\n\n")
+             file.write("Half Diagonal:\n")
+             file.write(str(half_diagonal) + "\n\n")
+             file.write("Path:\n")
+             for config in path:
+                 file.write(str(config.tolist()) + "\n")
+             file.write("\nPoint Set:\n")
+             for points in point_set:
+                 file.write(str(points) + "\n")
+
+         print("Configurations successfully saved to configurations.txt")
 
     
     
