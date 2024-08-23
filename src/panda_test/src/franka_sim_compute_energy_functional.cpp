@@ -21,13 +21,8 @@ int num_goal_sets;
 int debug_mode = 0;     
 
 bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_test::energyFuncMsg::Response &res){
-    
-    // std::cout <<"Inside Energy Callback"<<std::endl;
-    // std::cout <<"window size: "<<window<<std::endl;
-    // std::cout <<"no of features: "<<no_of_features<<std::endl;
-
     // Assign Request data
-    // float gamma_general = req.gamma_general;
+    
     float gamma_first_actuator = req.gamma_first_actuator; //Learning Rate
     float gamma_second_actuator = req.gamma_second_actuator;
     float gamma_third_actuator = req.gamma_third_actuator;
@@ -44,13 +39,8 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
         std::cout << "assigned request data"<<std::endl;
     }
 
-    // Convert ROS MSG Arrays to Eigen Matrices
-    
-    // Checking the number of visuo-motor data pairs
-    // int data_size = dS.data.size() / no_of_features;
-
     if(debug_mode == 1){
-        std::cout << "Current Window size in energy func" << data_size << std::endl;
+        std::cout << "Current Window size in energy func: " << data_size << std::endl;
     }
 
     //dS
@@ -83,8 +73,7 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
         for (int j = 0; j < no_of_actuators; j++) {
             dRmat(row_count, j) = dRdata[itr + j];
         }
-        // dRmat.row(row_count) << dRdata[itr], dRdata[itr+1], dRdata[itr+2];
-        // std::cout<<"Pushing dR data to row:"<<row_count<<std::endl;
+
         itr = itr+no_of_actuators;
         row_count = row_count + 1;
     }
@@ -95,7 +84,7 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
     //qhat
     std::vector<float> qhatdata = qhat.data;
     // Declare qhat matrix
-    Eigen::MatrixXf qhatMat(no_of_features,no_of_actuators); //comment - possible change for 3 joints
+    Eigen::MatrixXf qhatMat(no_of_features,no_of_actuators); 
     // Push data to qhat matrix
     row_count = 0;
     itr = 0;
@@ -103,33 +92,23 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
         for (int j = 0; j < no_of_actuators; j++) {
             qhatMat(row_count, j) = qhatdata[itr + j];
         }
-        // qhatMat.row(row_count) << qhatdata[itr], qhatdata[itr+1], qhatdata[itr+2];
-        // std::cout<<"Pushing qhat data to row:"<<row_count<<std::endl;
+        
         itr = itr + no_of_actuators;
         row_count = row_count + 1;
     }
     if(debug_mode == 1){
         std::cout<<"Size of qhat: "<<qhatMat.rows()<<","<<qhatMat.cols()<<std::endl;
     }
-    // std::cout<<"Converted request data to ROS Msg"<<std::endl;
-
     // Compute Energy Functional
     Eigen::MatrixXf Ji = Eigen::MatrixXf::Zero(1,dSmat.cols());
     std_msgs::Float64MultiArray error_msg;
     error_msg.data.resize(dSmat.cols());
-    // std::cout<<"Declared Ji"<<std::endl;
     
     for(int i=0; i<dSmat.cols();i++){
-        // std::cout<<dSmat(it,i)<<std::endl;
         float cur_model_err = pow((dRmat.row(it) * qhatMat.row(i).transpose() - dSmat((it), i)), 2);
         float old_err = pow((dRmat*qhatMat.row(i).transpose() - dSmat.col(i)).norm(),2);
-        // std::cout<<"old err:"<<old_err<<std::endl;
         Ji(i) = (cur_model_err + old_err)/2;
         error_msg.data[i] = Ji(i);
-        // float cur_model_err = pow((dRmat.row(data_size)*qhatMat.row(i).transpose() - dSmat(data_size,i)),2);
-        // std::cout<<"current model error:"<<cur_model_err<<std::endl;
-        
-        // std::cout<<"Ji:"<<Ji(i)<<std::endl;
     }
     model_error_pub.publish(error_msg);
     if(debug_mode == 1){
@@ -139,34 +118,15 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
     // Updated Jacobian Vectors
     for(int j = 0; j < no_of_actuators; j++){
     // Choose the appropriate learning rate based on the joint index
-    // float current_gamma = (j < 2) ? gamma_general : gamma_third_actuator;
     float current_gamma = (j == 0) ? gamma_first_actuator : ((j == 1) ? gamma_second_actuator : gamma_third_actuator);
 
         for(int i=0; i<dSmat.cols(); i++){
             if(Ji(i) > eps){    // Update Jacobian if error greater than convergence threshold
-                // float error_magnitude = Ji(i);
-                // std::cout << "Latest Error: " << feature_error_magnitude << std::endl;
-
                 // learning rate decreases on the basis of feature_error norm
                 float adaptive_gamma = current_gamma / (1 + alpha_gamma * feature_error_magnitude);
 
-                // if (feature_error_magnitude > 100){
-                //     current_gamma = adaptive_gamma;
-                // }
-
-                // std::cout << "Current Gamma" << adaptive_gamma << std::endl;
-
                 // learning rate on the basis of individual feature error
                 float feature_error = feature_errors[i];
-                // float adaptive_gamma = current_gamma / (1 + alpha_gamma * feature_error);
-
-                // if (feature_error_magnitude <= 30){
-                //     adaptive_gamma = 0.00001;
-                // } 
-                // float adaptive_gamma = current_gamma / (1 + alpha_gamma * error_magnitude); // Choose an appropriate alpha value
-                // float adaptive_gamma = current_gamma / (error_magnitude); // Choose an appropriate alpha value
-                // float adaptive_gamma = current_gamma / (feature_error_magnitude); // Choose an appropriate alpha value
-
                  // Choose an appropriate alpha value
                 // std::cout << "fixed learning rate: " << current_gamma << std::endl;
                 // std::cout << "latest adaptive learning rate: " << adaptive_gamma << " for feature " << feature_error_magnitude << std::endl;
@@ -180,15 +140,9 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
                 H1 << dRmat.transpose(), dRmat.row(it).transpose();
 
                 Eigen::MatrixXf H = H1.transpose(); 
-                // Apply the selected gamma for this joint update
+                // Apply the selected gamma for this joint update - I am keeping the next commenetd line as I want to test between fixed and adaptive lr
                 // qhatMat.row(i) = (-current_gamma*(H.transpose())*G).transpose();
-                qhatMat.row(i) = (-adaptive_gamma * (H.transpose()) * G).transpose();
-                // if (feature_error_magnitude < 30){
-                //     qhatMat.row(i) = (-0.00001 * (H.transpose()) * G).transpose();
-                // }
-                // else {
-                //     qhatMat.row(i) = (-adaptive_gamma * (H.transpose()) * G).transpose();
-                // }
+                qhatMat.row(i) = (-adaptive_gamma * (H.transpose()) * G).transpose();                
             }
         }        
     }
@@ -201,15 +155,7 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
             for (int j = 0; j < no_of_actuators; j++) {
                 qhatMatVector.push_back(qhatMat(i,j));
              }
-        }   
-
-        // Convert matrix to vector
-        // for(int i = 0; i<qhatMat.rows(); i++){
-        //     qhatMatVector.push_back(qhatMat(i,0));
-        //     qhatMatVector.push_back(qhatMat(i,1));
-        //     qhatMatVector.push_back(qhatMat(i,2)); //comment - possible change for no_of_actuators
-        // }
-        // std::cout<<"converted qhatmat to vector"<<std::endl;
+        }  
 
         // Declare ROS Msg Array
         std_msgs::Float32MultiArray qhat_dotmsg;
@@ -218,29 +164,22 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
         qhat_dotmsg.layout.dim[0].size = qhatMatVector.size();
         qhat_dotmsg.layout.dim[0].stride = 1;
         qhat_dotmsg.data.clear();
-        // std::cout<<"Declared ROS msg"<<std::endl;
 
         // Push data to ROS Msg Array
         for(std::vector<float>::iterator itr = qhatMatVector.begin(); itr != qhatMatVector.end(); ++itr){
-            // std::cout <<*itr<<std::endl;
             qhat_dotmsg.data.push_back(*itr);
         }
-        // std::cout<<"Qhat converted to ROS msg"<<std::endl;
 
     // Jacobian response msg
     res.qhat_dot = qhat_dotmsg;
-
-    // std::cout<<"qhat_dot"<<qhat_dotmsg<<"\n";
     
     // Sum of Jis
     float J = 0.0;
     for(int i=0; i<dSmat.cols();i++){
-        // std::cout<<"Individual Model Error?"<<Ji(i)<<std::endl;
         J = J + Ji(i);
     }
     // Assign Response data
     res.J = J;
-    // std::cout<<"J Response "<<J<<"\n";
     return true;
 }
 
@@ -254,10 +193,6 @@ int main(int argc, char **argv){
     nh->getParam("vsbot/estimation/epsilon", eps);
     nh->getParam("vsbot/control/alpha_gamma", alpha_gamma);
     nh->getParam("vsbot/control/debug_mode", debug_mode);
-    
-    // These are for adaptive VS
-    // nh->getParam("vsbot/control/no_of_features", no_of_features);
-    // nh->getParam("vsbot/control/no_of_actuators", no_of_actuators);
 
     // These are for shape based VS
     nh->getParam("vsbot/shape_control/no_of_features", no_of_features);

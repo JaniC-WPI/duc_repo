@@ -28,9 +28,7 @@
 
 // Declare global vector for spline features
 
-int no_of_features; // = 4; // 3 control points in a plane, 
-    // ignoring 1st control pt as it doesn't change much and can be discarded
-
+int no_of_features; 
 int no_of_actuators; 
 
 bool end_flag = false;      // true when servoing is completed. Triggered by user
@@ -92,15 +90,13 @@ int main(int argc, char **argv){
     ros::Publisher current_goal_set_pub = n.advertise<std_msgs::Int32>("current_goal_set_topic", 1);
     ros::Publisher Qhat_pub = n.advertise<std_msgs::Float64MultiArray>("Qhat_columns", 1);
     ros::Publisher Qhat_feat_pub = n.advertise<std_msgs::Float64MultiArray>("Qhat_rows", 1);
-    // std::cout << "Initialized Publishers" <<std::endl;
 
     // Initializing ROS subscribers
     ros::Subscriber end_flag_sub = n.subscribe("vsbot/end_flag",1,end_flag_callback);
     ros::Subscriber start_flag_sub = n.subscribe("franka/control_flag", 1, start_flag_callback);
-    std::cout<<start_flag<<std::endl;
+    
     while(!start_flag){
         ros::Duration(10).sleep();
-        std::cout<<"Waiting for camera"<<std::endl;
         ros::spinOnce();
     }
 
@@ -110,145 +106,93 @@ int main(int argc, char **argv){
     
     // Initializing service clients
     ros::service::waitForService("computeEnergyFunc",1000);
-    // std::cout<<"Compute Energy Func is waited"<<std::endl;
-    // ros::service::waitForService("franka_control_service", 1000);       
-                                // this service generates control points
     ros::service::waitForService("franka_kp_dl_service", 1000);  
-    // std::cout<<"franka_kp_service is waited"<<std::endl;
-                                // this service genarates key_points for dream
 
-    // ros::service::waitForService("binary_image_output", 1000);
-
-    ros::ServiceClient energyClient = n.serviceClient<panda_test::energyFuncMsg>("computeEnergyFunc");
-    // std::cout<<"Compute Energy func is getting called ?"<<std::endl;
-    // ros::ServiceClient cp_client = n.serviceClient<encoderless_vs::franka_control_points>("franka_control_service");
-
-    // Added client for dream kp generation
+    // Declare Service clients
     ros::ServiceClient kp_client = n.serviceClient<panda_test::dl_img>("franka_kp_dl_service");
-    // std::cout<<"franka kp service is getting called ?"<<std::endl;
-
+    ros::ServiceClient energyClient = n.serviceClient<panda_test::energyFuncMsg>("computeEnergyFunc");
+    
     // Initializing status msg
     std_msgs::Int32 status;
     status.data = 0;
     status_pub.publish(status);
-
-    // Load multiple goal features from the parameter server
-    std::vector<std::vector<float>> goal_features; 
+    
+    // Read number of goals
     int num_goal_sets; 
     n.getParam("dl_controller/num_goal_sets", num_goal_sets);
+
+    // Read in goal features 
+    std::vector<std::vector<float>> goal_features;    
     goal_features.resize(num_goal_sets);
-    // std::cout<<"goal feature size"<<goal_features.size()<<std::endl;
     for (int i = 0; i < num_goal_sets; ++i) {
         std::string param_name = "dl_controller/goal_features" + std::to_string(i + 1);
         n.getParam(param_name, goal_features[i]);
     }
-    // std::cout<<"goal feature size"<<goal_features.size()<<std::endl;
-    // print_fvector(goal_features);
+    
     // Servoing variables
     int window; // Estimation window size
     n.getParam("vsbot/estimation/window", window);
-
     float rate; // control & estimation loop rate
     n.getParam("vsbot/estimation/rate", rate);
-
-    // float control_rate;
-    // n.getParam("vsbot/control/rate", control_rate);
-
     float thresh1;
     n.getParam("vsbot/control/thresh1",thresh1);
-
     float thresh2;
     n.getParam("vsbot/control/thresh2",thresh2);
-
     float lam;
     n.getParam("vsbot/control/lam",lam);
-
     std::vector<float> gains1;
     n.getParam("vsbot/control/gains1",gains1);
-
     std::vector<float> gains2;
     n.getParam("vsbot/control/gains2",gains2);   
-
     float alpha_gains;
     n.getParam("vsbot/control/alpha_gains",alpha_gains);
-
-    float reg_lambda;
-    n.getParam("vsbot/control/reg_lambda",reg_lambda);
-
-    float p_lam;
-    n.getParam("vsbot/control/p_lam",p_lam);
-
-    float gain_sm;
-    n.getParam("vsbot/control/gain_sm", gain_sm);
-
     n.getParam("vsbot/shape_control/no_of_features", no_of_features);
     n.getParam("vsbot/shape_control/no_of_actuators", no_of_actuators);
-    
     int debug_mode = 0;
     n.getParam("vsbot/control/debug_mode", debug_mode);
-
-    // std::vector<float> goal (no_of_features,0);
-    // n.getParam("dl_controller/goal_features", goal);
-    // // print_fvector(goal);
 
     int it = 0;                                     // iterator
     std::vector<float> error (no_of_features,0);    //error vector
     float err = 0.0;                                // error norm
     std_msgs::Float64MultiArray err_msg;            // feature error
-    // std::cout << "Initialized Servoing Variables" << std::endl;
+
+    if(debug_mode == 1){
+        std::cout << "Initialized Servoing Variables" << std::endl;
+    }
 
     // Estimation variables
     float gamma; // learning rate
-    n.getParam("vsbot/estimation/gamma", gamma);
-    
+    n.getParam("vsbot/estimation/gamma", gamma);    
     float gamma1; // learning rate during control loop
     n.getParam("vsbot/estimation/gamma1", gamma1);
     float gamma2; // learning rate during control loop
     n.getParam("vsbot/estimation/gamma2", gamma2);
-
     float gamma3;
     n.getParam("vsbot/estimation/gamma3", gamma3);
-
-    float beta; // threshold for selective Jacobian update
-    n.getParam("vsbot/shape_control/beta", beta);
-
     float amplitude;
     n.getParam("vsbot/estimation/amplitude", amplitude);
-
-    float saturation;
-    n.getParam("vsbot/control/saturation", saturation);
-
     std::vector<float> qhat ((no_of_features)*(no_of_actuators), 0);
     n.getParam("vsbot/control/jacobian", qhat);
 
-    std::vector<float> ds; // change in key points features
-    std::vector<float> dr; // change in joint angles
-
-    // Changed this to 8 elements since only using 4 features now
-
-    std::vector<float> dSinitial; // Vector list of shape change vectors
-    std::vector<float> dRinitial; // Vector list of position change vectors
+    std::vector<float> ds;          // Current change in key points features
+    std::vector<float> dr;          // Current change in joint angles
+    std::vector<float> dSinitial;   // Vector list of shape change vectors over sample window
+    std::vector<float> dRinitial;   // Vector list of position change vectors over sample window
 
     std_msgs::Float64MultiArray j_vel;  // msg to store joint vels
     std_msgs::Float64MultiArray ds_msg; // msg to store current dS window
     std_msgs::Float64MultiArray dr_msg; // msg to store current dR window
-    // std_msgs::Float64 dth_msg; // msg to store current dTh
-
     std_msgs::Float64MultiArray control_points; // msg to store control points for current curve
 
     // Declaring msg for control points service call
-    // encoderless_vs::franka_control_points cp_msg;
     panda_test::dl_img cp_msg;
     cp_msg.request.input = 1;
 
     float t = 1/rate; // time in seconds, used for integrating angular velocity
-    // std::cout <<"Initialized estimation variables" << std::endl;
-
-    // uncomment next block for 3D motions
-
+    if(debug_mode == 1){
+        std::cout <<"Initialized estimation variables" << std::endl;
+    }
 // --------------------------- Initial Estimation -----------------------------    
-
-
 // command small displacements around initial position
     ros::Rate r{rate};  // Rate for control loop
     if(debug_mode == 1){
@@ -257,11 +201,9 @@ int main(int argc, char **argv){
     
     // Obtain initial robot state
     std::vector<float> cur_features(no_of_features, 0);
-    // cp_client.call(cp_msg);
     kp_client.call(cp_msg);
     control_points.data.clear();
     for(int i = 0; i<no_of_features; i++){
-        // cur_features[i] = cp_msg.response.cp.data.at(i);
         cur_features[i] = cp_msg.response.kp.data.at(i);
         control_points.data.push_back(cur_features[i]);
     }
@@ -287,15 +229,8 @@ int main(int argc, char **argv){
         if (no_of_actuators == 3){
             j3_vel = amplitude*(cos(param)+sin(param)); // comment out when 3rd joint not in use
         }
-
-        // float j1_vel = amplitude*sin(param);
-        // float j2_vel = amplitude*cos(param); 
         
         param = param + 0.1;
-        
-        // Adding noise to sinusoidal velocity
-        // j1_vel.data += (2*((static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) - 0.5));
-        // j2_vel.data += (2*((static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) - 0.5));
         
         j_vel.data.clear();
         j_vel.data.push_back(j1_vel);
@@ -307,19 +242,14 @@ int main(int argc, char **argv){
         j_pub.publish(j_vel);
 
         // Obtain current robot state
-        // cp_client.call(cp_msg);
         kp_client.call(cp_msg);
         control_points.data.clear();
         
-        // std::cout<<"# Features: " << no_of_features <<std::endl;
-
         for(int i = 0; i<no_of_features; i++){
-            // cur_features[i] = cp_msg.response.cp.data.at(i);
             cur_features[i] = cp_msg.response.kp.data.at(i);
             control_points.data.push_back(cur_features[i]);
         }
         cp_pub.publish(control_points);
-        // print_fvector(cur_features);
 
         // Compute change in state
         // shape features
@@ -332,10 +262,10 @@ int main(int argc, char **argv){
         dr.clear();
         dr.push_back((j1_vel*t));
         dr.push_back((j2_vel*t));
-
         if (no_of_actuators==3){
             dr.push_back((j3_vel*t)); // comment out when 3rd joint not in use
         }
+
         // Update dSinitial and dRinitial
         for(int i = 0; i < no_of_features; i++){
             dSinitial.push_back(ds[i]);
@@ -344,36 +274,33 @@ int main(int argc, char **argv){
         for(int i = 0; i < no_of_actuators;i++){
             dRinitial.push_back(dr[i]);
         }
-        
+
         for (int i = 0; i < no_of_features; i++) {
             initial_feature_errors[i] = std::abs(cur_features[i] - old_features[i]);
         }
         
-
         // Update state variables
         old_features = cur_features;
 
         // Publish ds, dr vectors to store
             // Convert to Float64multiarray
-            ds_msg.data.clear();
-            for(int i = 0; i < no_of_features; i++){
-                ds_msg.data.push_back(ds[i]);
-            }
+        ds_msg.data.clear();
+        for(int i = 0; i < no_of_features; i++){
+            ds_msg.data.push_back(ds[i]);
+        }
 
-            dr_msg.data.clear();
-            for(int i = 0; i < no_of_actuators; i++){
-                dr_msg.data.push_back(dr[i]);
-            }
-            
-            // publish
-            ds_pub.publish(ds_msg);
-            dr_pub.publish(dr_msg);
+        dr_msg.data.clear();
+        for(int i = 0; i < no_of_actuators; i++){
+            dr_msg.data.push_back(dr[i]);
+        }
+        
+        // publish
+        ds_pub.publish(ds_msg);
+        dr_pub.publish(dr_msg);
 
         ds.clear();
         dr.clear();
-        // Publish control point    s
-        // cp_pub.publish(control_points);
-
+     
         // publish status msg
         status_pub.publish(status);
 
@@ -422,7 +349,6 @@ int main(int argc, char **argv){
     qhatmsg.layout.dim[0].size = qhat.size();
     qhatmsg.layout.dim[0].stride = 1;
     qhatmsg.data.clear();
-    // std::cout << "Declared ROS msg arrays" <<std::endl;
 
     // Push data to ROS Msg
     for(std::vector<float>::iterator itr = dSinitial.begin(); itr != dSinitial.end(); ++itr){
@@ -500,6 +426,10 @@ int main(int argc, char **argv){
         std::cout <<"Initial Estimation Completed" << std::endl;
     }
 
+    if(debug_mode ==1){
+        std::cout<<"initial Jacobian estimation complete"<<std::endl;
+    }
+
 // ----------------------------- Start Servoing ---------------------------------- 
     // err = thresh; // set error norm to threshold to start control loop
     if(debug_mode == 1){
@@ -507,8 +437,6 @@ int main(int argc, char **argv){
     }
     // Initialize the first goal set
     std::vector<float> goal = goal_features[0]; // Start with the first goal set
-    // std::cout<<"print goals"<<std::endl;
-    // print_fvector(goal);
     int current_goal_set = 0; // Index of the current goal feature set
 
     // Switching to control loop rate
@@ -525,39 +453,26 @@ int main(int argc, char **argv){
     // ----------------------- Control Loop for Servoing -----------------------------    
     std_msgs::Int32 current_goal_set_msg; // Message for publishing current goal set index
 
-
     while(ros::ok() && !end_flag && current_goal_set < num_goal_sets){    // convergence condition
         // error norm "err" is always positive
-        // std::vector<float> cur_goal = goal_features[current_goal_set];
         // compute current error & norm
-        // print_fvector(cur_features);
-        // print_fvector(goal);
         for(int i = 0; i < no_of_features; i++){
             error[i] = cur_features[i] - goal[i];
         }
-    
         float err_acc = 0; // accumulator vairable for computing error norm
         for(int i=0; i<no_of_features; i++){
             err_acc += error[i]*error[i];
         }
         err = sqrt(err_acc);
         err_acc = 0; // Reset error accumulator
-        // std::cout<<" norm:"<<err<<std::endl;
 
         std::vector<float> current_gains;
-        // if ((num_goal_sets == 1) || (current_goal_set < num_goal_sets - 1)) {
-        //     current_gains = gains1; // Use the first set of gains for all but the last goal
-        // } 
-        // else {
-        //     current_gains = gains2; // Use the second set of gains for the last goal
-        // }
         if (err > 40) {
             current_gains = gains1;
         }
         else {
             current_gains = gains2; // Use the second set of gains for the last goal
         }
-
         // current_gains = gains1;
 
         // Convert gains to Eigen vector
@@ -566,8 +481,6 @@ int main(int argc, char **argv){
             K[i] = current_gains[i];
         }
 
-        std::cout << "Gain applied: " << K << std::endl;
-
         // Generate velocity
         // Convert qhat vector into matrix format
         Eigen::MatrixXf Qhat(no_of_features,no_of_actuators);
@@ -575,19 +488,13 @@ int main(int argc, char **argv){
         int row_count = 0;
         int itr = 0;
 
-        for (int i = 0; i < no_of_actuators; i++) {
-                dr.push_back(0.0);
-            }       
-
         while(row_count<no_of_features){
             for (int j = 0; j < no_of_actuators; j++){
                 Qhat(row_count, j) = qhat[itr+j];
             }
-            // Qhat.row(row_count) << qhat[itr], qhat[itr+1], qhat[itr+2]; //comment - possible change for no_of_actuators
             row_count = row_count + 1;
-            itr = itr + no_of_actuators;  // comment - possible change for no_of_actuators
+            itr = itr + no_of_actuators;
         }
-        // std::cout<<"Created Jacobian: "<<Qhat<<std::endl;
 
         std_msgs::Float64MultiArray Qhat_msg;
         Qhat_msg.layout.dim.push_back(std_msgs::MultiArrayDimension());
@@ -601,29 +508,19 @@ int main(int argc, char **argv){
                 Qhat_msg.data.push_back(Qhat(row, col));
             }
         }
-        // std::cout<<"Published Jacobian Matrix: "<<Qhat_msg<<std::endl;
         
         // Publishing the Qhat matrix
         Qhat_pub.publish(Qhat_msg);
-
-        Eigen::MatrixXf Qhat_T = Qhat.transpose();        
-
-        Eigen::JacobiSVD<Eigen::MatrixXf> svd(Qhat, Eigen::ComputeFullU | Eigen::ComputeFullV);
-        float tolerance = 1e-4; // Threshold for considering singular values as zero
-        bool is_singular = svd.singularValues().minCoeff() < tolerance;
-
-        // std::cout << "Min Coefficient: " << svd.singularValues().minCoeff() << std::endl;
-
-        // Optional: Print the condition number for diagnostics
-        float cond_number = svd.singularValues().maxCoeff() / svd.singularValues().minCoeff();
-        // std::cout << "Condition number of Qhat: " << cond_number << std::endl;
-
-        if (is_singular) {
-            std::cerr << "Warning: Qhat is singular or close to singular!" << std::endl;
-            status.data = -1;
-            status_pub.publish(status);
-            // Handle the singularity case, e.g., by applying regularization
-        }
+        Eigen::MatrixXf Qhat_T = Qhat.transpose();
+        
+        if(debug_mode == 2){
+            // CHECK CONDITION NUMBER OF JACOBIAN
+            Eigen::JacobiSVD<Eigen::MatrixXf> svd(Qhat, Eigen::ComputeFullU | Eigen::ComputeFullV);
+            float tolerance = 1e-4; // Threshold for considering singular values as zero
+            bool is_singular = svd.singularValues().minCoeff() < tolerance;
+            // Optional: Print the condition number for diagnostics
+            float cond_number = svd.singularValues().maxCoeff() / svd.singularValues().minCoeff();
+        } 
 
         // Convert error std::vector to Eigen::vector
         // for matrix computations
@@ -644,22 +541,10 @@ int main(int argc, char **argv){
             Eigen::Vector2f joint_vel;
         }
 
-        // std::cout<<"Jacobian: \n"<<Qhat<<std::endl;
-
         // Closed form solution for linearly independent columns
         // A_inv = (A.transpose()*A).inverse() * A.transpose()
         Eigen::MatrixXf Qhat_inv = (Qhat.transpose()*Qhat).inverse() * Qhat.transpose();
-        // Eigen::MatrixXf Qhat_inv = (Qhat.transpose() * Qhat + reg_lambda * Eigen::MatrixXf::Identity(Qhat.cols(), Qhat.cols())).inverse() * Qhat.transpose();
-        // std::cout << "Qhat_inv dimensions: " << Qhat_inv.rows() << "x" << Qhat_inv.cols() << std::endl;
-        // std::cout<<"Inverted Jacobian: \n"<<Qhat_inv<<std::endl;
-        // Saturating the error vector
-        // for(int i=0; i<no_of_features; i++){
-        //     if(abs(error_vec(i)) > saturation){
-        //         error_vec(i) = (error_vec(i)/abs(error_vec(i)))*saturation;
-        //     }
-        // }
-        // std::cout << "Error vector with no saturation: " << error_vec << std::endl;
-        
+       
         std_msgs::Float64MultiArray Qhat_feat_msg;
         Qhat_feat_msg.layout.dim.push_back(std_msgs::MultiArrayDimension());
         Qhat_feat_msg.layout.dim[0].label = "Qhat_row_elements";
@@ -672,111 +557,47 @@ int main(int argc, char **argv){
                 Qhat_feat_msg.data.push_back(Qhat_inv(row, col));
             }
         }
-        // std::cout<<"Published Jacobian Transpose Matrix: "<<Qhat_feat_msg<<std::endl;
         
         // Publishing the Qhat matrix
         Qhat_feat_pub.publish(Qhat_feat_msg);
 
-        // std::cout<<"error_vec: "<<error_vec<<std::endl;
-        // std::cout<<"gains: "<<lam<<std::endl;
-        // joint_vel = lam*(Qhat_inv)*(error_vec);
-        // std::cout<<"gains"<<Eigen::MatrixXf(K.asDiagonal())<<std::endl;
-        // std::cout << "Diagonal gains matrix dimensions: " << Eigen::MatrixXf(K.asDiagonal()).rows() << "x" << Eigen::MatrixXf(K.asDiagonal()).cols() << std::endl;
-
         // Compute the error magnitude for adaptive gain
         float error_magnitude = unsaturated_error_vec.norm();
 
-        // std::cout << "feature error norm: " << error_magnitude << std::endl;       
-        
-        // float adaptive_gain = p_lam * (1 + alpha_gains * error_magnitude); // Adaptive gain calculation
-
-        float adaptive_gain = (1+(alpha_gains * error_magnitude));
-
-        // std::cout << "Adaptive gain preprocess: " << adaptive_gain << std::endl;
-
-        Eigen::VectorXf adaptive_gains(no_of_features);
-        feature_errors.clear();
-        for (int i = 0; i < no_of_features; i++) {
-            float feature_error = abs(unsaturated_error_vec(i));       
-            // std::cout << "individual_feature_error: " << feature_error << std::endl;     
-            feature_errors.push_back(feature_error);
-            adaptive_gains(i) = (alpha_gains * feature_error);
-            // std::cout << "adaptive gain for feature: " << i << "::" << adaptive_gains(i) << std::endl;  
-        }      
-
-
         std_msgs::Float32MultiArray feature_errors_msg;
         feature_errors_msg.data = feature_errors;
-
-        // std::cout << "Diagonal adaptive gains: " << adaptive_gains << std::endl;
-
-        Eigen::MatrixXf adaptive_gains_matrix = adaptive_gains.asDiagonal();
-
-        Eigen::MatrixXf K_diag = K.asDiagonal();
-
-        // std::cout << "Inverse Jacobian: " << Qhat_inv << std::endl;
-
-        // std::cout << "Adaptive gain postprocess: " << adaptive_gain << std::endl;
-
-        // std::cout << "Applied gain: " << adaptive_gain * K_diag << std::endl;
-
-        // std::cout << "Adaptive gains matrix: " << adaptive_gains_matrix << std::endl;
-
         joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
-        // joint_vel = (Qhat_inv)*(adaptive_gains_matrix*K_diag)*(error_vec);
-        // joint_vel = (Qhat_inv)*(adaptive_gains_matrix*error_vec);
 
         // Publish velocity to robot
-
         // Check for NaNs in the computed velocities
         if (!joint_vel.allFinite()) {
             std::cerr << "Warning: NaN detected in joint velocities. Applying minimal velocities." << std::endl;
             
         }
-
         j_vel.data.clear();
         j_vel.data.push_back(joint_vel[0]);
         j_vel.data.push_back(joint_vel[1]);
         if (no_of_actuators==3) {
             j_vel.data.push_back(joint_vel[2]); // Only add j3_vel if no_of_actuators is more than 2
         }
-        
-        
-        // Check if we are in the goal switch pause period
-        if (iterations_since_goal_change < zero_velocity_iterations) {
-            j_vel.data.clear();
-            for (int i = 0; i < no_of_actuators; ++i) {
-                j_vel.data.push_back(0.0); // Insert zero velocity for each actuator
-            }
-            // Increment the counter
-            iterations_since_goal_change++;
-        } else {
-            j_vel.data.clear();
-            j_vel.data.push_back(joint_vel[0]);
-            j_vel.data.push_back(joint_vel[1]);
-            if (no_of_actuators == 3) {
-                j_vel.data.push_back(joint_vel[2]); // Only add j3_vel if no_of_actuators is more than 2
-            }
-        }
-
-
-        std::cout<<"for error magnitude: " << error_magnitude <<" published joint_vel: "<< j_vel <<std::endl;
-
         j_pub.publish(j_vel);  
-        
-        
-        
-        // The += is not a bug, dr is set to 0 in the loop
-        // Do not loose your mind every time you see this!
-        
-        //comment/uncomment
-    
-        // Compute shape change magnitude
-        // float ds_accumulator = 0;
-        // for(int i = 0; i<no_of_features; i++){
-        //     ds_accumulator += ds[i] * ds[i];
-        // }
-        // float ds_norm = sqrt(ds_accumulator);
+
+        // Get current state of robot
+        control_points.data.clear();
+        kp_client.call(cp_msg);
+        for(int i = 0; i<no_of_features; i++){
+            cur_features[i] = cp_msg.response.kp.data.at(i);
+            control_points.data.push_back(cur_features[i]);
+        }
+        // Compute change in state
+        ds.clear();
+        for(int i=0; i<no_of_features;i++){
+            ds.push_back((cur_features[i]-old_features[i]));
+        }
+        dr.clear();
+        for(int i=0; i<no_of_actuators;i++){
+            dr.push_back(joint_vel[i]*t);
+        }  
 
         float err = sqrt(std::inner_product(error.begin(), error.end(), error.begin(), 0.0));
         
@@ -788,110 +609,68 @@ int main(int argc, char **argv){
         } else {
             current_thresh = thresh2; // Use thresh2 for the last goal
         }
-        std::cout<<"Current goal set "<<current_goal_set<< std::endl;
-        std::cout<<"number of goal sets "<<num_goal_sets<< std::endl;
-        std::cout<<"Current Threshold in use is "<<current_thresh<< std::endl;
-        std::cout<<"Current Error is "<<err<<std::endl;
+        if(debug_mode == 1){
+            std::cout<<"Current goal set "<<current_goal_set<< std::endl;
+            std::cout<<"number of goal sets "<<num_goal_sets<< std::endl;
+            std::cout<<"Current Threshold in use is "<<current_thresh<< std::endl;
+            std::cout<<"Current Error is "<<err<<std::endl;
+        }
 
         // The following block is to change goals
         if (err < current_thresh) {  
             std::cout << "Goal " << current_goal_set << " reached. Moving to next goal." << std::endl;
             if (current_goal_set < num_goal_sets - 1) {
                 ++current_goal_set; // Move to the next set of goal features
-                // Publish the updated current goal set index                
-                // print_fvector(goal_features);
                 goal = goal_features[current_goal_set]; // Update the goal to the next set
-                std::cout<<"new goal is"<<std::endl;
-                print_fvector(goal);
-                // Logging
-                std::cout << "Switching to goal set " << current_goal_set << std::endl;
+
                 // // Clear ds and dr windows
-                ds.clear();
-                dr.clear();
-
-                std::cout << "Switched to goal set " << current_goal_set << std::endl;                
-               
-
-                // // Calculate the error immediately after goal switch
-                for(int i = 0; i < no_of_features; i++){
-                    error[i] = cur_features[i] - goal[i];
-                }
-
-                Eigen::VectorXf error_vec(no_of_features);
-                for(int i=0; i<no_of_features; i++){
-                    error_vec(i) = error[i];
-                }
-
-                float err_mag = error_vec.norm();                
-
-                std::cout << "error right after goal switch: " << err_mag << std::endl;
-
-                // // Resetting for every goal switch
-
-                    
-                // Pause for 2 seconds before continuing to the next goal
-                // ros::Duration(10).sleep();
-            } else {
+                dSinitial.clear();
+                dRinitial.clear();
+            } 
+            else {
                 // All goals reached
                 std::cout << "All goals reached" << std::endl;
                 break;
             }
-           
-        }
-        
-        else{         
-            // could change ds_norm to error_norm and stop updating near goal
-
-            // Get current state of robot
-            control_points.data.clear();
-            // cp_client.call(cp_msg);
-            kp_client.call(cp_msg);
-            for(int i = 0; i<no_of_features; i++){
-                cur_features[i] = cp_msg.response.kp.data.at(i);
-                control_points.data.push_back(cur_features[i]);
-            }
-
-
-            // Compute change in state
-            // ds.clear();            
-            int data_size = ds.size() / no_of_features; 
-            std::cout << "Current Window size" << data_size << std::endl;
+        }       
+        else{                 
+            // Update sample window
+            int data_size = dSinitial.size()/no_of_features;
             if (data_size < window) {
-                for(int i=0; i<no_of_features;i++){
-                    ds.push_back((cur_features[i]-old_features[i]));
+                if(debug_mode==1){
+                    std::cout << "Current Window Size in Controller: " << data_size << std::endl;
                 }
-
-                dr[0] += joint_vel[0]*t;
-                dr[1] += joint_vel[1]*t;
-                if (no_of_actuators==3){
-                    dr[2] += joint_vel[2]*t; 
+                for(int i=0; i<no_of_features;i++){
+                    dSinitial.push_back(ds[i]);
+                }
+                for(int i=0; i<no_of_actuators;i++){
+                    dRinitial.push_back(dr[i]);
                 }
             }
-            else {
-                // Update sampling windows
+            else{
+                // Discard oldest and push latest sample
+                if(debug_mode==1){
+                    std::cout << "Current Window Size in Controller: " << data_size << std::endl;
+                }
+                for(int i=0; i<no_of_features;i++){
+                    dSinitial[i] = ds[i];
+                }
+                for(int i=0; i<no_of_actuators;i++){
+                    dRinitial[i] = dr[i];
+                }
                 
-                std::rotate(ds.begin(), ds.begin()+no_of_features, ds.end());
-                std::rotate(dr.begin(), dr.begin()+no_of_actuators, dr.end());
-                // // Replace the oldest values with new ones
-                // for(int i = 0; i < no_of_features; i++){
-                //     ds[ds.size() - no_of_features + i] = cur_features[i] - old_features[i];
-                // }
-                // dr[dr.size() - no_of_actuators] += joint_vel[0] * t;
-                // dr[dr.size() - no_of_actuators + 1] += joint_vel[1] * t;
-                // if (no_of_actuators == 3){
-                //     dr[dr.size() - no_of_actuators + 2] += joint_vel[2] * t; 
-                // }
-                
+                std::rotate(dSinitial.begin(), dSinitial.begin()+no_of_features, dSinitial.end());
+                std::rotate(dRinitial.begin(), dRinitial.begin()+no_of_actuators, dRinitial.end());
             }            
-            
+                        
             // Compute Jacobian update with new sampling window
             // converting vectors to ros msg for service
             dSmsg.data.clear();
-            for(std::vector<float>::iterator itr = ds.begin(); itr != ds.end(); ++itr){
+            for(std::vector<float>::iterator itr = dSinitial.begin(); itr != dSinitial.end(); ++itr){
                 dSmsg.data.push_back(*itr);
             }
             dRmsg.data.clear();
-            for(std::vector<float>::iterator itr = dr.begin(); itr != dr.end(); ++itr){
+            for(std::vector<float>::iterator itr = dRinitial.begin(); itr != dRinitial.end(); ++itr){
                 dRmsg.data.push_back(*itr);
             }
             qhatmsg.data.clear();
@@ -899,15 +678,6 @@ int main(int argc, char **argv){
                 qhatmsg.data.push_back(*itr);
             }
 
-            // Print the contents of qhat
-            // std::cout << "The qhat outside goal switch: ";
-            // for (const auto& val : qhat) {
-            //     std::cout << val << " ";
-            // }
-            // std::cout << std::endl;
-
-            // populating request data
-            // msg.request.gamma_general = gamma2;
             msg.request.gamma_first_actuator = gamma1;
             msg.request.gamma_second_actuator = gamma2;
             msg.request.gamma_third_actuator = gamma3;
@@ -918,6 +688,7 @@ int main(int argc, char **argv){
             msg.request.feature_error_magnitude = error_magnitude; 
             msg.request.feature_errors = feature_errors_msg; 
             msg.request.data_size = data_size;
+            
             // Call energy functional service
             energyClient.call(msg);
             // Populate service response
@@ -926,13 +697,6 @@ int main(int argc, char **argv){
             for(int i = 0; i<qhat.size(); i++){
                 qhat[i] = qhat[i] + qhatdot[i]; // Updating each element of Jacobian
             }
-
-            // Print the contents of qhat
-            // std::cout << "Updated qhat outside goal switch: ";
-            // for (const auto& val : qhat) {
-            //     std::cout << val << " ";
-            // }
-            // std::cout << std::endl;
             // Push updated Jacobian vector to ROS Msg
             qhatmsg.data.clear();
             for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr){
@@ -949,23 +713,13 @@ int main(int argc, char **argv){
                 // std::cout << "Element " << i << " value: " << ds[i] << std::endl;
                 ds_msg.data.push_back(ds[i]);
             }
-            // for(int i=0; i < ds_msg.data.size(); i++) {
-            //     std::cout << "ds_msg element " << i << " value: " << ds_msg.data[i] << std::endl;
-            // }
             dr_msg.data.clear();
             for(int i=0; i<no_of_actuators; i++){
                 dr_msg.data.push_back(dr[i]);
             }
-            // dr_msg.data.clear();
-            // dr_msg.data.push_back(dr[0]);
-            // dr_msg.data.push_back(dr[1]);
-            // dr_msg.data.push_back(dr[2]); //comment/uncomment on the basis of 
-            // dr.clear();
+            
             ds_pub.publish(ds_msg);
-            dr_pub.publish(dr_msg);   
-
-            ds.clear();
-            dr.clear(); 
+            dr_pub.publish(dr_msg);      
         
         }            
 
@@ -982,14 +736,8 @@ int main(int argc, char **argv){
 
         // Publish control points
         cp_pub.publish(control_points);
-
-        // ROS_INFO("Publishing error message");
-        // for(const auto& value : err_msg.data) {
-        //     ROS_INFO("%f", value);
-        // }
         
-        err_pub.publish(err_msg);
-        
+        err_pub.publish(err_msg);        
         
         // Publish status msg
         status_pub.publish(status);
