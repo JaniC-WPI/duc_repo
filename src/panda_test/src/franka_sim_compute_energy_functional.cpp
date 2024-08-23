@@ -32,7 +32,7 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
     float gamma_third_actuator = req.gamma_third_actuator;
     float it = req.it; // iterator
     float feature_error_magnitude = req.feature_error_magnitude;
-
+    int data_size = req.data_size;
 
     std_msgs::Float32MultiArray dS =  req.dS;
     std_msgs::Float32MultiArray dR = req.dR;
@@ -44,7 +44,9 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
     // Convert ROS MSG Arrays to Eigen Matrices
     
     // Checking the number of visuo-motor data pairs
-    int data_size = dS.size();
+    // int data_size = dS.data.size() / no_of_features;
+
+    std::cout << "Current Window size in energy func" << data_size << std::endl;
 
     //dS
     std::vector<float> dSdata = dS.data;
@@ -57,12 +59,7 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
         for (int col = 0; col < no_of_features; col++) {
             dSmat(row_count, col) = dSdata[itr + col];
         }     
-        // For 6 features
-        // dSmat.row(row_count) << dSdata[itr], dSdata[itr+1], dSdata[itr+2], dSdata[itr+3], dSdata[itr+4], dSdata[itr+5];
-        // For 8 features in 3d
-        // dSmat.row(row_count) << dSdata[itr], dSdata[itr+1], dSdata[itr+2], dSdata[itr+3], dSdata[itr+4], dSdata[itr+5], dSdata[itr+6], dSdata[itr+7];
-            // dSdata[itr+8], dSdata[itr+9];
-        // std::cout<<"Pushing dS data to row:"<<row_count<<std::endl;
+        
         itr = itr+no_of_features;
         row_count = row_count + 1;
     }
@@ -113,12 +110,14 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
     
     for(int i=0; i<dSmat.cols();i++){
         // std::cout<<dSmat(it,i)<<std::endl;
-        float cur_model_err = pow((dRmat.row(it)*qhatMat.row(i).transpose() - dSmat(it,i)),2);
-        // std::cout<<"current model error:"<<cur_model_err<<std::endl;
+        float cur_model_err = pow((dRmat.row(it) * qhatMat.row(i).transpose() - dSmat((it), i)), 2);
         float old_err = pow((dRmat*qhatMat.row(i).transpose() - dSmat.col(i)).norm(),2);
         // std::cout<<"old err:"<<old_err<<std::endl;
         Ji(i) = (cur_model_err + old_err)/2;
         error_msg.data[i] = Ji(i);
+        // float cur_model_err = pow((dRmat.row(data_size)*qhatMat.row(i).transpose() - dSmat(data_size,i)),2);
+        // std::cout<<"current model error:"<<cur_model_err<<std::endl;
+        
         // std::cout<<"Ji:"<<Ji(i)<<std::endl;
     }
     model_error_pub.publish(error_msg);

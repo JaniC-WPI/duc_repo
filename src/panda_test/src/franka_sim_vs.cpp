@@ -364,7 +364,9 @@ int main(int argc, char **argv){
             ds_pub.publish(ds_msg);
             dr_pub.publish(dr_msg);
 
-        // Publish control points
+        ds.clear();
+        dr.clear();
+        // Publish control point    s
         // cp_pub.publish(control_points);
 
         // publish status msg
@@ -451,6 +453,7 @@ int main(int argc, char **argv){
         msg.request.qhat = qhatmsg;
         msg.request.feature_error_magnitude = 1.0;
         msg.request.feature_errors = initial_feature_errors_msg;
+        msg.request.data_size = window;
 
         // call compute energy functional
         energyClient.call(msg);
@@ -475,12 +478,7 @@ int main(int argc, char **argv){
         final_qhat_initial_estimation = qhat;
     
         // Print the contents of qhat
-        std::cout << "final qhat in initial estimation: ";
-            for (const auto& val : qhat) {
-                std::cout << val << " ";
-            }
-        std::cout << std::endl;
-
+   
         // Publish J value to store
         std_msgs::Float32 J;
         J.data = msg.response.J;
@@ -715,8 +713,6 @@ int main(int argc, char **argv){
         // joint_vel = (Qhat_inv)*(adaptive_gains_matrix*K_diag)*(error_vec);
         // joint_vel = (Qhat_inv)*(adaptive_gains_matrix*error_vec);
 
-        // std::cout << "Error and gain: " << (Eigen::MatrixXf(K.asDiagonal())*error_vec) << std::endl;        
-
         // Publish velocity to robot
 
         // Check for NaNs in the computed velocities
@@ -753,43 +749,21 @@ int main(int argc, char **argv){
 
         std::cout<<"for error magnitude: " << error_magnitude <<" published joint_vel: "<< j_vel <<std::endl;
 
-        j_pub.publish(j_vel);
+        j_pub.publish(j_vel);  
         
-        // Get current state of robot
-        control_points.data.clear();
-        // cp_client.call(cp_msg);
-        kp_client.call(cp_msg);
-        for(int i = 0; i<no_of_features; i++){
-            cur_features[i] = cp_msg.response.kp.data.at(i);
-            control_points.data.push_back(cur_features[i]);
-        }
-
-        // for(int i = 0; i < no_of_features; i++){
-        //     std::cout << "Old Features" << old_features[i] << std::endl; 
-        //     std::cout << "Current Features" << cur_features[i] << std::endl; 
-        // }
-
-        // Compute change in state
-        ds.clear();
-        for(int i=0; i<no_of_features;i++){
-            ds.push_back((cur_features[i]-old_features[i]));
-        }
+        
         
         // The += is not a bug, dr is set to 0 in the loop
         // Do not loose your mind every time you see this!
-        dr[0] += joint_vel[0]*t;
-        dr[1] += joint_vel[1]*t;
-        if (no_of_actuators==3){
-            dr[2] += joint_vel[2]*t; 
-        }
+        
         //comment/uncomment
     
         // Compute shape change magnitude
-        float ds_accumulator = 0;
-        for(int i = 0; i<no_of_features; i++){
-            ds_accumulator += ds[i] * ds[i];
-        }
-        float ds_norm = sqrt(ds_accumulator);
+        // float ds_accumulator = 0;
+        // for(int i = 0; i<no_of_features; i++){
+        //     ds_accumulator += ds[i] * ds[i];
+        // }
+        // float ds_norm = sqrt(ds_accumulator);
 
         float err = sqrt(std::inner_product(error.begin(), error.end(), error.begin(), 0.0));
         
@@ -822,54 +796,8 @@ int main(int argc, char **argv){
                 ds.clear();
                 dr.clear();
 
-                // Immediately calculate ds based on new goal set
-                // for(int i = 0; i<no_of_features; i++){
-                //     // ds.push_back(0.0);
-                //     ds.push_back(cur_features[i] - old_features[i]);
-                // }
-
-                // // for (int i = 0; i < no_of_actuators; ++i) {
-                // //     dr.push_back(0.0);                    
-                // // }
-
-                // dr[0] += joint_vel[0]*t;
-                // dr[1] += joint_vel[1]*t;
-                // if (no_of_actuators==3){
-                //     dr[2] += joint_vel[2]*t; 
-                // }
-
-                // // Publish the cleared and recalculated ds and dr vectors
-                // ds_msg.data.clear();
-                // for(int i = 0; i<no_of_features; i++){
-                //     ds_msg.data.push_back(ds[i]);
-                // }
-                // dr_msg.data.clear();
-                // for(int i = 0; i<no_of_actuators; i++){
-                //     dr_msg.data.push_back(dr[i]);
-                // }
-
-                // ds_pub.publish(ds_msg);
-                // dr_pub.publish(dr_msg);
-
-                // old_features = cur_features;  // Update old_features for the next iteration
-
-                // // Reset qhat to final_qhat_initial_estimation
-                // qhat = final_qhat_initial_estimation; // Reset Jacobian to the initial estimation result
-                // // it = 0; // Reset window iteration counter  
-                // dSinitial.clear();
-                // dRinitial.clear();          
-                // // it = 0; // Reset window iteration counter
-                // // Resetting change in joint angles and shape change vectors for the new goal
-                // std::fill(dSinitial.begin(), dSinitial.end(), 0);
-                // std::fill(dRinitial.begin(), dRinitial.end(), 0);
                 std::cout << "Switched to goal set " << current_goal_set << std::endl;                
-
-
-                // for(int i = 0; i < no_of_features; i++){
-                //     std::cout << "Old Features" << old_features[i] << std::endl; 
-                //     std::cout << "Current Features" << cur_features[i] << std::endl; 
-                // }
-                
+               
 
                 // // Calculate the error immediately after goal switch
                 for(int i = 0; i < no_of_features; i++){
@@ -887,155 +815,7 @@ int main(int argc, char **argv){
 
                 // // Resetting for every goal switch
 
-                    // qhat = final_qhat_initial_estimation; // Resetting the Jacobian as the goal switched
-
-                    for(int i=0; i<no_of_features;i++){
-                        dSinitial[i] = ds[i];
-                    }
-                    std::rotate(dSinitial.begin(), dSinitial.begin()+no_of_features, dSinitial.end());
-                    for(int i=0; i<no_of_actuators;i++){
-                        dRinitial[i] = dr[i];
-                    }  
-                    std::rotate(dRinitial.begin(), dRinitial.begin()+no_of_actuators, dRinitial.end());
-                    dSmsg.data.clear();
-                    for(std::vector<float>::iterator itr = dSinitial.begin(); itr != dSinitial.end(); ++itr){
-                        dSmsg.data.push_back(*itr);
-                    }
-                    dRmsg.data.clear();
-                    for(std::vector<float>::iterator itr = dRinitial.begin(); itr != dRinitial.end(); ++itr){
-                        dRmsg.data.push_back(*itr);
-                    }
-                    // Push reset qhat to ROS Msg
-                    qhatmsg.data.clear();
-                    for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr){
-                        qhatmsg.data.push_back(*itr);
-                    }   
-                    // Print the contents of qhat
-                    std::cout << "The qhat inside goal switch: ";
-                    for (const auto& val : qhat) {
-                        std::cout << val << " ";
-                    }
-                    std::cout << std::endl;
-                    // // Immediately call the service with the reset qhat
-                    msg.request.gamma_first_actuator = gamma1;
-                    msg.request.gamma_second_actuator = gamma2;
-                    msg.request.gamma_third_actuator = gamma3;
-                    msg.request.it = window-1;
-                    msg.request.dS = dSmsg;
-                    msg.request.dR = dRmsg;
-                    msg.request.qhat = qhatmsg;
-                    msg.request.feature_error_magnitude = error_magnitude;
-                    msg.request.feature_errors = feature_errors_msg;
-                    std::vector<float> qhatdot = msg.response.qhat_dot.data;
-                    for(int i = 0; i < qhat.size(); i++) {
-                        qhat[i] = qhat[i] + qhatdot[i];
-                    }
-                    qhatmsg.data.clear();
-                    for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr) {
-                        qhatmsg.data.push_back(*itr);
-                    }    
-                    // Print the contents of qhat
-                    std::cout << "Updated qhat inside goal switch: ";
-                    for (const auto& val : qhat) {
-                        std::cout << val << " ";
-                    }
-                    std::cout << std::endl;
-
-                // Resetting only in case of large error after goal switch
-                // if ((err_mag >=40 && err_mag < 300) && (current_goal_set < num_goal_sets - 1))  {
-                //     // qhat = final_qhat_initial_estimation; // Resetting the Jacobian as the goal switched
-                //     // Clear ds and dr windows
-                //     ds.clear();
-                //     dr.clear();
-
-                //     // Immediately calculate ds based on new goal set
-                //     for(int i = 0; i<no_of_features; i++){
-                //         ds.push_back(cur_features[i] - old_features[i]);
-                //         // ds.push_back(0.0);
-                //     }
-
-                //     for (int i = 0; i < no_of_actuators; ++i) {
-                //         dr.push_back(joint_vel[i] * t);
-                //         // dr.push_back(0.0);
-                //     }
-
-                //     // Publish the cleared and recalculated ds and dr vectors
-                //     // ds_msg.data.clear();
-                //     // for(int i = 0; i<no_of_features; i++){
-                //     //     ds_msg.data.push_back(ds[i]);
-                //     // }
-                //     // dr_msg.data.clear();
-                //     // for(int i = 0; i<no_of_actuators; i++){
-                //     //     dr_msg.data.push_back(dr[i]);
-                //     // }
-
-                //     // ds_pub.publish(ds_msg);
-                //     // dr_pub.publish(dr_msg);
-
-                //     // old_features = cur_features;  
-                
-                    // for(int i=0; i<no_of_features;i++){
-                    //     dSinitial[i] = ds[i];
-                    // }
-                    // std::rotate(dSinitial.begin(), dSinitial.begin()+no_of_features, dSinitial.end());
-                    // for(int i=0; i<no_of_actuators;i++){
-                    //     dRinitial[i] = dr[i];
-                    // }  
-                    // std::rotate(dRinitial.begin(), dRinitial.begin()+no_of_actuators, dRinitial.end());
-
-                    // dSmsg.data.clear();
-                    // for(std::vector<float>::iterator itr = dSinitial.begin(); itr != dSinitial.end(); ++itr){
-                    //     dSmsg.data.push_back(*itr);
-                    // }
-                    // dRmsg.data.clear();
-                    // for(std::vector<float>::iterator itr = dRinitial.begin(); itr != dRinitial.end(); ++itr){
-                    //     dRmsg.data.push_back(*itr);
-                    // }
-
-                    // // Push reset qhat to ROS Msg
-                    // qhatmsg.data.clear();
-                    // for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr){
-                    //     qhatmsg.data.push_back(*itr);
-                    // }   
-
-                    // // Print the contents of qhat
-                    // std::cout << "The qhat inside goal switch: ";
-                    // for (const auto& val : qhat) {
-                    //     std::cout << val << " ";
-                    // }
-                    // std::cout << std::endl;
-
-                    // // // Immediately call the service with the reset qhat
-                    // msg.request.gamma_first_actuator = gamma1;
-                    // msg.request.gamma_second_actuator = gamma2;
-                    // msg.request.gamma_third_actuator = gamma3;
-                    // msg.request.it = window-1;
-                    // msg.request.dS = dSmsg;
-                    // msg.request.dR = dRmsg;
-                    // msg.request.qhat = qhatmsg;
-                    // msg.request.feature_error_magnitude = error_magnitude;
-                    // msg.request.feature_errors = feature_errors_msg;
-
-                    // std::vector<float> qhatdot = msg.response.qhat_dot.data;
-
-                    // for(int i = 0; i < qhat.size(); i++) {
-                    //     qhat[i] = qhat[i] + qhatdot[i];
-                    // }
-
-                    // qhatmsg.data.clear();
-                    // for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr) {
-                    //     qhatmsg.data.push_back(*itr);
-                    // }    
-
-                    // // Print the contents of qhat
-                    // std::cout << "Updated qhat inside goal switch: ";
-                    // for (const auto& val : qhat) {
-                    //     std::cout << val << " ";
-                    // }
-                    // std::cout << std::endl;
-
-                    // }                
-
+                    
                 // Pause for 2 seconds before continuing to the next goal
                 // ros::Duration(10).sleep();
             } else {
@@ -1043,35 +823,62 @@ int main(int argc, char **argv){
                 std::cout << "All goals reached" << std::endl;
                 break;
             }
-            // // // Publish the updated current goal set index
-            // current_goal_set_msg.data = current_goal_set;
-            // current_goal_set_pub.publish(current_goal_set_msg);
+           
         }
         
         else{         
             // could change ds_norm to error_norm and stop updating near goal
-        
-            // Update sampling windows
-            for(int i=0; i<no_of_features;i++){
-                dSinitial[i] = ds[i];
+
+            // Get current state of robot
+            control_points.data.clear();
+            // cp_client.call(cp_msg);
+            kp_client.call(cp_msg);
+            for(int i = 0; i<no_of_features; i++){
+                cur_features[i] = cp_msg.response.kp.data.at(i);
+                control_points.data.push_back(cur_features[i]);
             }
-            std::rotate(dSinitial.begin(), dSinitial.begin()+no_of_features, dSinitial.end());
-            for(int i=0; i<no_of_actuators;i++){
-                dRinitial[i] = dr[i];
+
+
+            // Compute change in state
+            // ds.clear();            
+            int data_size = ds.size() / no_of_features; 
+            std::cout << "Current Window size" << data_size << std::endl;
+            if (data_size < window) {
+                for(int i=0; i<no_of_features;i++){
+                    ds.push_back((cur_features[i]-old_features[i]));
+                }
+
+                dr[0] += joint_vel[0]*t;
+                dr[1] += joint_vel[1]*t;
+                if (no_of_actuators==3){
+                    dr[2] += joint_vel[2]*t; 
+                }
             }
-            // dRinitial[0] = dr[0];
-            // dRinitial[1] = dr[1];
-            // dRinitial[2] = dr[2]; //
-            std::rotate(dRinitial.begin(), dRinitial.begin()+no_of_actuators, dRinitial.end());
+            else {
+                // Update sampling windows
+                
+                std::rotate(ds.begin(), ds.begin()+no_of_features, ds.end());
+                std::rotate(dr.begin(), dr.begin()+no_of_actuators, dr.end());
+                // // Replace the oldest values with new ones
+                // for(int i = 0; i < no_of_features; i++){
+                //     ds[ds.size() - no_of_features + i] = cur_features[i] - old_features[i];
+                // }
+                // dr[dr.size() - no_of_actuators] += joint_vel[0] * t;
+                // dr[dr.size() - no_of_actuators + 1] += joint_vel[1] * t;
+                // if (no_of_actuators == 3){
+                //     dr[dr.size() - no_of_actuators + 2] += joint_vel[2] * t; 
+                // }
+                
+            }            
             
             // Compute Jacobian update with new sampling window
             // converting vectors to ros msg for service
             dSmsg.data.clear();
-            for(std::vector<float>::iterator itr = dSinitial.begin(); itr != dSinitial.end(); ++itr){
+            for(std::vector<float>::iterator itr = ds.begin(); itr != ds.end(); ++itr){
                 dSmsg.data.push_back(*itr);
             }
             dRmsg.data.clear();
-            for(std::vector<float>::iterator itr = dRinitial.begin(); itr != dRinitial.end(); ++itr){
+            for(std::vector<float>::iterator itr = dr.begin(); itr != dr.end(); ++itr){
                 dRmsg.data.push_back(*itr);
             }
             qhatmsg.data.clear();
@@ -1080,23 +887,24 @@ int main(int argc, char **argv){
             }
 
             // Print the contents of qhat
-            std::cout << "The qhat outside goal switch: ";
-            for (const auto& val : qhat) {
-                std::cout << val << " ";
-            }
-            std::cout << std::endl;
+            // std::cout << "The qhat outside goal switch: ";
+            // for (const auto& val : qhat) {
+            //     std::cout << val << " ";
+            // }
+            // std::cout << std::endl;
 
             // populating request data
             // msg.request.gamma_general = gamma2;
             msg.request.gamma_first_actuator = gamma1;
             msg.request.gamma_second_actuator = gamma2;
             msg.request.gamma_third_actuator = gamma3;
-            msg.request.it = window-1;
+            msg.request.it = data_size;
             msg.request.dS = dSmsg;
             msg.request.dR = dRmsg;
             msg.request.qhat = qhatmsg;
             msg.request.feature_error_magnitude = error_magnitude; 
             msg.request.feature_errors = feature_errors_msg; 
+            msg.request.data_size = data_size;
             // Call energy functional service
             energyClient.call(msg);
             // Populate service response
@@ -1107,41 +915,46 @@ int main(int argc, char **argv){
             }
 
             // Print the contents of qhat
-            std::cout << "Updated qhat outside goal switch: ";
-            for (const auto& val : qhat) {
-                std::cout << val << " ";
-            }
-            std::cout << std::endl;
+            // std::cout << "Updated qhat outside goal switch: ";
+            // for (const auto& val : qhat) {
+            //     std::cout << val << " ";
+            // }
+            // std::cout << std::endl;
             // Push updated Jacobian vector to ROS Msg
             qhatmsg.data.clear();
             for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr){
                 qhatmsg.data.push_back(*itr);
             }
-        }
-        // Update state variables
-        old_features = cur_features;
 
-        // Publish ds, dr, J, & error vectors to store
-        // Convrt to Float64multiarray
-        ds_msg.data.clear();
-        for(int i=0; i<no_of_features; i++){
-            // std::cout << "Element " << i << " value: " << ds[i] << std::endl;
-            ds_msg.data.push_back(ds[i]);
-        }
-        // for(int i=0; i < ds_msg.data.size(); i++) {
-        //     std::cout << "ds_msg element " << i << " value: " << ds_msg.data[i] << std::endl;
-        // }
-        dr_msg.data.clear();
-        for(int i=0; i<no_of_actuators; i++){
-            dr_msg.data.push_back(dr[i]);
-        }
-        // dr_msg.data.clear();
-        // dr_msg.data.push_back(dr[0]);
-        // dr_msg.data.push_back(dr[1]);
-        // dr_msg.data.push_back(dr[2]); //comment/uncomment on the basis of 
-        dr.clear();
-        ds_pub.publish(ds_msg);
-        dr_pub.publish(dr_msg);        
+            // Update state variables
+            old_features = cur_features;
+
+            // Publish ds, dr, J, & error vectors to store
+            // Convrt to Float64multiarray
+            ds_msg.data.clear();
+            for(int i=0; i<no_of_features; i++){
+                // std::cout << "Element " << i << " value: " << ds[i] << std::endl;
+                ds_msg.data.push_back(ds[i]);
+            }
+            // for(int i=0; i < ds_msg.data.size(); i++) {
+            //     std::cout << "ds_msg element " << i << " value: " << ds_msg.data[i] << std::endl;
+            // }
+            dr_msg.data.clear();
+            for(int i=0; i<no_of_actuators; i++){
+                dr_msg.data.push_back(dr[i]);
+            }
+            // dr_msg.data.clear();
+            // dr_msg.data.push_back(dr[0]);
+            // dr_msg.data.push_back(dr[1]);
+            // dr_msg.data.push_back(dr[2]); //comment/uncomment on the basis of 
+            // dr.clear();
+            ds_pub.publish(ds_msg);
+            dr_pub.publish(dr_msg);   
+
+            ds.clear();
+            dr.clear(); 
+        
+        }            
 
         err_msg.data.clear();
         for(int i = 0; i<no_of_features;i++){
