@@ -183,6 +183,9 @@ int main(int argc, char **argv){
 
     n.getParam("vsbot/shape_control/no_of_features", no_of_features);
     n.getParam("vsbot/shape_control/no_of_actuators", no_of_actuators);
+    
+    int debug_mode = 0;
+    n.getParam("vsbot/control/debug_mode", debug_mode);
 
     // std::vector<float> goal (no_of_features,0);
     // n.getParam("dl_controller/goal_features", goal);
@@ -248,7 +251,9 @@ int main(int argc, char **argv){
 
 // command small displacements around initial position
     ros::Rate r{rate};  // Rate for control loop
-    std::cout << "Ready to command small displacements" <<std::endl; 
+    if(debug_mode == 1){
+        std::cout << "Ready to command small displacements" <<std::endl; 
+    }
     
     // Obtain initial robot state
     std::vector<float> cur_features(no_of_features, 0);
@@ -392,7 +397,9 @@ int main(int argc, char **argv){
 
     j_pub.publish(j_vel);
 
-    std::cout<<"Initial Movements Complete"<<std::endl;
+    if(debug_mode == 1){
+        std::cout<<"Initial Movements Complete"<<std::endl;
+    }
 
     // Declare ROS Msg Arrays
     std_msgs::Float32MultiArray dSmsg;
@@ -433,7 +440,9 @@ int main(int argc, char **argv){
         qhatmsg.data.push_back(*itr);
     }  
 
-    std::cout <<"Pushed initial data to ROS msgs"<<std::endl;
+    if(debug_mode == 1){
+        std::cout <<"Pushed initial data to ROS msgs"<<std::endl;
+    }
 
     std_msgs::Float32MultiArray initial_feature_errors_msg;
     initial_feature_errors_msg.data = initial_feature_errors;
@@ -487,11 +496,15 @@ int main(int argc, char **argv){
         // Increase iterator
         it++;
     }
-    std::cout <<"Initial Estimation Completed" << std::endl;
+    if(debug_mode == 1){
+        std::cout <<"Initial Estimation Completed" << std::endl;
+    }
 
 // ----------------------------- Start Servoing ---------------------------------- 
     // err = thresh; // set error norm to threshold to start control loop
-    std::cout<<"Entering control loop"<<std::endl;
+    if(debug_mode == 1){
+        std::cout<<"Entering control loop"<<std::endl;
+    }
     // Initialize the first goal set
     std::vector<float> goal = goal_features[0]; // Start with the first goal set
     // std::cout<<"print goals"<<std::endl;

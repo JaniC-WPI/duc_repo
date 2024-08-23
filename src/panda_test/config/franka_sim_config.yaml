@@ -37,7 +37,7 @@ vsbot :
     gains1: [-2.5, -2.5, -2.5, -2.5, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0] # for intermediate configs
     # gains2: [-2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -7.0, -7.0] # for last config
     gains2: [-2.5, -2.5, -2.5, -2.5, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0]
-
+    debug_mode: 1
 # Shape Servoing Parameters -------------------------------------------
   
   shape_control:     

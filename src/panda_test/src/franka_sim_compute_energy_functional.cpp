@@ -17,7 +17,8 @@ int window; // Estimation window size
 float eps; // update threshold or convergence condition
 int no_of_actuators; // qhat, dr column size
 float alpha_gamma;
-int num_goal_sets;     
+int num_goal_sets;
+int debug_mode = 0;     
 
 bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_test::energyFuncMsg::Response &res){
     
@@ -39,14 +40,18 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
     std_msgs::Float32MultiArray qhat = req.qhat;
     std_msgs::Float32MultiArray feature_errors_msg = req.feature_errors;    
     std::vector<float> feature_errors = feature_errors_msg.data;
-    // std::cout << "assigned request data"<<std::endl;
+    if(debug_mode == 1){
+        std::cout << "assigned request data"<<std::endl;
+    }
 
     // Convert ROS MSG Arrays to Eigen Matrices
     
     // Checking the number of visuo-motor data pairs
     // int data_size = dS.data.size() / no_of_features;
 
-    std::cout << "Current Window size in energy func" << data_size << std::endl;
+    if(debug_mode == 1){
+        std::cout << "Current Window size in energy func" << data_size << std::endl;
+    }
 
     //dS
     std::vector<float> dSdata = dS.data;
@@ -63,7 +68,9 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
         itr = itr+no_of_features;
         row_count = row_count + 1;
     }
-    // std::cout<<"Size of dSMat: "<<dSmat.rows()<<","<<dSmat.cols()<<std::endl;
+    if(debug_mode == 1){
+        std::cout<<"Size of dSMat: "<<dSmat.rows()<<","<<dSmat.cols()<<std::endl;
+    }
 
     //dR
     std::vector<float> dRdata = dR.data;
@@ -81,7 +88,9 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
         itr = itr+no_of_actuators;
         row_count = row_count + 1;
     }
-    // std::cout<<"Size of dRMat: "<<dRmat.rows()<<","<<dRmat.cols()<<std::endl;
+    if(debug_mode == 1){
+        std::cout<<"Size of dRMat: "<<dRmat.rows()<<","<<dRmat.cols()<<std::endl;
+    }
 
     //qhat
     std::vector<float> qhatdata = qhat.data;
@@ -99,7 +108,9 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
         itr = itr + no_of_actuators;
         row_count = row_count + 1;
     }
-    // std::cout<<"Size of qhat: "<<qhatMat.rows()<<","<<qhatMat.cols()<<std::endl;
+    if(debug_mode == 1){
+        std::cout<<"Size of qhat: "<<qhatMat.rows()<<","<<qhatMat.cols()<<std::endl;
+    }
     // std::cout<<"Converted request data to ROS Msg"<<std::endl;
 
     // Compute Energy Functional
@@ -121,7 +132,10 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
         // std::cout<<"Ji:"<<Ji(i)<<std::endl;
     }
     model_error_pub.publish(error_msg);
-    // std::cout<<"computed energy functional"<<std::endl;
+    if(debug_mode == 1){
+        std::cout<<"computed energy functional"<<std::endl;
+    }
+
     // Updated Jacobian Vectors
     for(int j = 0; j < no_of_actuators; j++){
     // Choose the appropriate learning rate based on the joint index
@@ -239,6 +253,7 @@ int main(int argc, char **argv){
     nh->getParam("vsbot/estimation/window", window); //size of estimation window
     nh->getParam("vsbot/estimation/epsilon", eps);
     nh->getParam("vsbot/control/alpha_gamma", alpha_gamma);
+    nh->getParam("vsbot/control/debug_mode", debug_mode);
     
     // These are for adaptive VS
     // nh->getParam("vsbot/control/no_of_features", no_of_features);
