@@ -60,7 +60,7 @@ a = torch.cuda.memory_allocated(0)
 print(a)
 # f = r-a  # free inside reserved
 
-weights_path = '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_planning_b1_e100_v4.pth'
+weights_path = '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_planning_b1_e50_v8.pth'
 
 n_nodes = 9
 
@@ -539,7 +539,7 @@ model = KeypointPipeline(weights_path)
 model = model.to(device)
 
 # Load the checkpoint
-checkpoint_path = '/home/jc-merlab/Pictures/Data/trained_models/gcn_ckpt_hundred_k/kprcnn_occ_gcn_ckpt_hundred_k_b128e55.pth'
+checkpoint_path = '/home/jc-merlab/Pictures/Data/trained_models/gcn_ckpt/kprcnn_occ_gcn_ckpt_b128e17.pth'
 checkpoint = torch.load(checkpoint_path)
 
 # Extract the state dictionary
@@ -575,6 +575,8 @@ def draw_lines_between_keypoints(image, keypoints, color=(255, 255, 255)):
 def predict(model, img_tensor):
     with torch.no_grad():
         KGNN2D = model([img_tensor])
+
+    print("Predicted keypoints", KGNN2D)
     return KGNN2D
 
 def postprocess_keypoints(keypoints, width=640, height=480):
@@ -677,7 +679,7 @@ def process_folder(folder_path, output_path, output_path_line):
     print(f"Total number of invisible keypoints: {total_invisible_keypoints}")
     print(f"Average inference time: {avg_inference_time}")
 
-folder_path = '/home/jc-merlab/Pictures/Data/occ_phys_test_data/'
+folder_path = '/home/jc-merlab/Pictures/Data/occ_panda_phys_test_data/'
 output_path = '/home/jc-merlab/Pictures/Data/occ_phys_test_data/gcn_output_v2/'
 output_path_line = '/home/jc-merlab/Pictures/Data/occ_test_op_line/'
 process_folder(folder_path, output_path, output_path_line)

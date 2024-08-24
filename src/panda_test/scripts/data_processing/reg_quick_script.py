@@ -58,7 +58,8 @@ def combine_json_with_velocity(data_dir, out_dir):
         with open(os.path.join(data_dir, velocity_file), 'r') as file:
             velocity_data = json.load(file)
         velocity = velocity_data['velocity']
-        time = velocity_data['time_rate']
+        # time = velocity_data['time_rate']
+        time = 1/15
         
         position = [v * time for v in velocity]
 
@@ -249,8 +250,8 @@ if __name__ == "__main__":
     # Load configurations from JSON files
     # directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_plan_kp_phys/'
     # out_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_plan_kp_phys_combined/'
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/11_kp/'
-    out_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/20_out/'
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/20_kp_cleaned/'
+    out_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/20_half_half_out/'
 
     # update_velocity_json(directory)
     # combine_json_with_velocity(directory, out_dir)
@@ -259,28 +260,28 @@ if __name__ == "__main__":
 
     # Define your source folders and destination folder
     source_folders = [
-                    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/1_out/', 
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/2_out/', 
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/3_out/', 
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/4_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/5_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/6_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/7_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/8_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/9_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/10_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/11_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/12_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/13_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/14_out',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/15_out',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/16_out',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/17_out',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/18_out',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/19_out',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/20_out']
+                    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/1_half_out/', 
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/2_half_out/', 
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/3_half_out/', 
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/4_half_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/5_half_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/6_half_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/7_half_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/8_half_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/9_half_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/10_half_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/11_half_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/12_half_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/13_half_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/14_half_out',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/15_half_out',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/16_half_out',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/17_half_out',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/18_half_out',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/19_half_out',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/20_half_out']
 
-    destination_folder = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/regression_rearranged/'
+    destination_folder = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/regression_rearranged_half/'
     combine_and_renumber_folders(source_folders, destination_folder)
 
 
