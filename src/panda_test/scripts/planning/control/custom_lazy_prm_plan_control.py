@@ -230,14 +230,7 @@ def build_lazy_roadmap_with_kdtree(configurations, k_neighbors, model):
     - G: nx.Graph, the constructed roadmap.
     """
     # configurations = configurations[1:15000:5]
-<<<<<<< HEAD
     configurations = configurations[1:13000:5]
-=======
-<<<<<<< HEAD
-=======
-    configurations = configurations[1:13000:2]
->>>>>>> 85c4687586e3a6ac79359f8acc531e4354698352
->>>>>>> 3710490080e3c7b6d7735b0d17e31f698166a423
 
     # with open('/home/jc-merlab/Pictures/Dl_Exps/dl_vs/servoing/exps/cust_1/configurations.txt', 'w') as f:
     #         f.write(str(configurations))
@@ -444,23 +437,9 @@ if __name__ == "__main__":
     # distance_matrix = np.array([1.0]).reshape(-1,1)
     # configurations = load_and_sample_configurations(directory, num_samples)
     # Parameters for PRM
-<<<<<<< HEAD
 
     num_neighbors = 10
 
-=======
-    num_neighbors = 10
-<<<<<<< HEAD
-=======
-=======
-<<<<<<< HEAD
-    num_neighbors = 10
-=======
-    num_neighbors = 20
->>>>>>> 3048ed4cf017610408a8c4c32588a17e56d0ddb6
->>>>>>> 8c1d0cff8326e15ac7b7b0d8d489e6495ce4e7fd
->>>>>>> 85c4687586e3a6ac79359f8acc531e4354698352
->>>>>>> 3710490080e3c7b6d7735b0d17e31f698166a423
      # Number of neighbors for each node in the roadmap
     start_time = time.time()
     # Build the roadmap
@@ -470,34 +449,12 @@ if __name__ == "__main__":
     print("time taken to find the graph", end_time - start_time)      
 
     # Define start and goal configurations as numpy arrays
-<<<<<<< HEAD
     start_config = np.array([[250, 442], [252, 311], [275, 255], [294, 201], [323, 209], [368, 268], [411, 328], [443, 343], [426, 382]])
     goal_config = np.array([[250, 442], [252, 311], [210, 271], [167, 231], [188, 209], [227, 147], [265, 85], [278, 56], [315, 73]])
 
     SAFE_ZONE = 40 
     obstacle_center = (400, 120)
-=======
-    start_config = np.array([[250, 442], [252, 311], [215, 273], [172, 234], [192, 212], [220, 147], [249, 82], [248, 52], [286, 48]])
-<<<<<<< HEAD
-    goal_config = np.array([[250, 442], [252, 311], [275, 255], [294, 200], [322, 209], [394, 194], [468, 181], [494, 158], [522, 187]])
 
-    SAFE_ZONE = 30 
-    obstacle_center = (400, 120)
-=======
-    goal_config = np.array([[250, 442], [252, 311], [293, 267], [334, 223], [357, 244], [434, 254], [511, 263], [547, 259], [552, 303]])
-
-    SAFE_ZONE = 30 
-<<<<<<< HEAD
-    obstacle_center = (415, 140)
-=======
-<<<<<<< HEAD
-    obstacle_center = (400, 120)
-=======
-    obstacle_center = (360, 120)
->>>>>>> 3048ed4cf017610408a8c4c32588a17e56d0ddb6
->>>>>>> 8c1d0cff8326e15ac7b7b0d8d489e6495ce4e7fd
->>>>>>> 85c4687586e3a6ac79359f8acc531e4354698352
->>>>>>> 3710490080e3c7b6d7735b0d17e31f698166a423
     half_diagonal = 20
     # safe_distance = SAFE_ZONE
 
@@ -556,19 +513,7 @@ if __name__ == "__main__":
              # Write the string to the file
              yaml_file.write(s)
 
-<<<<<<< HEAD
          with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/28/dl_multi_features.yaml", "w") as yaml_file:
-=======
-<<<<<<< HEAD
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/12/dl_multi_features.yaml", "w") as yaml_file:
-=======
-<<<<<<< HEAD
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/14/dl_multi_features.yaml", "w") as yaml_file:
-=======
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/8/dl_multi_features.yaml", "w") as yaml_file:
->>>>>>> 8c1d0cff8326e15ac7b7b0d8d489e6495ce4e7fd
->>>>>>> 85c4687586e3a6ac79359f8acc531e4354698352
->>>>>>> 3710490080e3c7b6d7735b0d17e31f698166a423
              s = "dl_controller:\n"
              s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
              for i, goal in enumerate(goal_sets, start=1):
@@ -601,20 +546,7 @@ if __name__ == "__main__":
              for points in point_set:
                  file.write(str(points) + "\n")
 
-<<<<<<< HEAD
          with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/28/path_configurations.txt", "w") as file:
-=======
-<<<<<<< HEAD
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/14/path_configurations.txt", "w") as file:
-=======
-
-<<<<<<< HEAD
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/12/path_configurations.txt", "w") as file:
-=======
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/8/path_configurations.txt", "w") as file:
->>>>>>> 8c1d0cff8326e15ac7b7b0d8d489e6495ce4e7fd
->>>>>>> 85c4687586e3a6ac79359f8acc531e4354698352
->>>>>>> 3710490080e3c7b6d7735b0d17e31f698166a423
              file.write("Start Configuration:\n")
              file.write(str(start_config.tolist()) + "\n\n")
              file.write("Goal Configuration:\n")
