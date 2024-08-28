@@ -184,6 +184,8 @@ int main(int argc, char **argv){
     std_msgs::Float64MultiArray dr_msg; // msg to store current dR window
     std_msgs::Float64MultiArray control_points; // msg to store control points for current curve
 
+    panda_test::energyFuncMsg msg;
+
     // Declaring msg for control points service call
     panda_test::dl_img cp_msg;
     cp_msg.request.input = 1;
@@ -218,6 +220,11 @@ int main(int argc, char **argv){
     float param = 0.3; // starting value for joint velocity
 
     std::vector<float> initial_feature_errors(no_of_features, 0.0);
+
+    if (debug_mode == 2){
+        std::cout << "The total window size before any iteration in estimation loop: " << dSinitial.size() << std::endl;
+        std::cout << "The n window size before any iteration in estimation loop: " << ds.size() << std::endl;
+    }
     
     // Collecting data for estimation window
     while (it < window){
@@ -277,6 +284,11 @@ int main(int argc, char **argv){
 
         for (int i = 0; i < no_of_features; i++) {
             initial_feature_errors[i] = std::abs(cur_features[i] - old_features[i]);
+        }        
+
+        if (debug_mode == 2){
+        std::cout << "The total window size after each iteration in estimation loop: " << dSinitial.size() << std::endl;
+        std::cout << "The n window size after each iteration in estimation loop: " << ds.size() << std::endl;
         }
         
         // Update state variables
@@ -305,7 +317,6 @@ int main(int argc, char **argv){
         status_pub.publish(status);
 
         //Increase iterator 
-        // std::cout <<"iterator:" << it <<std::endl;
         it++;
 
         // Refresh subscriber callbacks
@@ -374,9 +385,9 @@ int main(int argc, char **argv){
     initial_feature_errors_msg.data = initial_feature_errors;
 
     // Compute Jacobian
-    it = 0;
-    panda_test::energyFuncMsg msg;
+    it = 0;   
     while(it < window){
+        int cur_win_size = dSinitial.size()/no_of_features;
         // Service request data
         // msg.request.gamma_general = gamma;
         msg.request.gamma_first_actuator = gamma;
@@ -392,6 +403,9 @@ int main(int argc, char **argv){
 
         // call compute energy functional
         energyClient.call(msg);
+        if(debug_mode==1){
+            std::cout << "Is the energyClient called: " << std::endl;
+        }
 
         // Populating service response
         std::vector<float> qhatdot = msg.response.qhat_dot.data;
@@ -564,6 +578,12 @@ int main(int argc, char **argv){
         // Compute the error magnitude for adaptive gain
         float error_magnitude = unsaturated_error_vec.norm();
 
+        feature_errors.clear();
+        for (int i = 0; i < no_of_features; i++) {
+            float feature_error = abs(unsaturated_error_vec(i));       
+            feature_errors.push_back(feature_error);
+        } 
+
         std_msgs::Float32MultiArray feature_errors_msg;
         feature_errors_msg.data = feature_errors;
         joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
@@ -582,6 +602,10 @@ int main(int argc, char **argv){
         }
         j_pub.publish(j_vel);  
 
+        if (debug_mode == 1){
+            std::cout << "Current Joint_vel: " << j_vel << std::endl;
+        }
+
         // Get current state of robot
         control_points.data.clear();
         kp_client.call(cp_msg);
@@ -589,6 +613,7 @@ int main(int argc, char **argv){
             cur_features[i] = cp_msg.response.kp.data.at(i);
             control_points.data.push_back(cur_features[i]);
         }
+
         // Compute change in state
         ds.clear();
         for(int i=0; i<no_of_features;i++){
@@ -636,9 +661,15 @@ int main(int argc, char **argv){
         else{                 
             // Update sample window
             int data_size = dSinitial.size()/no_of_features;
+
+            if(debug_mode==1){
+                    std::cout << "N Size before condition : " << data_size << std::endl;
+                    std::cout << "n Size before condition : " << ds.size() << std::endl;
+            }
+            
             if (data_size < window) {
-                if(debug_mode==1){
-                    std::cout << "Current Window Size in Controller: " << data_size << std::endl;
+                if(debug_mode==2){
+                    std::cout << "Current Window Size for small n: " << data_size << std::endl;
                 }
                 for(int i=0; i<no_of_features;i++){
                     dSinitial.push_back(ds[i]);
@@ -646,11 +677,18 @@ int main(int argc, char **argv){
                 for(int i=0; i<no_of_actuators;i++){
                     dRinitial.push_back(dr[i]);
                 }
+                if(debug_mode==2){
+                    std::cout << "Current Window Size for small n after replacement: " << data_size << std::endl;
+                    std::cout << "current dSinitial size after pushing back dSinitial with ds: " << (dSinitial.size()/no_of_features) << std::endl;
+                    std::cout << "current ds size after pushing back dsInitial with ds: " << (ds.size()/no_of_features) << std::endl;
+                }
             }
             else{
                 // Discard oldest and push latest sample
-                if(debug_mode==1){
-                    std::cout << "Current Window Size in Controller: " << data_size << std::endl;
+                if(debug_mode==2){
+                    std::cout << "Current Window Size for big N: " << data_size << std::endl;
+                    std::cout << "current dSinitial size before replacing dSinitial with ds: " << (dSinitial.size()/no_of_features) << std::endl;
+                    std::cout << "current ds size before replacing dsInitial with ds: " << (ds.size()/no_of_features) << std::endl;
                 }
                 for(int i=0; i<no_of_features;i++){
                     dSinitial[i] = ds[i];
@@ -658,11 +696,22 @@ int main(int argc, char **argv){
                 for(int i=0; i<no_of_actuators;i++){
                     dRinitial[i] = dr[i];
                 }
+
+                 if(debug_mode==2){
+                    std::cout << "Current Window Size for big N: " << data_size << std::endl;
+                    std::cout << "current dSinitial size after replacing dSinitial with ds: " << (dSinitial.size()/no_of_features) << std::endl;
+                    std::cout << "current ds size after replacing dSinitial with ds: " << (ds.size()/no_of_features) << std::endl;
+                }
                 
                 std::rotate(dSinitial.begin(), dSinitial.begin()+no_of_features, dSinitial.end());
-                std::rotate(dRinitial.begin(), dRinitial.begin()+no_of_actuators, dRinitial.end());
-            }            
-                        
+                std::rotate(dRinitial.begin(), dRinitial.begin()+no_of_actuators, dRinitial.end());              
+            
+            }          
+
+            int cur_win_size = dSinitial.size()/no_of_features;
+            if(debug_mode==1){
+                    std::cout << "Is the control out of the window size if else block: " << std::endl;
+            }
             // Compute Jacobian update with new sampling window
             // converting vectors to ros msg for service
             dSmsg.data.clear();
@@ -681,18 +730,26 @@ int main(int argc, char **argv){
             msg.request.gamma_first_actuator = gamma1;
             msg.request.gamma_second_actuator = gamma2;
             msg.request.gamma_third_actuator = gamma3;
-            msg.request.it = data_size;
+            msg.request.it = cur_win_size - 1;
             msg.request.dS = dSmsg;
             msg.request.dR = dRmsg;
             msg.request.qhat = qhatmsg;
             msg.request.feature_error_magnitude = error_magnitude; 
             msg.request.feature_errors = feature_errors_msg; 
-            msg.request.data_size = data_size;
-            
+            msg.request.data_size = cur_win_size;
+
             // Call energy functional service
             energyClient.call(msg);
+            if(debug_mode==1){
+                    std::cout << "Is the energyClient called: " << std::endl;
+            }
+            if (!energyClient.call(msg)) {
+                ROS_ERROR("Failed to call service computeEnergyFunc");
+                break;  
+            }
             // Populate service response
             std::vector<float> qhatdot = msg.response.qhat_dot.data;
+
             // Update Jacobian
             for(int i = 0; i<qhat.size(); i++){
                 qhat[i] = qhat[i] + qhatdot[i]; // Updating each element of Jacobian
@@ -701,11 +758,11 @@ int main(int argc, char **argv){
             qhatmsg.data.clear();
             for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr){
                 qhatmsg.data.push_back(*itr);
-            }
+
+            }          
 
             // Update state variables
             old_features = cur_features;
-
             // Publish ds, dr, J, & error vectors to store
             // Convrt to Float64multiarray
             ds_msg.data.clear();
@@ -717,12 +774,13 @@ int main(int argc, char **argv){
             for(int i=0; i<no_of_actuators; i++){
                 dr_msg.data.push_back(dr[i]);
             }
-            
+
             ds_pub.publish(ds_msg);
             dr_pub.publish(dr_msg);      
         
-        }            
+        }
 
+        
         err_msg.data.clear();
         for(int i = 0; i<no_of_features;i++){
             err_msg.data.push_back(error[i]);

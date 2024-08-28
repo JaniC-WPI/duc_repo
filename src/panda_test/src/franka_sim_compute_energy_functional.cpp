@@ -19,6 +19,7 @@ int no_of_actuators; // qhat, dr column size
 float alpha_gamma;
 int num_goal_sets;
 int debug_mode = 0;     
+int no_debug_mode = 2;
 
 bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_test::energyFuncMsg::Response &res){
     // Assign Request data
@@ -58,7 +59,7 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
         itr = itr+no_of_features;
         row_count = row_count + 1;
     }
-    if(debug_mode == 1){
+    if(debug_mode == no_debug_mode){
         std::cout<<"Size of dSMat: "<<dSmat.rows()<<","<<dSmat.cols()<<std::endl;
     }
 
@@ -77,7 +78,7 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
         itr = itr+no_of_actuators;
         row_count = row_count + 1;
     }
-    if(debug_mode == 1){
+    if(debug_mode == no_debug_mode){
         std::cout<<"Size of dRMat: "<<dRmat.rows()<<","<<dRmat.cols()<<std::endl;
     }
 
@@ -96,7 +97,7 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
         itr = itr + no_of_actuators;
         row_count = row_count + 1;
     }
-    if(debug_mode == 1){
+    if(debug_mode == no_debug_mode){
         std::cout<<"Size of qhat: "<<qhatMat.rows()<<","<<qhatMat.cols()<<std::endl;
     }
     // Compute Energy Functional
@@ -105,9 +106,26 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
     error_msg.data.resize(dSmat.cols());
     
     for(int i=0; i<dSmat.cols();i++){
+        if(debug_mode == no_debug_mode){
+            std::cout<<"it size: "<< it << std::endl;
+        }
+        int it_index = static_cast<int>(it); // Convert it to an integer
+        if (it_index < 0 || it_index >= dSmat.rows()) {
+            ROS_ERROR("Index 'it' is out of bounds for dSmat. it: %d, dSmat rows: %ld", it_index, static_cast<long>(dSmat.rows()));
+            return false; // Handle error appropriately
+        }
         float cur_model_err = pow((dRmat.row(it) * qhatMat.row(i).transpose() - dSmat((it), i)), 2);
+        if(debug_mode == no_debug_mode){
+            std::cout<<"what after it size: "<< cur_model_err << std::endl;
+        }
         float old_err = pow((dRmat*qhatMat.row(i).transpose() - dSmat.col(i)).norm(),2);
+        if(debug_mode == no_debug_mode){
+            std::cout<<"what after cur_model_error: "<< old_err << std::endl;
+        }
         Ji(i) = (cur_model_err + old_err)/2;
+        if(debug_mode == no_debug_mode){
+            std::cout<<"Final current model error: "<< Ji(i) << std::endl;
+        }
         error_msg.data[i] = Ji(i);
     }
     model_error_pub.publish(error_msg);
@@ -127,17 +145,36 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
                 float feature_error = feature_errors[i];
                 Eigen::MatrixXf G1 = dRmat*(qhatMat.row(i).transpose()) - dSmat.col(i);
                 float G2 = dRmat.row(it)*(qhatMat.row(i).transpose()) - dSmat(it,i);
-                Eigen::MatrixXf G ((G1.rows()+1),1);
-                G << G1,
-                     G2;
+                // Eigen::MatrixXf G ((G1.rows()+1),1);
+                // G << G1,
+                //      G2;
 
-                Eigen::MatrixXf H1 (no_of_actuators,(window+1));
-                H1 << dRmat.transpose(), dRmat.row(it).transpose();
+                // Eigen::MatrixXf H1 (no_of_actuators,(window+1));
+                // H1 << dRmat.transpose(), dRmat.row(it).transpose();
+
+                Eigen::MatrixXf G(G1.rows() + 1, 1);
+                if (G1.rows() + 1 == G.rows() && G1.cols() == G.cols()) {
+                    G << G1, G2;
+                } else {
+                    ROS_ERROR("Dimension mismatch in G initialization. G1 rows: %ld, G rows: %ld, G2: %f", static_cast<long>(G1.rows()), static_cast<long>(G.rows()), G2);
+                    return false; // Handle error appropriately
+                }
+
+                Eigen::MatrixXf H1(no_of_actuators, data_size + 1);
+                if (H1.rows() == dRmat.cols() && H1.cols() == dRmat.rows() + 1) {
+                    H1 << dRmat.transpose(), dRmat.row(it).transpose();
+                } else {
+                    ROS_ERROR("Dimension mismatch in H1 initialization. dRmat transpose size: (%ld, %ld), dRmat row transpose size: (%ld, %ld)",
+                            static_cast<long>(dRmat.cols()), static_cast<long>(dRmat.rows()), 
+                            static_cast<long>(dRmat.row(it).transpose().cols()), static_cast<long>(dRmat.row(it).transpose().rows()));
+                            dRmat.cols(), dRmat.rows(), dRmat.row(it).transpose().cols(), dRmat.row(it).transpose().rows();
+                    return false; // Handle error appropriately
+                }
 
                 Eigen::MatrixXf H = H1.transpose(); 
                 // Apply the selected gamma for this joint update - I am keeping the next commenetd line as I want to test between fixed and adaptive lr
-                // qhatMat.row(i) = (-current_gamma*(H.transpose())*G).transpose();
-                qhatMat.row(i) = (-adaptive_gamma * (H.transpose()) * G).transpose();                
+                qhatMat.row(i) = (-current_gamma*(H.transpose())*G).transpose();
+                // qhatMat.row(i) = (-adaptive_gamma * (H.transpose()) * G).transpose();                
             }
         }        
     }
