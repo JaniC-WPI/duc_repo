@@ -230,27 +230,19 @@ def build_lazy_roadmap_with_kdtree(configurations, k_neighbors, model):
     - G: nx.Graph, the constructed roadmap.
     """
     # configurations = configurations[1:15000:5]
-    configurations = configurations[1:13000:5]
-
-    # with open('/home/jc-merlab/Pictures/Dl_Exps/dl_vs/servoing/exps/cust_1/configurations.txt', 'w') as f:
-    #         f.write(str(configurations))
-    # print("Shape of configurations before building the roadmap:", len(configurations), configurations[0].shape)
+    configurations = configurations[1:25000:10]
 
     flattened_configs = np.vstack([config.flatten() for config in configurations])
     tree = BallTree(flattened_configs, metric=lambda x, y: predict_custom_distance(x, y, model))
     print("tree is built")
-    # tree = KDTree(distance_matrix) 
 
     G = nx.Graph()
-   # flattened_configs = flattened_configs[1:9000:10]
-   # configurations = configurations[1:9000:10]
 
     for i, config in enumerate(configurations):
         G.add_node(i, configuration=config)
 
     for i, config in enumerate(flattened_configs):
         _, indices = tree.query([config], k=k_neighbors + 1)  # +1 to include self in results
-        #indices = tree.query_radius(config.reshape(1,-1), r=20,count_only=False) # +1 to include self in results
 
         for j in indices[0]:  # Skip self
             if j !=i:
@@ -263,23 +255,6 @@ def build_lazy_roadmap_with_kdtree(configurations, k_neighbors, model):
     nx.draw_networkx(G,node_size=5,width=0.3, with_labels=False, pos=pos_dict)
     # plt.show()        
     return G, tree
-
-# def add_config_to_roadmap(config,  G, tree, k_neighbors=300):
-#     """Add a configuration to the roadmap, connecting it to its k nearest neighbors."""
-#     flattened_config = config.flatten().reshape(1, -1)
-#     _, indices = tree.query(flattened_config, k=k_neighbors)
-    
-#     node_id = len(G.nodes)
-#     G.add_node(node_id, configuration=config)
-    
-#     for i in indices[0]:
-#         G.add_edge(node_id, i)
-    
-#     # Update the tree with the new node for future queries
-#     new_flattened_configs = np.vstack([tree.data, flattened_config])
-#     new_tree = KDTree(new_flattened_configs)
-    
-#     return node_id, new_tree
 
 # Function to add a configuration to the roadmap with collision checking
 def add_config_to_roadmap(config, G, tree, k_neighbors, obstacle_center, half_diagonal, safe_distance):
@@ -323,15 +298,6 @@ def add_config_to_roadmap(config, G, tree, k_neighbors, obstacle_center, half_di
             G.add_edge(node_id, i)
         # else:
         #     visualize_interactions(config, neighbor_config, obstacle_boundary)
-
-    # if connections == 0:  # If no connections were made, remove the node
-    #     print("No connections were made")
-    #     G.remove_node(node_id)
-    #     return None
-    
-    # # Update the tree with the new node for future queries
-    # new_flattened_configs = np.vstack([tree.data, flattened_config])
-    # new_tree = BallTree(new_flattened_configs, metric=lambda x, y: predict_custom_distance(x, y, model))
 
     if nx.is_connected(G):
         print("Roadmap is connected")
@@ -427,18 +393,16 @@ def plot_path_on_image_dir(image_path, path, start_config, goal_config, output_d
 # Main execution
 if __name__ == "__main__":
     # Load configurations from JSON files
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_clean_dup/'  # Replace with the path to your JSON files
-    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b128_e400_v17.pth'
-    num_samples = 500
-    # configurations = load_keypoints_from_json(directory)
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_rearranged/'  # Replace with the path to your JSON files
+    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b128_e500_v32.pth'
+    num_samples = 2500
+    # configurations = load_keypoints_from_truncated_json(directory)
     configurations = load_keypoints_from_json(directory)
-    model = load_model_for_inference(model_path)
-    # distance_matrix = calculate_model_distances(configurations, model)
-    # distance_matrix = np.array([1.0]).reshape(-1,1)
     # configurations = load_and_sample_configurations(directory, num_samples)
+    model = load_model_for_inference(model_path)
     # Parameters for PRM
 
-    num_neighbors = 10
+    num_neighbors = 25
 
      # Number of neighbors for each node in the roadmap
     start_time = time.time()
@@ -466,17 +430,20 @@ if __name__ == "__main__":
     ])
 
     # Add start and goal configurations to the roadmap
+    start_time = time.time()
     start_node = add_config_to_roadmap(start_config, roadmap, tree, num_neighbors, obstacle_center, half_diagonal, SAFE_ZONE)
+    end_time = time.time()
+    print("time taken to add the start config", end_time - start_time)      
+
+
+    start_time = time.time()
     goal_node = add_config_to_roadmap(goal_config, roadmap, tree, num_neighbors, obstacle_center, half_diagonal, SAFE_ZONE)
-    # start_node, tree = add_config_to_roadmap(start_config, roadmap, tree, 50)
-    # goal_node, tree = add_config_to_roadmap(goal_config, roadmap, tree, num_neighbors)
+    end_time = time.time()
+    print("time taken to add the goal_config", end_time - start_time)      
 
     validate_and_remove_invalid_edges(roadmap, obstacle_center, half_diagonal, SAFE_ZONE)
         
     # Find and print the path from start to goal
-    path = find_path(roadmap, start_node, goal_node)
-    # path = find_path_heuristic(roadmap, start_node, goal_node, heuristic)
-
     path = find_path(roadmap, start_node, goal_node)
 
     if path:
@@ -502,18 +469,7 @@ if __name__ == "__main__":
          print("Point Set:", point_set)
          print("goal sets: ", goal_sets)
     
-         with open("/home/jc-merlab/duc_repo/src/panda_test/config/dl_multi_features.yaml", "w") as yaml_file:
-             s = "dl_controller:\n"
-             s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
-             for i, goal in enumerate(goal_sets, start=1):
-                 # Convert the list of floats into a comma-separated string
-                 goal_str = ', '.join(map(str, goal))
-                 s += f"  goal_features{i}: [{goal_str}]\n"
-    
-             # Write the string to the file
-             yaml_file.write(s)
-
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/28/dl_multi_features.yaml", "w") as yaml_file:
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/65/dl_multi_features.yaml", "w") as yaml_file:
              s = "dl_controller:\n"
              s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
              for i, goal in enumerate(goal_sets, start=1):
@@ -526,27 +482,8 @@ if __name__ == "__main__":
     
          print("Data successfully written to config/dl_multi_features.yaml")
 
-         # Save configurations to a .txt file
-         with open("/home/jc-merlab/duc_repo/src/panda_test/config/path_configurations.txt", "w") as file:
-             file.write("Start Configuration:\n")
-             file.write(str(start_config.tolist()) + "\n\n")
-             file.write("Goal Configuration:\n")
-             file.write(str(goal_config.tolist()) + "\n\n")
-             file.write("Obstacle Parameters:\n")
-             file.write("Safe Zone:\n")
-             file.write(str(SAFE_ZONE) + "\n\n")
-             file.write("Obstacle Center:\n")
-             file.write(str(obstacle_center) + "\n\n")
-             file.write("Half Diagonal:\n")
-             file.write(str(half_diagonal) + "\n\n")
-             file.write("Path:\n")
-             for config in path:
-                 file.write(str(config.tolist()) + "\n")
-             file.write("\nPoint Set:\n")
-             for points in point_set:
-                 file.write(str(points) + "\n")
-
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/28/path_configurations.txt", "w") as file:
+         # Save configurations to a .txt file         
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/65/path_configurations.txt", "w") as file:
              file.write("Start Configuration:\n")
              file.write(str(start_config.tolist()) + "\n\n")
              file.write("Goal Configuration:\n")

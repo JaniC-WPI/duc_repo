@@ -37,6 +37,8 @@ bool start_flag = false;    // true when camera stream is ready
 std::vector<float> initial_feature_errors;
 std::vector<float> feature_errors;
 std::vector<float> final_qhat_initial_estimation;
+std::vector<float> init_dS;
+std::vector<float> init_dR;
 
 // Initialize a counter for iterations after switching goal sets
 int iterations_since_goal_change = 0;
@@ -171,6 +173,8 @@ int main(int argc, char **argv){
     n.getParam("vsbot/estimation/gamma3", gamma3);
     float amplitude;
     n.getParam("vsbot/estimation/amplitude", amplitude);
+    float saturation;
+    n.getParam("vsbot/control/saturation", saturation);
     std::vector<float> qhat ((no_of_features)*(no_of_actuators), 0);
     n.getParam("vsbot/control/jacobian", qhat);
 
@@ -281,6 +285,10 @@ int main(int argc, char **argv){
         for(int i = 0; i < no_of_actuators;i++){
             dRinitial.push_back(dr[i]);
         }
+
+        init_dS = dSinitial;
+
+        init_dR = dRinitial;
 
         for (int i = 0; i < no_of_features; i++) {
             initial_feature_errors[i] = std::abs(cur_features[i] - old_features[i]);
@@ -424,7 +432,7 @@ int main(int argc, char **argv){
         }
 
         // Save the final Jacobian from the initial estimation loop
-        final_qhat_initial_estimation = qhat;
+        // final_qhat_initial_estimation = qhat;
     
         // Print the contents of qhat
    
@@ -553,11 +561,18 @@ int main(int argc, char **argv){
         }
         else if (no_of_actuators==2) {
             Eigen::Vector2f joint_vel;
-        }
-
+        }       
+        
         // Closed form solution for linearly independent columns
         // A_inv = (A.transpose()*A).inverse() * A.transpose()
         Eigen::MatrixXf Qhat_inv = (Qhat.transpose()*Qhat).inverse() * Qhat.transpose();
+
+        // Saturating the error
+        for(int i=0; i<no_of_features; i++){
+            if(abs(error_vec(i)) > saturation){
+                error_vec(i) = (error_vec(i)/abs(error_vec(i)))*saturation;
+            }
+        }
        
         std_msgs::Float64MultiArray Qhat_feat_msg;
         Qhat_feat_msg.layout.dim.push_back(std_msgs::MultiArrayDimension());
@@ -651,6 +666,9 @@ int main(int argc, char **argv){
                 // // Clear ds and dr windows
                 dSinitial.clear();
                 dRinitial.clear();
+
+                // dSinitial = init_dS;
+                // dRinitial = init_dR;
             } 
             else {
                 // All goals reached

@@ -104,7 +104,7 @@ def build_lazy_roadmap_with_kdtree(configurations, k_neighbors):
     Returns:
     - G: nx.Graph, the constructed roadmap.
     """
-    configurations = configurations[1:13000:2]
+    configurations = configurations[1:25000:10]
     print("Shape of configurations before building the roadmap:", len(configurations), configurations[0].shape)
 
     flattened_configs = np.vstack([config.flatten() for config in configurations])
@@ -341,12 +341,12 @@ def plot_path_on_image_dir(image_path, path, start_config, goal_config, output_d
 # Main execution
 if __name__ == "__main__":
     # Load configurations from JSON files
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_clean_dup/'  # Replace with the path to your JSON files
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_rearranged/'  # Replace with the path to your JSON files
     num_samples = 500
     configurations = load_keypoints_from_json(directory)
     # configurations = load_and_sample_configurations(directory, num_samples)
     # Parameters for PRM
-    num_neighbors = 100 # Number of neighbors for each node in the roadmap
+    num_neighbors = 25 # Number of neighbors for each node in the roadmap
     start_time = time.time()
     # Build the roadmap
     roadmap, tree, pos_dict = build_lazy_roadmap_with_kdtree(configurations, num_neighbors)   
@@ -357,10 +357,10 @@ if __name__ == "__main__":
 
     # Define start and goal configurations as numpy arrays
     start_config = np.array([[250, 442], [252, 311], [215, 273], [172, 234], [192, 212], [220, 147], [249, 82], [248, 52], [286, 48]])
-    goal_config = np.array([[250, 442], [252, 311], [293, 267], [334, 223], [357, 244], [434, 254], [511, 263], [547, 259], [552, 303]])
+    goal_config = np.array([[250, 442], [252, 311], [275, 255], [294, 200], [322, 209], [394, 194], [468, 181], [494, 158], [522, 187]])
 
-    SAFE_ZONE = 30  # Safe distance from the obstacle
-    obstacle_center = (415, 140)
+    SAFE_ZONE = 40  # Safe distance from the obstacle
+    obstacle_center = (400, 120)
     half_diagonal = 20
 
     # half_diagonal = 20
@@ -429,7 +429,7 @@ if __name__ == "__main__":
              # Write the string to the file
              yaml_file.write(s)
 
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/euclidean/1/dl_multi_features.yaml", "w") as yaml_file:
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/euclidean/51/dl_multi_features.yaml", "w") as yaml_file:
              s = "dl_controller:\n"
              s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
              for i, goal in enumerate(goal_sets, start=1):
@@ -462,7 +462,7 @@ if __name__ == "__main__":
              for points in point_set:
                  file.write(str(points) + "\n")
 
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/euclidean/1/path_configurations.txt", "w") as file:
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/euclidean/51/path_configurations.txt", "w") as file:
              file.write("Start Configuration:\n")
              file.write(str(start_config.tolist()) + "\n\n")
              file.write("Goal Configuration:\n")

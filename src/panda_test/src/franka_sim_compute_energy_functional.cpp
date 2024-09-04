@@ -152,6 +152,10 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
                 // Eigen::MatrixXf H1 (no_of_actuators,(window+1));
                 // H1 << dRmat.transpose(), dRmat.row(it).transpose();
 
+                // if (feature_error_magnitude > 100) {
+                //     current_gamma = adaptive_gamma;
+                // }
+
                 Eigen::MatrixXf G(G1.rows() + 1, 1);
                 if (G1.rows() + 1 == G.rows() && G1.cols() == G.cols()) {
                     G << G1, G2;

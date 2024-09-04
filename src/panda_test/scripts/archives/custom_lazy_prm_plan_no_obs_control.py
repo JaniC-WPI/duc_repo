@@ -96,8 +96,7 @@ def build_lazy_roadmap_with_kdtree(configurations, k_neighbors, model):
     Returns:
     - G: nx.Graph, the constructed roadmap.
     """
-    # configurations = configurations[1:15000:5]
-    configurations = configurations[1:13000:5]
+    configurations = configurations[1:25000:10]
 
     flattened_configs = np.vstack([config.flatten() for config in configurations])
     tree = BallTree(flattened_configs, metric=lambda x, y: predict_custom_distance(x, y, model))
@@ -105,19 +104,18 @@ def build_lazy_roadmap_with_kdtree(configurations, k_neighbors, model):
     # tree = KDTree(distance_matrix) 
 
     G = nx.Graph()
-   # flattened_configs = flattened_configs[1:9000:10]
-   # configurations = configurations[1:9000:10]
 
     for i, config in enumerate(configurations):
         G.add_node(i, configuration=config)
 
     for i, config in enumerate(flattened_configs):
-        _, indices = tree.query([config], k=k_neighbors + 1)  # +1 to include self in results
+        distances, indices = tree.query([config], k=k_neighbors + 1)  # +1 to include self in results
         #indices = tree.query_radius(config.reshape(1,-1), r=20,count_only=False) # +1 to include self in results
 
-        for j in indices[0]:  # Skip self
+        for d,j in zip(distances[0],indices[0]):  # Skip self
             if j !=i:
                 G.add_edge(i, j)
+                print(f"Edge added between Node {i} and Node {j} with joint displacement {d}")
         
     # print(G.nodes.items())
     #SG= G.subgraph(range(1,9000,100))
@@ -199,16 +197,16 @@ def plot_path_on_image_dir(image_path, path, start_config, goal_config, output_d
 # Main execution
 if __name__ == "__main__":
     # Load configurations from JSON files
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_clean_dup/'  # Replace with the path to your JSON files
-    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b128_e400_v17.pth'
-    num_samples = 500
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_rearranged/'  # Replace with the path to your JSON files
+    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b128_e500_v32.pth'
+    num_samples = 2500
 
+    # configurations = load_and_sample_configurations(directory, num_samples)
     # configurations = load_keypoints_from_truncated_json(directory)
-
     configurations = load_keypoints_from_json(directory)
     model = load_model_for_inference(model_path)
     # Parameters for PRM
-    num_neighbors = 10  # Number of neighbors for each node in the roadmap
+    num_neighbors = 25  # Number of neighbors for each node in the roadmap
     start_time = time.time()
     # Build the roadmap
     roadmap, tree = build_lazy_roadmap_with_kdtree(configurations, num_neighbors, model)   
@@ -217,8 +215,6 @@ if __name__ == "__main__":
     print("time taken to find the graph", end_time - start_time)  
 
     # Define start and goal configurations as numpy arrays
-    # start_config = np.array([[255, 441], [258, 311], [201, 300], [144, 290], [150, 260], [144, 191], [136, 120], [112, 103], [133, 73]])
-    # goal_config = np.array([[250, 442], [252, 311], [260, 252], [267, 193], [298, 196], [373, 203], [448, 209], [483, 205], [487, 249]])
 
     start_config = np.array([[250, 442], [252, 311], [275, 255], [294, 201], [323, 209], [368, 268], [411, 328], [443, 343], [426, 382]])
     goal_config = np.array([[250, 442], [252, 311], [210, 271], [167, 231], [188, 209], [227, 147], [265, 85], [278, 56], [315, 73]])
@@ -266,7 +262,7 @@ if __name__ == "__main__":
     
          print("Data successfully written to config/dl_multi_features.yaml")
 
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/25/dl_multi_features.yaml", "w") as yaml_file:
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/57/dl_multi_features.yaml", "w") as yaml_file:
              s = "dl_controller:\n"
              s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
              for i, goal in enumerate(goal_sets, start=1):
@@ -290,7 +286,7 @@ if __name__ == "__main__":
              for points in point_set:
                  file.write(str(points) + "\n")
 
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/25/path_configurations_no_obs.txt", "w") as file:
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/57/path_configurations_no_obs.txt", "w") as file:
              file.write("Start Configuration:\n")
              file.write(str(start_config.tolist()) + "\n\n")
              file.write("Goal Configuration:\n")

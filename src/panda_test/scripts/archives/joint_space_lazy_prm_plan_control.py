@@ -25,153 +25,142 @@ print(device)
 IMAGE_WIDTH, IMAGE_HEIGHT = 640, 480
 SAFE_DISTANCE = 30  # Safe distance from the obstacle
 
-def load_matched_configurations(directory):
-    # Initialize empty lists for configurations
-    kp_configurations = []
-    jt_configurations = []
-
-    # Temporary dictionary to hold joint angles keyed by identifier
-    temp_jt_configurations = {}
-
-    # First pass: Load joint angles into temporary dictionary
-    for filename in sorted(os.listdir(directory)):
-        if filename.endswith('_joint_angles.json'):
-            identifier = filename.replace('_joint_angles.json', '')
+def load_keypoints_from_json(directory):
+    configurations = []
+    configuration_ids = []
+    for filename in os.listdir(directory):
+        if filename.endswith('.json') and not filename.endswith('_joint_angles.json') and not filename.endswith('_vel.json'):
             with open(os.path.join(directory, filename), 'r') as file:
                 data = json.load(file)
-                temp_jt_configurations[identifier] = np.array(data['joint_angles'])
+                keypoints = [np.array(point[0][:2], dtype=int) for point in data['keypoints']]  # Extracting x, y coordinates
+                configurations.append(np.array(keypoints))
+                configuration_ids.append(data['id'])  # Store the configuration ID
+    return configurations, configuration_ids
 
-    # Second pass: Match and load keypoints configurations
-    for filename in sorted(os.listdir(directory)):
-        if filename.endswith('.json') and not filename.endswith('_joint_angles.json') and not filename.endswith('_vel.json'):
-            identifier = filename.replace('.json', '')
-            if identifier in temp_jt_configurations:
-                with open(os.path.join(directory, filename), 'r') as file:
-                    data = json.load(file)
-                    keypoints = [np.array(point[0][:2], dtype=int) for point in data['keypoints']]
-                    kp_configurations.append(np.array(keypoints))
-                    jt_configurations.append(temp_jt_configurations[identifier])
+def load_joint_angles_from_json(directory):
+    joint_angles_dict = {}
+    for filename in os.listdir(directory):
+        if filename.endswith('_joint_angles.json'):
+            with open(os.path.join(directory, filename), 'r') as file:
+                data = json.load(file)
+                joint_angles_dict[data['id']] = np.array(data['joint_angles'])
+    return joint_angles_dict
 
-    return kp_configurations, jt_configurations
+def skip_configurations(configurations, configuration_ids, skip_step=5, start=1, end=13000):
+    skipped_configs = configurations[start:end:skip_step]
+    skipped_ids = configuration_ids[start:end:skip_step]
+    return skipped_configs, skipped_ids
 
-def load_model_for_inference(model_path):    
-    model = PosRegModel(18)
-    model.load_state_dict(torch.load(model_path))
-    model.eval()  # Set the model to inference mode
-    return model
-
-def predict_custom_distance(current_config, next_config, model):
-    # Convert to 2D tensors if necessary
-    start_kp_flat = torch.tensor(current_config.flatten(), dtype=torch.float).unsqueeze(0)  # Add batch dimension
-    next_kp_flat = torch.tensor(next_config.flatten(), dtype=torch.float).unsqueeze(0)  # Add batch dimension
-
-    # Predict the next configuration
-    with torch.no_grad():
-        output = model(start_kp_flat, next_kp_flat).squeeze(0).numpy()  # Remove batch dimension for output
-
-    distance = np.linalg.norm(output)
-    return float(distance)  # Reshape to the original configuration format
-
-
-def build_lazy_roadmap(kp_configurations, jt_configurations, k_neighbors, model):
+def build_lazy_roadmap_with_kdtree(configurations, configuration_ids, joint_angles_dict, k_neighbors):
     """
-    Build a LazyPRM roadmap using a KDTree for efficient nearest neighbor search.
+    Build a LazyPRM roadmap using a KDTree for efficient nearest neighbor search based on joint angles.
     
     Args:
     - configurations: List[np.array], a list of configurations (keypoints flattened).
+    - configuration_ids: List[int], a list of configuration IDs corresponding to each configuration.
+    - joint_angles_dict: Dict, a dictionary mapping configuration ids to their joint angles.
     - k_neighbors: int, the number of neighbors to connect to each node.
     
     Returns:
     - G: nx.Graph, the constructed roadmap.
+    - tree: KDTree, the KDTree built from joint angles.
     """
-    kp_configurations = kp_configurations[1:13000:2]
-    jt_configurations = jt_configurations[1:13000:2]
-
-    print(jt_configurations)
-
-    flattened_kp_configs = np.vstack([config.flatten() for config in kp_configurations])
-    tree1 = KDTree(flattened_kp_configs)
-    G1 = nx.Graph() # Graph for KD Tree keypoints configuration
-   
-    for i, config in enumerate(kp_configurations):
-        G1.add_node(i, configuration=config)
-
-    for i, config in enumerate(flattened_kp_configs):
-        dist, indices = tree1.query([config], k=k_neighbors + 1)
-
-    #     for d,j in zip(dist[0],indices[0]):  # Skip self
-    #         if j!=i:
-    #             G1.add_edge(i, j, distance=d)
-
-    # tree2 = BallTree(flattened_kp_configs, metric=lambda x, y: predict_custom_distance(x, y, model))
-    # G2 = nx.Graph() # Graph for Custom Ball Tree keypoints configurations
-
-    # for i, config in enumerate(kp_configurations):
-    #     G2.add_node(i, configuration=config)
-
-    # for i, config in enumerate(flattened_kp_configs):
-    #     dist, indices = tree2.query([config], k=k_neighbors + 1)  # +1 to include self in results
-    #     #indices = tree.query_radius(config.reshape(1,-1), r=20,count_only=False) # +1 to include self in results
-    #     # print("custom_distance", dist)
-    #     for d,j in zip(dist[0],indices[0]):  # Skip self
-    #         if j !=i:
-    #             G2.add_edge(i, j, distance=d)
-
-    flattened_jt_configs = np.vstack([config.flatten() for config in jt_configurations])
-    tree3 = KDTree(flattened_jt_configs)
-    G3 = nx.Graph() # Graph for KD Tree joint angles
-
-    for i, jt_config in enumerate(jt_configurations):
-        G3.add_node(i, configuration=jt_config)
-
-    for i, config in enumerate(flattened_jt_configs):
-        dist, indices = tree3.query([config], k=k_neighbors + 1)
-        # print("angle distance", dist)
-        for d,j in zip(dist[0],indices[0]):  # Skip self
-            if j!=i:
-                G3.add_edge(i, j, distance=d)    
-    return G3, tree3, G1
-
-def find_closest_configuration(target_config, kp_configurations):
-    """Find the closest configuration to the target from a list of configurations."""
-    # Flatten the target configuration for distance calculation
-    target_flattened = target_config.flatten().reshape(1, -1)
-    distances = np.linalg.norm(np.vstack([config.flatten() for config in kp_configurations]) - target_flattened, axis=1)
-    closest_index = np.argmin(distances)
-    return closest_index
-
-def convert_configs(kp_configurations, jt_configurations, start_config, goal_config):
-    # After loading configurations, find the closest configurations for start and goal
-    closest_start_index = find_closest_configuration(start_config, kp_configurations)
-    closest_goal_index = find_closest_configuration(goal_config, kp_configurations)
+    # Flatten the configurations
+    flattened_configs = np.vstack([config.flatten() for config in configurations])
     
-    start_joint_angles = jt_configurations[closest_start_index]
-    goal_joint_angles = jt_configurations[closest_goal_index]
+    # Extract joint angles using the configuration IDs
+    joint_angles_list = [joint_angles_dict[config_id] for config_id in configuration_ids]
+    joint_angles_array = np.vstack(joint_angles_list)
+
+    print("joint_angles", joint_angles_array)
     
-    return start_joint_angles, goal_joint_angles
+    # Build KDTree using joint angles
+    tree = KDTree(joint_angles_array)
+
+    print("tree", tree)
+
+    G = nx.Graph()
+    # for i, (config, config_id) in enumerate(zip(configurations, configuration_ids)):
+    #     G.add_node(i, configuration=config, joint_angles=joint_angles_dict[config_id])
+
+    for i, (config, config_id) in enumerate(zip(configurations, configuration_ids)):
+        G.add_node(i, configuration=config)
+
+    # Query KDTree for nearest neighbors
+    for i, joint_angles in enumerate(joint_angles_array):
+        distances, indices = tree.query([joint_angles], k=k_neighbors + 1)  # +1 to include the node itself
+        for j in indices[0]:
+            if i != j:  # Avoid self-loops
+                joint_angles_i = joint_angles_array[i]
+                joint_angles_j = joint_angles_array[j]
+                
+                # Calculate the joint displacement (distance) between two configurations
+                joint_displacement = np.linalg.norm(joint_angles_i - joint_angles_j)
+
+                # Only add edge if there is no collision (collision check outside this function)
+                G.add_edge(i, j, weight=joint_displacement)  # Use joint displacement as edge weight
+                
+                # Debugging statement to trace edge creation
+                print(f"Edge added between Node {i} and Node {j} with joint displacement {joint_displacement}")
+
+    pos_dict = {n[0]:n[1]["configuration"][5] for n in G.nodes.items()}      
+    # print(pos_dict) 
+    nx.draw_networkx(G,node_size=5,width=0.3, with_labels=False, pos=pos_dict)
+    plt.show() 
+    return G, tree
+
+def add_config_to_roadmap_with_joint_angles(config, joint_angles, G, tree, k_neighbors, obstacle_center, half_diagonal, safe_distance):
+    """
+    Add a configuration with given joint angles to the roadmap using KDTree for nearest neighbor search
+    and include collision checking before adding edges.
+    
+    Args:
+    - config: np.array, the configuration (keypoints) to add.
+    - joint_angles: np.array, the joint angles corresponding to the configuration.
+    - G: nx.Graph, the existing roadmap graph.
+    - tree: KDTree, the KDTree built from joint angles.
+    - k_neighbors: int, the number of neighbors to connect to the new node.
+    - obstacle_center: tuple, the (x, y) center of the obstacle.
+    - half_diagonal: float, half the diagonal length of the obstacle square.
+    - safe_distance: float, additional safety distance around the obstacle.
+    
+    Returns:
+    - node_id: int, the ID of the newly added node in the roadmap.
+    """
+    flattened_config = config.flatten().reshape(1, -1)
+
+    # Query KDTree for nearest neighbors based on joint angles
+    distances, indices = tree.query([joint_angles], k=k_neighbors)
+
+    node_id = len(G.nodes)
+
+    G.add_node(node_id, configuration=config)
 
 
-def add_config_to_roadmap(config, angle, G1, G3, tree3, k_neighbors):
-    """Add a configuration to the roadmap, connecting it to its k nearest neighbors."""
-    flattened_angle = angle.flatten().reshape(1, -1)
-    _, indices = tree3.query(flattened_angle, k=k_neighbors)
-    
-    node_id_angle = len(G3.nodes)
-    G3.add_node(node_id_angle, configuration=angle)
-    
-    for i in indices[0]:
-        G3.add_edge(node_id_angle, i)
+    # Iterate through each neighbor found by the KDTree
+    for idx, dist in zip(indices[0], distances[0]):
+        neighbor_config = G.nodes[idx]['configuration']
 
-    node_id_config = len(G1.nodes)
-    G1.add_node(node_id_config, configuration=config)
-    
-    print(node_id_angle, node_id_config)
-    return node_id_angle, node_id_config
+        # Retrieve the joint angles for the neighbor configuration using joint_angles_dict
+        neighbor_joint_angles = joint_angles_dict[configuration_ids[idx]]
 
-def mirror_edges_in_g1_g3(G1,G3):
-    for (u, v, d) in G3.edges(data=True):
-        # Add the same edge to G1. No distance calculation here since we're mirroring structure
-        G1.add_edge(u, v, distances=d)
+        # Check for collisions between configurations before adding an edge
+        if is_collision_free(config, neighbor_config, obstacle_center, half_diagonal, safe_distance):
+            # Calculate the joint displacement (distance) between the new configuration's joint angles and the neighbor's joint angles
+            joint_displacement = np.linalg.norm(joint_angles - neighbor_joint_angles)
+
+            # Add the edge with the computed joint displacement as the weight
+            G.add_edge(node_id, idx, weight=joint_displacement)
+            print(f"Edge added between new node {node_id} and existing node {idx} with joint displacement {joint_displacement}")
+        else:
+            print(f"Collision detected when attempting to connect new node {node_id} to existing node {idx}")
+
+    if nx.is_connected(G):
+        print("Roadmap is connected")
+    else:
+        print("Roadmap is disconnected")     
+
+    return node_id
 
 def validate_and_remove_invalid_edges(G, obstacle_center, half_diagonal, safe_distance):
     # Iterate over a copy of the edges list to avoid modification issues during iteration
@@ -182,7 +171,7 @@ def validate_and_remove_invalid_edges(G, obstacle_center, half_diagonal, safe_di
         if not is_collision_free(config_u, config_v, obstacle_center, half_diagonal, safe_distance):
             # If the edge is not collision-free, remove it from the graph
             G.remove_edge(u, v)
-            # print(f"Removed invalid edge: {u} <-> {v}")
+            print(f"Removed invalid edge: {u} <-> {v}")
 
 def visualize_interactions(config1, config2, obstacle_boundary):
     fig, ax = plt.subplots()
@@ -250,16 +239,6 @@ def visualize_interactions_path(configurations, obstacle_boundary):
 
     plt.show()
 
-class CustomDistanceHeuristic:
-    def __init__(self, model, graph):
-        self.model = model
-        self.graph = graph
-
-    def __call__(self, current_node, target_node):
-        current_config = self.graph.nodes[current_node]['configuration']
-        target_config = self.graph.nodes[target_node]['configuration']
-        distance = predict_custom_distance(current_config, target_config, self.model)
-        return distance
 def is_collision_free(configuration1, configuration2, obstacle_center, half_diagonal, safe_distance):
     # Define the square boundary of the obstacle including the safe distance
     obstacle_boundary = geom.Polygon([
@@ -326,16 +305,24 @@ def plot_path_on_image_dir(image_path, path, start_config, goal_config, output_d
 # Main execution
 if __name__ == "__main__":
     # Load configurations from JSON files
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_clean_dup/'  # Replace with the path to your JSON files
-    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b128_e400_v17.pth'
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_rearranged/'  # Replace with the path to your JSON files
+    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b128_e500_v34.pth'
     num_samples = 500
-    kp_configurations, joint_angles = load_matched_configurations(directory)
-    model = load_model_for_inference(model_path)    
+
+    skip_step = 10
+    start_index = 1
+    end_index = 25000
+
+    configurations, configuration_ids = load_keypoints_from_json(directory)
+    joint_angles_dict = load_joint_angles_from_json(directory)
+
+    skipped_configs, skipped_ids = skip_configurations(configurations, configuration_ids, skip_step, start_index, end_index)
+
     # Parameters for PRM
-    num_neighbors = 10 # Number of neighbors for each node in the roadmap
+    num_neighbors = 25 # Number of neighbors for each node in the roadmap
     start_time = time.time()
     # Build the roadmap
-    roadmap3, tree3, roadmap1 = build_lazy_roadmap(kp_configurations, joint_angles, num_neighbors, model)   
+    roadmap, tree = build_lazy_roadmap_with_kdtree(skipped_configs, skipped_ids, joint_angles_dict, num_neighbors)
     end_time = time.time()
 
     print("time taken to find the graph", end_time - start_time)      
@@ -344,40 +331,21 @@ if __name__ == "__main__":
     start_config = np.array([[250, 442], [252, 311], [215, 273], [172, 234], [192, 212], [220, 147], [249, 82], [248, 52], [286, 48]])
     goal_config = np.array([[250, 442], [252, 311], [275, 255], [294, 200], [322, 209], [394, 194], [468, 181], [494, 158], [522, 187]])
 
-    SAFE_ZONE = 30  # Safe distance from the obstacle
-    obstacle_center = (400, 120)
+    start_joint_angles = np.array([0.9331, -1.33819, 2.2474])    
+    goal_joint_angles = np.array([0.267307, -1.38323, 2.58668])
+
+    SAFE_ZONE = 40  # Safe distance from the obstacle
+    obstacle_center = (350, 120)
     half_diagonal = 20
 
-    start_angle, goal_angle = convert_configs(kp_configurations, joint_angles, start_config, goal_config)
-   
-    # safe_distance = SAFE_ZONE
-
-    obstacle_boundary = geom.Polygon([
-        (obstacle_center[0] - (half_diagonal + SAFE_ZONE), obstacle_center[1] - (half_diagonal + SAFE_ZONE)),
-        (obstacle_center[0] + (half_diagonal + SAFE_ZONE), obstacle_center[1] - (half_diagonal + SAFE_ZONE)),
-        (obstacle_center[0] + (half_diagonal + SAFE_ZONE), obstacle_center[1] + (half_diagonal + SAFE_ZONE)),
-        (obstacle_center[0] - (half_diagonal + SAFE_ZONE), obstacle_center[1] + (half_diagonal + SAFE_ZONE)),
-    ])    
-
-    # Add start and goal configurations to the roadmap
-    start_node_angle, start_node_config = add_config_to_roadmap(start_config, start_angle, roadmap1, roadmap3, tree3, num_neighbors)
-    goal_node_angle, goal_node_config = add_config_to_roadmap(goal_config, goal_angle, roadmap1, roadmap3, tree3, num_neighbors)
-    # start_node, tree = add_config_to_roadmap(start_config, roadmap, tree, 50)
-    # goal_node, tree = add_config_to_roadmap(goal_config, roadmap, tree, num_neighbors)
-
-    if roadmap1.has_node(start_node_config) and roadmap1.has_node(goal_node_config):
-        print(len(roadmap1.nodes()))
-        print(len(roadmap3.nodes()))
-    else:
-        print("start_node, goal_node not added")
+    # Add start configuration to roadmap
+    start_node = add_config_to_roadmap_with_joint_angles(start_config, start_joint_angles, roadmap, tree, num_neighbors, obstacle_center, half_diagonal, SAFE_ZONE)
+    goal_node = add_config_to_roadmap_with_joint_angles(goal_config, goal_joint_angles, roadmap, tree, num_neighbors, obstacle_center, half_diagonal, SAFE_ZONE)
     
-    mirror_edges_in_g1_g3(roadmap1,roadmap3)
-    
-    validate_and_remove_invalid_edges(roadmap1, obstacle_center, half_diagonal, SAFE_ZONE)
+    validate_and_remove_invalid_edges(roadmap, obstacle_center, half_diagonal, SAFE_ZONE)
         
     # Find and print the path from start to goal
-    path = find_path(roadmap3, start_node_angle, goal_node_angle)
-    # path = find_path_heuristic(roadmap, start_node, goal_node, heuristic)
+    path = find_path(roadmap, start_node, goal_node)
 
     if path:
          point_set = []
@@ -413,7 +381,7 @@ if __name__ == "__main__":
              # Write the string to the file
              yaml_file.write(s)
 
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/22/dl_multi_features.yaml", "w") as yaml_file:
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/joint_space/42/dl_multi_features.yaml", "w") as yaml_file:
              s = "dl_controller:\n"
              s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
              for i, goal in enumerate(goal_sets, start=1):
@@ -446,7 +414,7 @@ if __name__ == "__main__":
              for points in point_set:
                  file.write(str(points) + "\n")
 
-         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/22/path_configurations.txt", "w") as file:
+         with open("/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/joint_space/42/path_configurations.txt", "w") as file:
              file.write("Start Configuration:\n")
              file.write(str(start_config.tolist()) + "\n\n")
              file.write("Goal Configuration:\n")

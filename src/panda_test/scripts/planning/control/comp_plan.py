@@ -18,7 +18,8 @@ import matplotlib.pyplot as plt
 from descartes import PolygonPatch
 import torch
 from matplotlib.font_manager import FontProperties
-from pos_regression_control_train import PosRegModel
+from pos_regression_control import PosRegModel
+import pickle, csv
 
 # Parameters
 IMAGE_WIDTH, IMAGE_HEIGHT = 640, 480
@@ -437,13 +438,18 @@ if __name__ == "__main__":
     # Load configurations from JSON files
     directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_planning_kprcnn/' 
     model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b64_e400_v6.pth'    
-    kp_configurations, joint_angles, identifiers = load_matched_configurations(directory)    
     model = load_model_for_inference(model_path)    
-    num_neighbors = 25 # Number of neighbors for each node in the roadmap
-    # Build the roadmaps
-    # roadmap1, roadmap2, roadmap3, tree1, tree2, tree3 = build_lazy_roadmap(kp_configurations, joint_angles, num_neighbors, model)   
+    custom_graph_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/custom_roadmap_angle.pkl'
+    custom_tree_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/custom_tree_angle.pkl'
+    euclidean_g_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/euclidean_roadmap_angle.pkl'
+    euclidean_tree_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/euclidean_tree_angle.pkl'
+    graph_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/joint_space_roadmap_angle.pkl'
+    tree_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/joint_space_tree_angle.pkl'
+    num_neighbors = 25 
 
     roadmap1, tree1 = load_graph_and_tree(custom_graph_path, custom_tree_path) 
+    roadmap2, tree2 = load_graph_and_tree(euclidean_g_path, euclidean_tree_path) 
+    roadmap3, tree3 = load_graph_and_tree(graph_path, tree_path) 
 
     compare_edge_distances_hist(roadmap1,roadmap2,roadmap3)
     plot_common_node_pairs(roadmap1,roadmap2,roadmap3)

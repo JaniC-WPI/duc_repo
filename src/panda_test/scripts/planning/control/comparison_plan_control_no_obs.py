@@ -150,9 +150,6 @@ def build_lazy_roadmap(kp_configurations, jt_configurations, k_neighbors, model)
     return G1, G2, G3, tree1, tree2, tree3
 
 
-
-
-
 def is_collision_free(configuration1, configuration2, obstacle_center, half_diagonal, safe_distance):
     # Define the square boundary of the obstacle including the safe distance
     obstacle_boundary = geom.Polygon([

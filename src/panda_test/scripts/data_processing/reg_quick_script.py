@@ -138,6 +138,64 @@ def append_new_combined_json_to_original_set(data_dir, combine_number, repetitio
         
         print(f"New combined data appended as {new_combined_filename}")
 
+import os
+import json
+import random
+
+def corrected_combine_json_files(folder_path, combination_intervals):
+    # Get a list of all JSON files in the folder, sorted by file number
+    json_files = sorted(
+        [f for f in os.listdir(folder_path) if f.endswith("_combined.json")],
+        key=lambda x: int(x.split('_')[0])
+    )
+
+    # Initialize the file index for new combined files
+    last_file_index = int(json_files[-1].split('_')[0])
+    
+    # Iterate over starting indices and combination intervals
+    for start_index in range(len(json_files)):
+        for interval in combination_intervals:
+            # Ensure the combination does not exceed the number of files
+            if start_index + interval > len(json_files):
+                continue            
+
+            # Files to combine starting from the current index with the current interval
+            files_to_combine = json_files[start_index:start_index + interval]
+
+            # Initialize combined data structure
+            combined_data = {
+                "start_kp": None,
+                "next_kp": None,
+                "position": [0.0, 0.0, 0.0]  # Start with zeros for summing positions
+            }
+
+            for index, file_name in enumerate(files_to_combine):
+                file_path = os.path.join(folder_path, file_name)
+
+                # Load JSON data from file
+                with open(file_path, 'r') as file:
+                    data = json.load(file)
+
+                # Set start_kp from the first file and next_kp from the last file
+                if index == 0:
+                    combined_data["start_kp"] = data["start_kp"]
+                if index == len(files_to_combine) - 1:
+                    combined_data["next_kp"] = data["next_kp"]
+
+                # Sum the position values
+                combined_data["position"] = [sum(x) for x in zip(combined_data["position"], data["position"])]
+
+            # Update the file index for new file name
+            last_file_index += 1
+            new_file_name = f"{last_file_index:06}_combined.json"
+            new_file_path = os.path.join(folder_path, new_file_name)
+
+            # Write the combined data to a new JSON file
+            with open(new_file_path, 'w') as new_file:
+                json.dump(combined_data, new_file, indent=4)
+
+            print(f"Created new combined file: {new_file_name} starting from index {start_index} with interval {interval}")
+
 def clean_and_renumber_json_files(folder_path):
     # Step 1: Identify and remove invalid files
     valid_files = []
@@ -251,7 +309,11 @@ if __name__ == "__main__":
     # directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_plan_kp_phys/'
     # out_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_plan_kp_phys_combined/'
     directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/20_kp_cleaned/'
-    out_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/20_half_half_out/'
+    out_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/20_half_out/'
+    combination_intervals = [10, 20, 30, 40, 50, 60]
+
+
+    # corrected_combine_json_files(out_dir, combination_intervals)
 
     # update_velocity_json(directory)
     # combine_json_with_velocity(directory, out_dir)
@@ -281,7 +343,7 @@ if __name__ == "__main__":
                       '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/19_half_out',
                       '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/20_half_out']
 
-    destination_folder = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/regression_rearranged_half/'
+    destination_folder = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/regression_rearranged_half_corrected/'
     combine_and_renumber_folders(source_folders, destination_folder)
 
 
