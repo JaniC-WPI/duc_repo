@@ -567,12 +567,16 @@ int main(int argc, char **argv){
         // A_inv = (A.transpose()*A).inverse() * A.transpose()
         Eigen::MatrixXf Qhat_inv = (Qhat.transpose()*Qhat).inverse() * Qhat.transpose();
 
+        std::cout << "Erroc Vector before saturation" << error_vec << std::endl; 
+
         // Saturating the error
         for(int i=0; i<no_of_features; i++){
             if(abs(error_vec(i)) > saturation){
                 error_vec(i) = (error_vec(i)/abs(error_vec(i)))*saturation;
             }
         }
+
+        std::cout << "Erroc Vector after saturation" << error_vec << std::endl; 
        
         std_msgs::Float64MultiArray Qhat_feat_msg;
         Qhat_feat_msg.layout.dim.push_back(std_msgs::MultiArrayDimension());
