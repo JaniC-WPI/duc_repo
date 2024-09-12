@@ -98,16 +98,8 @@ def add_config_to_roadmap_with_obs(config, joint_angles, G, tree, k_neighbors, o
     # print("Shape of config being added:", config.shape)
     flattened_config = config.flatten().reshape(1, -1)
     _, indices = tree.query(flattened_config, k=k_neighbors)
-    connections = 0    
     node_id = len(G.nodes)
     G.add_node(node_id, configuration=config, joint_angles=joint_angles)
-    obstacle_boundary = geom.Polygon([
-        (obstacle_center[0] - (half_diagonal + safe_distance), obstacle_center[1] - (half_diagonal + safe_distance)),
-        (obstacle_center[0] + (half_diagonal + safe_distance), obstacle_center[1] - (half_diagonal + safe_distance)),
-        (obstacle_center[0] + (half_diagonal + safe_distance), obstacle_center[1] + (half_diagonal + safe_distance)),
-        (obstacle_center[0] - (half_diagonal + safe_distance), obstacle_center[1] + (half_diagonal + safe_distance)),
-    ])
-    
     for i in indices[0]:
         neighbor_config = G.nodes[i]['configuration']
         if is_collision_free(config, neighbor_config, obstacle_center, half_diagonal, safe_distance):
@@ -231,6 +223,54 @@ def save_image_with_points(image_path, output_path, output_dir, points_sets):
     # Save the final modified image
     cv2.imwrite(output_path, static_image)
 
+def save_path_with_distances_to_csv(path, filename):
+    """
+    Saves the path, distances between configurations, and joint angle distances to a CSV file.
+    
+    Args:
+    - path: List of configurations and joint angles.
+    - filename: Name of the CSV file to save the data.
+    - model: The model used for calculating custom distances between keypoints.
+    """
+    kp_distances = []
+    joint_angle_distances = []
+
+    # Calculate distances between consecutive configurations and joint angles
+    for i in range(1, len(path)):
+        current_config = path[i-1][0]
+        next_config = path[i][0]
+        current_angles = path[i-1][1]
+        next_angles = path[i][1]
+
+        # Distance between keypoint configurations
+        kp_distance = np.linalg.norm(np.array(next_config) - np.array(current_config))
+        kp_distances.append(kp_distance)
+
+        # Euclidean distance between joint angles
+        joint_angle_distance = np.linalg.norm(np.array(next_angles) - np.array(current_angles))
+        joint_angle_distances.append(joint_angle_distance)
+
+    # Write the configurations, joint angles, keypoint distances, and joint angle distances to a CSV file
+    with open(filename, 'w', newline='') as csvfile:
+        csv_writer = csv.writer(csvfile)
+        
+        # Define headers
+        headers = ['Config'] + [f'KP_{i}_x' for i in range(len(path[0][0]))] + \
+                  [f'KP_{i}_y' for i in range(len(path[0][0]))] + \
+                  ['Joint 1', 'Joint 2', 'Joint 3', 'Distance to next KP', 'Distance to next Joint Angles']
+        csv_writer.writerow(headers)
+
+        # Write each configuration and its joint angles
+        for i, (config, angles) in enumerate(path):
+            flat_config = [coord for kp in config for coord in kp]  # Flatten the keypoint configuration
+            if i < len(kp_distances):
+                row = [f'Config_{i}'] + flat_config + list(angles) + [kp_distances[i], joint_angle_distances[i]]
+            else:
+                row = [f'Config_{i}'] + flat_config + list(angles) + ['', '']  # No distance for the last configuration
+            csv_writer.writerow(row)
+
+    print(f"Path, keypoint distances, and joint angle distances successfully saved to {filename}")
+
 def create_goal_image(goal_config, output_path):
     """
     Creates an image with specified keypoints and lines connecting them.
@@ -304,19 +344,105 @@ def compute_obstacle_center(start_config, goal_config):
 
     return tuple(obstacle_center)
 
+def discard_invalid_configurations(path, half_diagonal, safe_zone=80):
+    """
+    Discards configurations where the last keypoint is too far from the second keypoint.
+    
+    Args:
+    - path: List of configurations (each configuration is a list of keypoints).
+    - half_diagonal: Half of the diagonal of the obstacle.
+    - safe_zone: Safe distance around the obstacle.
+
+    Returns:
+    - List of valid configurations.
+    """
+    max_distance = half_diagonal + safe_zone
+    valid_path = []
+    
+    for config, angles in path:
+        second_keypoint = np.array(config[1])  # Second keypoint
+        last_keypoint = np.array(config[-1])   # Last keypoint
+        
+        # Calculate the Euclidean distance between the second and last keypoint
+        distance = np.linalg.norm(last_keypoint - second_keypoint)
+        
+        # If the distance is within the acceptable limit, keep the configuration
+        if distance >= max_distance:
+            valid_path.append((config, angles))
+        else:
+            print(f"Configuration discarded: distance = {distance}, exceeds {max_distance}")
+    
+    return valid_path
+
+def discard_close_configurations(path, min_distance=15):
+    """
+    Discards intermediate configurations if the Euclidean distance between consecutive ones is less than the threshold.
+    Keeps the first configuration. If the penultimate configuration is too close to the last one, discard it.
+    
+    Args:
+    - path: List of configurations (each configuration is a list of keypoints).
+    - min_distance: Minimum distance threshold to keep configurations.
+    
+    Returns:
+    - List of valid configurations.
+    """
+    if len(path) <= 2:
+        return path  # If there are 2 or fewer configurations, return the path as it is
+    
+    valid_path = [path[0]]  # Keep the first configuration
+
+    # Iterate over the intermediate configurations (excluding the first and last)
+    for i in range(1, len(path) - 1):
+        config1 = np.array(path[i-1][0])
+        config2 = np.array(path[i][0])
+        
+        distance = np.linalg.norm(config1 - config2)
+        print("distance", distance)
+        
+        # If the distance is greater than or equal to the minimum distance, keep the configuration
+        if distance >= min_distance:
+            valid_path.append(path[i])
+        else:
+            print(f"Discarding configuration {i} due to small distance: {distance:.2f}")
+
+    # Handle the case for the last configuration
+    last_config = np.array(path[-1][0])
+    penultimate_config = np.array(path[-2][0])
+    
+    last_distance = np.linalg.norm(last_config - penultimate_config)
+    
+    # Check if the penultimate configuration should be discarded based on its distance to the last one
+    if last_distance >= min_distance:
+        valid_path.append(path[-1])  # Keep the last configuration if the distance is valid
+    else:
+        print(f"Discarding penultimate configuration due to small distance to the last config: {last_distance:.2f}")
+        valid_path[-1] = path[-1]  # Replace the penultimate configuration with the last one
+
+    return valid_path
+
+def create_joint_position(start_angles_exp, joint_positions):
+    # Replace the 2nd, 4th, and 6th positions with the start_angles_exp values
+    joint_positions[1] = start_angles_exp[0]
+    joint_positions[3] = start_angles_exp[1]
+    joint_positions[5] = start_angles_exp[2]
+
+    return joint_positions
+
 # Main execution
 if __name__ == "__main__":
     # Load configurations from JSON files
     directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_rearranged/'  
     configurations = load_keypoints_from_json(directory)
-    graph_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/euclidean_roadmap_angle.pkl'
-    tree_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/euclidean_tree_angle.pkl'
+    graph_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/euclidean_roadmap_angle_fresh.pkl'
+    tree_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/euclidean_tree_angle_fresh.pkl'
     file_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/'
-    folder_num = 1
+    folder_num = 302
 
     # Define both folder paths
     exp_folder_no_obs = os.path.join(file_path, 'euclidean', 'no_obs', str(folder_num))
     exp_folder_with_obs = os.path.join(file_path, 'euclidean', 'with_obs', str(folder_num))
+
+    original_joint_positions = [0.007195404887023141, 0, -0.008532170082858044, 0, 0.0010219530727038648, 0, 0.8118303423692146]    
 
     # Create both folders if they don't exist
     for folder in [exp_folder_no_obs, exp_folder_with_obs]:
@@ -324,41 +450,47 @@ if __name__ == "__main__":
             os.makedirs(folder)
 
     # PRM parameters
-    num_neighbors = 25       
+    num_neighbors = 25
 
     # load roadmap for no collision check
     roadmap, tree = load_graph_and_tree(graph_path, tree_path)
 
     # Define start and goal configurations as numpy arrays    
-    start_config = np.array([[250, 442], [252, 311], [195, 297], [138, 283], [146, 253], [195, 198], [243, 143], [258, 114], [295, 132]])
-    goal_config = np.array([[250, 442], [252, 311], [284, 261], [317, 210], [343, 226], [419, 219], [496, 212], [530, 207], [537, 250]])
-    
-    start_joint_angles = np.array([-1.3369750023015, -2.27698595824979, 2.08266486041948])
-    goal_joint_angles = np.array([0.55919536054343, -1.14360361657187, 1.82161384974135])
+    start_config = np.array([[250, 442], [252, 311], [211, 273], [169, 235], [188, 212], [215, 148], [244, 81], [242, 50], [280, 47]])
+    goal_config = np.array([[250, 442], [252, 311], [275, 255], [294, 200], [322, 209], [394, 194], [468, 181], [494, 158], [522, 187]])
+
+    start_angles_exp = np.array([-0.9367698173104668, -1.3382993170643418, 2.247841014682137])
+    start_joint_angles = np.array([-0.870795, -1.44845, 2.20395])
+    goal_joint_angles = np.array([0.267307, -1.38323, 2.58668])
 
     SAFE_ZONE = 40 
-    obstacle_center = (415, 140)
+    obstacle_center = (404, 117)
     # obstacle_center = compute_obstacle_center(start_config, goal_config)
     print(obstacle_center)
     half_diagonal = 20
 
+    joint_position = create_joint_position(start_angles_exp, original_joint_positions)
+
     start_node = add_config_to_roadmap_no_obs(start_config, start_joint_angles, roadmap, tree, num_neighbors)
     goal_node = add_config_to_roadmap_no_obs(goal_config, goal_joint_angles, roadmap, tree, num_neighbors)
 
-    path_no_obs = find_path(roadmap, start_node, goal_node)
+    valid_path_no_obs = find_path(roadmap, start_node, goal_node)
+    # valid_path = discard_invalid_configurations(path_no_obs, half_diagonal)
+    # valid_path_no_obs = discard_close_configurations(valid_path)
 
-    save_keypoints_and_joint_angles_to_csv(path_no_obs, os.path.join(exp_folder_no_obs, 'joint_keypoints.csv'))
+    save_keypoints_and_joint_angles_to_csv(valid_path_no_obs, os.path.join(exp_folder_no_obs, 'joint_keypoints.csv'))
+    save_path_with_distances_to_csv(valid_path_no_obs, os.path.join(exp_folder_no_obs, 'save_distances.csv'))
 
-    if path_no_obs:
+    if valid_path_no_obs:
         point_set = []
         goal_sets = []
         # Iterate through the path, excluding the first and last configuration
-        last_configuration = path_no_obs[-1][0]
+        last_configuration = valid_path_no_obs[-1][0]
         last_config = last_configuration[[3, 4, 6, 7, 8]]
 
         create_goal_image(last_config, os.path.join(exp_folder_no_obs, 'sim_published_goal_image_orig.jpg'))
 
-        for configuration in path_no_obs[0:-1]:
+        for configuration in valid_path_no_obs[0:-1]:
             # Extract the last three keypoints of each configuration
             keypoints = configuration[0]
             selected_points = keypoints[[3, 4, 6, 7, 8]]
@@ -366,8 +498,8 @@ if __name__ == "__main__":
             # Append these points to the point_set list
             point_set.append(selected_points_float)
 
-         # Iterate through the path, excluding start and goal            
-        for configuration in path_no_obs[1:]: 
+        # Iterate through the path, excluding start and goal            
+        for configuration in valid_path_no_obs[1:]: 
             keypoints = configuration[0]
             selected_points = keypoints[[3, 4, 6, 7, 8]]
             selected_points_float = [[float(point[0]), float(point[1])] for point in selected_points]
@@ -385,15 +517,15 @@ if __name__ == "__main__":
                                 os.path.join(exp_folder_no_obs, 'sim_published_goal_image.jpg'))
            
         with open(os.path.join(exp_folder_no_obs, "dl_multi_features.yaml"), "w") as yaml_file:
-             s = "dl_controller:\n"
-             s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
-             for i, goal in enumerate(goal_sets, start=1):
-                 # Convert the list of floats into a comma-separated string
-                 goal_str = ', '.join(map(str, goal))
-                 s += f"  goal_features{i}: [{goal_str}]\n"
-    
-             # Write the string to the file
-             yaml_file.write(s)
+            s = "dl_controller:\n"
+            s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
+            for i, goal in enumerate(goal_sets, start=1):
+                # Convert the list of floats into a comma-separated string
+                goal_str = ', '.join(map(str, goal))
+                s += f"  goal_features{i}: [{goal_str}]\n"
+
+            # Write the string to the file
+            yaml_file.write(s)
     
         print("Data successfully written to dl_multi_features.yaml")
 
@@ -404,10 +536,14 @@ if __name__ == "__main__":
             file.write(str(start_config.tolist()) + "\n\n")
             file.write("Goal Configuration:\n")
             file.write(str(goal_config.tolist()) + "\n\n")
+            file.write("Experiment Start Angle:\n")
+            file.write(str(start_angles_exp.tolist()) + "\n\n")
             file.write("Start Angle:\n")
             file.write(str(start_joint_angles.tolist()) + "\n\n")
             file.write("Goal Angle:\n")
             file.write(str(goal_joint_angles.tolist()) + "\n\n")
+            file.write("Original Joint position:\n")
+            file.write(str(joint_position) + "\n\n")
             file.write("Obstacle Parameters:\n")
             file.write("Safe Zone:\n")
             file.write(str(SAFE_ZONE) + "\n\n")
@@ -416,13 +552,13 @@ if __name__ == "__main__":
             file.write("Half Diagonal:\n")
             file.write(str(half_diagonal) + "\n\n")
             file.write("Path:\n")
-            for config, angles in path_no_obs:
+            for config, angles in valid_path_no_obs:
                 file.write(str(config.tolist()) + "\n")
             file.write("\nPoint Set:\n")
             for points in point_set:
                 file.write(str(points) + "\n")
 
-        print("Configurations successfully saved to configurations.txt")
+        print("Configurations successfully saved to configurations.txt")     
 
     # load fresh roadmap for collision check
     roadmap, tree = load_graph_and_tree(graph_path, tree_path)
@@ -434,6 +570,7 @@ if __name__ == "__main__":
         (obstacle_center[0] - (half_diagonal + SAFE_ZONE), obstacle_center[1] + (half_diagonal + SAFE_ZONE)), 
     ])
 
+
     # Add start and goal configurations to the roadmap
     start_node = add_config_to_roadmap_with_obs(start_config, start_joint_angles, roadmap, tree, num_neighbors, obstacle_center, half_diagonal, SAFE_ZONE)
     goal_node = add_config_to_roadmap_with_obs(goal_config, goal_joint_angles, roadmap, tree, num_neighbors, obstacle_center, half_diagonal, SAFE_ZONE) 
@@ -441,18 +578,22 @@ if __name__ == "__main__":
     validate_and_remove_invalid_edges(roadmap, obstacle_center, half_diagonal, SAFE_ZONE)
         
     # Find and print the path from start to goal
-    path_with_obs = find_path(roadmap, start_node, goal_node)
+    valid_path_with_obs = find_path(roadmap, start_node, goal_node)
+    # valid_path = discard_invalid_configurations(path_with_obs, half_diagonal)
+    # valid_path_with_obs = discard_close_configurations(path_with_obs)
 
-    save_keypoints_and_joint_angles_to_csv(path_with_obs, os.path.join(file_path, os.path.join(exp_folder_with_obs, 'joint_keypoints.csv')))
+    save_keypoints_and_joint_angles_to_csv(valid_path_with_obs, os.path.join(file_path, os.path.join(exp_folder_with_obs, 'joint_keypoints.csv')))
+    save_path_with_distances_to_csv(valid_path_no_obs, os.path.join(exp_folder_with_obs, 'save_distances.csv'))
 
-    if path_with_obs:
+
+    if valid_path_with_obs:
         point_set = []
         goal_sets = []
-        last_configuration = path_no_obs[-1][0]
+        last_configuration = valid_path_with_obs[-1][0]
         last_config = last_configuration[[3, 4, 6, 7, 8]]
         create_goal_image(last_config, os.path.join(exp_folder_with_obs, 'sim_published_goal_image_orig.jpg'))
         # Iterate through the path, excluding the first and last configuration
-        for configuration in path_with_obs[0:-1]:
+        for configuration in valid_path_with_obs[0:-1]:
            # Extract the last three keypoints of each configuration
            keypoints = configuration[0]
            selected_points = keypoints[[3, 4, 6, 7, 8]]
@@ -460,7 +601,7 @@ if __name__ == "__main__":
            # Append these points to the point_set list
            point_set.append(selected_points_float)
         # Iterate through the path, excluding start and goal            
-        for configuration in path_with_obs[1:]: 
+        for configuration in valid_path_with_obs[1:]: 
            keypoints = configuration[0]
            selected_points = keypoints[[3, 4, 6, 7, 8]]
            selected_points_float = [[float(point[0]), float(point[1])] for point in selected_points]
@@ -468,7 +609,6 @@ if __name__ == "__main__":
            for point in selected_points_float:
                goal_features.extend(point)  # Add x, y as a pair
            goal_sets.append(goal_features)
-
         save_image_with_points(os.path.join(exp_folder_with_obs, 'sim_published_goal_image_orig.jpg'), \
                             os.path.join(exp_folder_with_obs, 'sim_published_goal_image_all.jpg'), \
                                 os.path.join(exp_folder_with_obs, 'path'), point_set)
@@ -476,7 +616,6 @@ if __name__ == "__main__":
         draw_green_rectangle(os.path.join(exp_folder_with_obs, 'sim_published_goal_image_all.jpg'), \
                           obstacle_center, half_diagonal, \
                             os.path.join(exp_folder_with_obs, 'sim_published_goal_image.jpg'))
-        
         with open(os.path.join(exp_folder_with_obs, "dl_multi_features.yaml"), "w") as yaml_file:
             s = "dl_controller:\n"
             s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
@@ -491,12 +630,16 @@ if __name__ == "__main__":
         with open(os.path.join(exp_folder_with_obs, "path_configurations_with_obs.txt"), "w") as file:
             file.write("Start Configuration:\n")
             file.write(str(start_config.tolist()) + "\n\n")
-            file.write("Goal Configuration:\n")
+            file.write("Goal Configuration:\n")            
             file.write(str(goal_config.tolist()) + "\n\n")
+            file.write("Experiment Start Angle:\n")
+            file.write(str(start_angles_exp.tolist()) + "\n\n")
             file.write("Start Angle:\n")
             file.write(str(start_joint_angles.tolist()) + "\n\n")
             file.write("Goal Angle:\n")
             file.write(str(goal_joint_angles.tolist()) + "\n\n")
+            file.write("Original Joint position:\n")
+            file.write(str(joint_position) + "\n\n")
             file.write("Obstacle Parameters:\n")
             file.write("Safe Zone:\n")
             file.write(str(SAFE_ZONE) + "\n\n")
@@ -505,9 +648,10 @@ if __name__ == "__main__":
             file.write("Half Diagonal:\n")
             file.write(str(half_diagonal) + "\n\n")
             file.write("Path:\n")
-            for config, angles in path_with_obs:
+            for config, angles in valid_path_with_obs:
                 file.write(str(config.tolist()) + "\n")
             file.write("\nPoint Set:\n")
             for points in point_set:
                 file.write(str(points) + "\n")
         print("Configurations successfully saved to configurations.txt")
+

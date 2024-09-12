@@ -487,28 +487,43 @@ class VideoInference:
             output = model(inf_img)
         inf_img = (inf_img[0].permute(1,2,0).detach().cpu().numpy() * 255).astype(np.uint8)
         scores = output[0]['scores'].detach().cpu().numpy()
-        high_scores_idxs = np.where(scores >= 0.9)[0].tolist() # Indexes of boxes with scores > 0.7
+        high_scores_idxs = np.where(scores > 0.7)[0].tolist() # Indexes of boxes with scores > 0.7
         post_nms_idxs = torchvision.ops.nms(output[0]['boxes'][high_scores_idxs], \
             output[0]['scores'][high_scores_idxs], 0.3).cpu().numpy() # Indexes of boxes left after applying NMS (iou_threshold=0.3)
         # Below, in output[0]['keypoints'][high_scores_idxs][post_nms_idxs] and output[0]['boxes'][high_scores_idxs][post_nms_idxs]
         # Firstly, we choose only those objects, which have score above predefined threshold. This is done with choosing elements with [high_scores_idxs] indexes
         # Secondly, we choose only those objects, which are left after NMS is applied. This is done with choosing elements with [post_nms_idxs] indexes
+        confidence = output[0]['scores'][high_scores_idxs].detach().cpu().numpy()
+        labels = output[0]['labels'][high_scores_idxs].detach().cpu().numpy()
         keypoints = []
-        key_points = []
-        for kps in output[0]['keypoints'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy():
-            keypoints.append(list(map(int, kps[0,0:2])))
-            # for kp in kps:
-                # print(kp)
-            key_points.append([list(map(int, kp[:2])) for kp in kps])
-        # print(np.array(keypoints).shape)                
-        # if len(keypoints) == 6:
-        #     keypoints.pop(2)
-        labels = []
-        for label in output[0]['labels'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy():
-            labels.append(label)
-        
-        keypoints_all = [x for _,x in sorted(zip(labels,keypoints))]
+        for idx, kps in enumerate(output[0]['keypoints'][high_scores_idxs].detach().cpu().numpy()):
+            keypoints.append(list(map(int, kps[0, 0:2])) + [confidence[idx]] + [labels[idx]])
 
+        keypoints = [torch.tensor(kp, dtype=torch.float32).to(device) if not isinstance(kp, torch.Tensor) else kp for kp in keypoints]
+        keypoints = torch.stack(keypoints).to(device)
+        
+        unique_labels, best_keypoint_indices = torch.unique(keypoints[:, 3], return_inverse=True)
+        best_scores, best_indices = torch.max(keypoints[:, 2].unsqueeze(0) * (best_keypoint_indices == torch.arange(len(unique_labels)).unsqueeze(1).cuda()), dim=1)
+        keypoints = keypoints[best_indices]
+        keypoints_list = keypoints.tolist()
+        # print(keypoints_list)
+
+        # keypoints_list is the list of keypoints
+        keypoints_all = [[int(kp[0]), int(kp[1])] for kp in keypoints_list]
+
+        # print(keypoints_all)
+
+
+        #     # for kp in kps:
+        #         # print(kp)
+        #     key_points.append([list(map(int, kp[:2])) for kp in kps])
+        # # print(np.array(keypoints).shape)                
+        # # if len(keypoints) == 6:
+        # #     keypoints.pop(2)
+        # labels = []
+        # for label in output[0]['labels'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy():
+        #     labels.append(label)
+        
         # unique_labels = set(labels)
         # best_indices = []
         # for ul in unique_labels:

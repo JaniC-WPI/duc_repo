@@ -110,6 +110,7 @@ def visCallback(msg):
 
     if capture_images:
         fname = "frame_{:04d}.png".format(itr)
+        cv_img = cv2.putText(cv_img, str(itr), (500, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0,255,0), 1, cv2.LINE_AA)
         cv2.imwrite(fname, cv_img)
         images_captured.append(fname)
         if status == 2: # Add images to the status 2 list only if currently in status 2
