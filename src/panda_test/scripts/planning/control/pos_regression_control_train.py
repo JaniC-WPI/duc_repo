@@ -153,7 +153,7 @@ def plot_and_save_train_loss_metrics(train_mse_loss_history, train_rmse_loss_his
     plt.grid(True)
     
     plt.tight_layout()
-    plt.savefig(f'/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/loss_plots/train_metrics_b{b_size}_e{num_epochs}_v{v}.png')
+    plt.savefig(f'/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/loss_plots_half/train_metrics_b{b_size}_e{num_epochs}_v{v}.png')
     # plt.show()
 
 def plot_and_save_val_loss_metrics(val_mse_loss_history, val_rmse_loss_history, val_mae_loss_history, b_size, num_epochs, v):
@@ -184,16 +184,16 @@ def plot_and_save_val_loss_metrics(val_mse_loss_history, val_rmse_loss_history, 
     plt.grid(True)
     
     plt.tight_layout()
-    plt.savefig(f'/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/loss_plots/val_metrics_b{b_size}_e{num_epochs}_v{v}.png')
+    plt.savefig(f'/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/loss_plots_half/val_metrics_b{b_size}_e{num_epochs}_v{v}.png')
     # plt.show()
 
 # # Initialize dataset and data loader
 # # to generalize home directory. User can change their parent path without entering their home directory
 epoch_list = [400,500,600]
-batch_sizes = [32,64,128]
-v = 11
+batch_sizes = [128]
+v = 31
 # parent_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/'
-root_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/regression_rearranged/'
+root_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/regression_rearranged_half_corrected/'
 print(root_dir)
 split_folder_path = train_test_split(root_dir)
 
@@ -289,7 +289,7 @@ for b_size in batch_sizes:
 
         df_summary = pd.DataFrame(summary_results)
 
-        df_summary.to_csv('/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/loss_plots/summary_results.csv', index=False)
+        df_summary.to_csv('/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/loss_plots_new/summary_results.csv', index=False)
 
 
         plot_and_save_train_loss_metrics(train_mse_loss_history, train_rmse_loss_history, train_mae_loss_history, b_size, num_epochs, v)
