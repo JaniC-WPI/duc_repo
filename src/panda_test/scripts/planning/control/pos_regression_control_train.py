@@ -17,6 +17,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 import pandas as pd
+from sklearn.metrics import r2_score
+
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(device)
@@ -108,6 +110,8 @@ def evaluate_model(model, data_loader, criterion):
     total_mse = 0
     total_mae = 0
     total_count = 0
+    all_preds = []
+    all_targets = []
 
     with torch.no_grad():
         for start_kp, next_kp, position in data_loader:
@@ -119,81 +123,171 @@ def evaluate_model(model, data_loader, criterion):
             total_mae += mae_loss.item()
             total_count += position.size(0)
 
+            all_preds.append(output.cpu().numpy())
+            all_targets.append(position.cpu().numpy())
+
     avg_mse = total_mse / total_count
     avg_rmse = np.sqrt(avg_mse)
     avg_mae = total_mae / total_count
 
-    return avg_mse, avg_rmse, avg_mae
+    # Flatten predictions and targets to calculate R²
+    all_preds = np.vstack(all_preds)
+    all_targets = np.vstack(all_targets)
+    r2 = r2_score(all_targets, all_preds)
 
-def plot_and_save_train_loss_metrics(train_mse_loss_history, train_rmse_loss_history, train_mae_loss_history, b_size, num_epochs, v):
-    epochs = range(1, len(train_mse_loss_history) + 1)
-    plt.figure(figsize=(48, 8))
-    plt.subplot(3, 1, 1)
-    plt.plot(epochs, train_mse_loss_history, label='Training MSE')
-    plt.title(f'Training MSE\nBatch: {b_size}, Epochs: {num_epochs}')
+    return avg_mse, avg_rmse, avg_mae, r2
+
+
+def save_loss_data_to_csv(train_mse, train_rmse, train_mae, train_r2, val_mse, val_rmse, val_mae, val_r2, b_size, num_epochs, v):
+    df = pd.DataFrame({
+        'Epoch': range(1, len(train_mse) + 1),
+        'Training MSE': train_mse,
+        'Training RMSE': train_rmse,
+        'Training MAE': train_mae,
+        'Training R2': train_r2,
+        'Validation MSE': val_mse,
+        'Validation RMSE': val_rmse,
+        'Validation MAE': val_mae,
+        'Validation R2': val_r2
+    })
+    file_path = f'/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/loss_plots_recorrected/metrics_b{b_size}_e{num_epochs}_v{v}.csv'
+    df.to_csv(file_path, index=False)
+    print(f"Loss data saved to {file_path}")
+
+def create_summary(train_mse, train_rmse, train_mae, train_r2, val_mse, val_rmse, val_mae, val_r2, b_size, num_epochs):
+    summary = {
+        'Batch Size': b_size,
+        'Epochs': num_epochs,
+        'Average Training MSE': np.mean(train_mse),
+        'Final Training MSE': train_mse[-1],
+        'Average Validation MSE': np.mean(val_mse),
+        'Final Validation MSE': val_mse[-1],
+        'Average Training RMSE': np.mean(train_rmse),
+        'Final Training RMSE': train_rmse[-1],
+        'Average Validation RMSE': np.mean(val_rmse),
+        'Final Validation RMSE': val_rmse[-1],
+        'Average Training MAE': np.mean(train_mae),
+        'Final Training MAE': train_mae[-1],
+        'Average Validation MAE': np.mean(val_mae),
+        'Final Validation MAE': val_mae[-1],
+        'Average Training R2': np.mean(train_r2),
+        'Final Training R2': train_r2[-1],
+        'Average Validation R2': np.mean(val_r2),
+        'Final Validation R2': val_r2[-1]
+    }
+    return summary
+
+def plot_loss_metrics(train_mse, train_rmse, train_mae, train_r2, val_mse, val_rmse, val_mae, val_r2, b_size, num_epochs, v):
+    epochs = range(1, len(train_mse) + 1)
+    plt.figure(figsize=(15, 5))
+    plt.subplot(1, 4, 1)
+    plt.plot(epochs, train_mse, label='Training MSE')
+    plt.plot(epochs, val_mse, label='Validation MSE', linestyle='dashed')
     plt.xlabel('Epochs')
     plt.ylabel('MSE')
     plt.legend()
     plt.grid(True)
     
-    plt.subplot(3, 1, 2)
-    plt.plot(epochs, train_rmse_loss_history, label='Training RMSE', color='orange')
-    plt.title(f'Training RMSE\nBatch: {b_size}, Epochs: {num_epochs}')
+    plt.subplot(1, 4, 2)
+    plt.plot(epochs, train_rmse, label='Training RMSE', color='orange')
+    plt.plot(epochs, val_rmse, label='Validation RMSE', linestyle='dashed', color='orange')
     plt.xlabel('Epochs')
     plt.ylabel('RMSE')
     plt.legend()
     plt.grid(True)
     
-    plt.subplot(3, 1, 3)
-    plt.plot(epochs, train_mae_loss_history, label='Training MAE', color='green')
-    plt.title(f'Training MAE\nBatch: {b_size}, Epochs: {num_epochs}')
+    plt.subplot(1, 4, 3)
+    plt.plot(epochs, train_mae, label='Training MAE', color='green')
+    plt.plot(epochs, val_mae, label='Validation MAE', linestyle='dashed', color='green')
     plt.xlabel('Epochs')
     plt.ylabel('MAE')
     plt.legend()
     plt.grid(True)
-    
-    plt.tight_layout()
-    plt.savefig(f'/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/loss_plots_half/train_metrics_b{b_size}_e{num_epochs}_v{v}.png')
-    # plt.show()
 
-def plot_and_save_val_loss_metrics(val_mse_loss_history, val_rmse_loss_history, val_mae_loss_history, b_size, num_epochs, v):
-    epochs = range(1, len(val_mse_loss_history) + 1)
-    plt.figure(figsize=(48, 8))
-    plt.subplot(3, 1, 1)
-    plt.plot(epochs, val_mse_loss_history, label='Validation MSE')
-    plt.title(f'Validation MSE\nBatch: {b_size}, Epochs: {num_epochs}')
+    plt.subplot(1, 4, 4)
+    plt.plot(epochs, train_r2, label='Training R2', color='blue')
+    plt.plot(epochs, val_r2, label='Validation R2', linestyle='dashed', color='blue')
     plt.xlabel('Epochs')
-    plt.ylabel('MSE')
+    plt.ylabel('R2_Score')
     plt.legend()
     plt.grid(True)
-    
-    plt.subplot(3, 1, 2)
-    plt.plot(epochs, val_rmse_loss_history, label='Validation RMSE', color='orange')
-    plt.title(f'Validation RMSE\nBatch: {b_size}, Epochs: {num_epochs}')
-    plt.xlabel('Epochs')
-    plt.ylabel('RMSE')
-    plt.legend()
-    plt.grid(True)
-    
-    plt.subplot(3, 1, 3)
-    plt.plot(epochs, val_mae_loss_history, label='Validation MAE', color='green')
-    plt.title(f'Validation MAE\nBatch: {b_size}, Epochs: {num_epochs}')
-    plt.xlabel('Epochs')
-    plt.ylabel('MAE')
-    plt.legend()
-    plt.grid(True)
+
+
     
     plt.tight_layout()
-    plt.savefig(f'/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/loss_plots_half/val_metrics_b{b_size}_e{num_epochs}_v{v}.png')
-    # plt.show()
+    plt.savefig(f'/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/loss_plots_recorrected/metrics_b{b_size}_e{num_epochs}_v{v}.png')
+    print(f"Plot saved for batch size {b_size} and {num_epochs} epochs.")
+
+# def plot_and_save_train_loss_metrics(train_mse_loss_history, train_rmse_loss_history, train_mae_loss_history, b_size, num_epochs, v):
+#     epochs = range(1, len(train_mse_loss_history) + 1)
+#     plt.figure(figsize=(48, 8))
+#     plt.subplot(3, 1, 1)
+#     plt.plot(epochs, train_mse_loss_history, label='Training MSE')
+#     plt.title(f'Training MSE\nBatch: {b_size}, Epochs: {num_epochs}')
+#     plt.xlabel('Epochs')
+#     plt.ylabel('MSE')
+#     plt.legend()
+#     plt.grid(True)
+    
+#     plt.subplot(3, 1, 2)
+#     plt.plot(epochs, train_rmse_loss_history, label='Training RMSE', color='orange')
+#     plt.title(f'Training RMSE\nBatch: {b_size}, Epochs: {num_epochs}')
+#     plt.xlabel('Epochs')
+#     plt.ylabel('RMSE')
+#     plt.legend()
+#     plt.grid(True)
+    
+#     plt.subplot(3, 1, 3)
+#     plt.plot(epochs, train_mae_loss_history, label='Training MAE', color='green')
+#     plt.title(f'Training MAE\nBatch: {b_size}, Epochs: {num_epochs}')
+#     plt.xlabel('Epochs')
+#     plt.ylabel('MAE')
+#     plt.legend()
+#     plt.grid(True)
+    
+#     plt.tight_layout()
+#     plt.savefig(f'/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/loss_plots_half/train_metrics_b{b_size}_e{num_epochs}_v{v}.png')
+#     # plt.show()
+
+
+# def plot_and_save_val_loss_metrics(val_mse_loss_history, val_rmse_loss_history, val_mae_loss_history, b_size, num_epochs, v):
+#     epochs = range(1, len(val_mse_loss_history) + 1)
+#     plt.figure(figsize=(48, 8))
+#     plt.subplot(3, 1, 1)
+#     plt.plot(epochs, val_mse_loss_history, label='Validation MSE')
+#     plt.title(f'Validation MSE\nBatch: {b_size}, Epochs: {num_epochs}')
+#     plt.xlabel('Epochs')
+#     plt.ylabel('MSE')
+#     plt.legend()
+#     plt.grid(True)
+    
+#     plt.subplot(3, 1, 2)
+#     plt.plot(epochs, val_rmse_loss_history, label='Validation RMSE', color='orange')
+#     plt.title(f'Validation RMSE\nBatch: {b_size}, Epochs: {num_epochs}')
+#     plt.xlabel('Epochs')
+#     plt.ylabel('RMSE')
+#     plt.legend()
+#     plt.grid(True)
+    
+#     plt.subplot(3, 1, 3)
+#     plt.plot(epochs, val_mae_loss_history, label='Validation MAE', color='green')
+#     plt.title(f'Validation MAE\nBatch: {b_size}, Epochs: {num_epochs}')
+#     plt.xlabel('Epochs')
+#     plt.ylabel('MAE')
+#     plt.legend()
+#     plt.grid(True)
+    
+#     plt.tight_layout()
+#     plt.savefig(f'/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/loss_plots_half/val_metrics_b{b_size}_e{num_epochs}_v{v}.png')
+#     # plt.show()
 
 # # Initialize dataset and data loader
 # # to generalize home directory. User can change their parent path without entering their home directory
 epoch_list = [400,500,600]
 batch_sizes = [128]
-v = 31
+v = 32
 # parent_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/'
-root_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/regression_rearranged_half_corrected/'
+root_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/regression_rearranged_all_double_corrected/'
 print(root_dir)
 split_folder_path = train_test_split(root_dir)
 
@@ -221,9 +315,11 @@ for b_size in batch_sizes:
         train_mse_loss_history = []
         train_rmse_loss_history = []
         train_mae_loss_history = []
+        train_r2_history = []
         val_mse_loss_history = []
         val_rmse_loss_history = []
         val_mae_loss_history = []
+        val_r2_history = []
 
         for epoch in range(num_epochs):
             model.train()
@@ -239,10 +335,11 @@ for b_size in batch_sizes:
                 optimizer.step()
     
             # Evaluate on the training set
-            train_mse, train_rmse, train_mae = evaluate_model(model, train_loader, criterion)
+            train_mse, train_rmse, train_mae, train_r2 = evaluate_model(model, train_loader, criterion)
             train_mse_loss_history.append(train_mse)
             train_rmse_loss_history.append(train_rmse)
             train_mae_loss_history.append(train_mae)
+            train_r2_history.append(train_r2)
         
             # Validation Loop
             with torch.no_grad():
@@ -253,47 +350,38 @@ for b_size in batch_sizes:
                     val_loss += loss.item()
                 
                 # Evaluate on the validation set
-                val_mse, val_rmse, val_mae = evaluate_model(model, val_loader, criterion)
+                val_mse, val_rmse, val_mae, val_r2 = evaluate_model(model, val_loader, criterion)
                 val_mse_loss_history.append(val_mse)
                 val_rmse_loss_history.append(val_rmse)
                 val_mae_loss_history.append(val_mae)
+                val_r2_history.append(val_r2)
         
             # avg_val_loss = val_loss / len(val_loader)
             # val_loss_history.append(avg_val_loss)
                 # print("output", output)
             # print(f'Epoch {epoch+1}, Loss: {loss.item()}')
-            print(f'Epoch {epoch+1}, Training MSE: {train_mse:.4f}, RMSE: {train_rmse:.4f}, MAE: {train_mae:.4f}; Validation MSE: {val_mse:.4f}, RMSE: {val_rmse:.4f}, MAE: {val_mae:.4f}')
+            print(f'Epoch {epoch+1}, Training MSE: {train_mse:.4f}, RMSE: {train_rmse:.4f}, MAE: {train_mae:.4f}, R2: {train_r2}; Validation MSE: {val_mse:.4f}, RMSE: {val_rmse:.4f}, MAE: {val_mae:.4f}, R2: {val_r2}')
 
-        summary = {
-                'Batch Size': b_size,
-                'Epochs': num_epochs,
-                'Average Training MSE': np.mean(train_mse_loss_history),
-                'Final Training MSE': train_mse_loss_history[-1],
-                'Average Validation MSE': np.mean(val_mse_loss_history),
-                'Final Validation MSE': val_mse_loss_history[-1],
-                'Average Training RMSE': np.mean(train_rmse_loss_history),
-                'Final Training RMSE': train_rmse_loss_history[-1],
-                'Average Validation RMSE': np.mean(val_rmse_loss_history),
-                'Final Validation RMSE': val_rmse_loss_history[-1],
-                'Average Training MAE': np.mean(train_mae_loss_history),
-                'Final Training MAE': train_mae_loss_history[-1],
-                'Average Validation MAE': np.mean(val_mae_loss_history),
-                'Final Validation MAE': val_mae_loss_history[-1]
-            }
-        
+        # Save detailed loss data and plot
+        save_loss_data_to_csv(train_mse_loss_history, train_rmse_loss_history, train_mae_loss_history, train_r2_history,
+                              val_mse_loss_history, val_rmse_loss_history, val_mae_loss_history, val_r2_history, b_size, num_epochs, v)
+        plot_loss_metrics(train_mse_loss_history, train_rmse_loss_history, train_mae_loss_history, train_r2_history,
+                          val_mse_loss_history, val_rmse_loss_history, val_mae_loss_history, val_r2_history, b_size, num_epochs, v)
+
+        # Create and save summary
+        summary = create_summary(train_mse_loss_history, train_rmse_loss_history, train_mae_loss_history, train_r2_history,
+                                 val_mse_loss_history, val_rmse_loss_history, val_mae_loss_history, val_r2_history, b_size, num_epochs)
         summary_results.append(summary)
-        
-        # # Save the trained model
+        # Save the trained model
         model_save_path = f'/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b{b_size}_e{num_epochs}_v{v}.pth'
         torch.save(model.state_dict(), model_save_path)
+        print(f"Model saved to {model_save_path}")
 
-        df_summary = pd.DataFrame(summary_results)
+        v += 1  # Increment version for saving files
 
-        df_summary.to_csv('/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/loss_plots_new/summary_results.csv', index=False)
-
-
-        plot_and_save_train_loss_metrics(train_mse_loss_history, train_rmse_loss_history, train_mae_loss_history, b_size, num_epochs, v)
-        plot_and_save_val_loss_metrics(val_mse_loss_history, val_rmse_loss_history, val_mae_loss_history, b_size, num_epochs, v)
-
-        v += 1
+# Save summary to CSV
+df_summary = pd.DataFrame(summary_results)
+summary_path = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/loss_plots_recorrected/summary_results.csv'
+df_summary.to_csv(summary_path, index=False)
+print(f"Summary saved to {summary_path}")
 

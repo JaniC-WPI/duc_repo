@@ -43,6 +43,10 @@ def combine_json_with_velocity(data_dir, out_dir):
         current_file = keypoint_files[i]
         next_file = keypoint_files[i + 1]
         velocity_file = next_file.replace('.json', '_vel.json')
+        # velocity_file = current_file.replace('.json', '_vel.json')
+
+        joint_angles_file_1 = current_file.replace('.json', '_joint_angles.json')
+        joint_angles_file_2 = next_file.replace('.json', '_joint_angles.json')
 
         # Read the current keypoints JSON file
         with open(os.path.join(data_dir, current_file), 'r') as file:
@@ -63,11 +67,26 @@ def combine_json_with_velocity(data_dir, out_dir):
         
         position = [v * time for v in velocity]
 
+        # Read the joint angles from the corresponding files
+        with open(os.path.join(data_dir, joint_angles_file_1), 'r') as file:
+            joint_angles_data_1 = json.load(file)
+        with open(os.path.join(data_dir, joint_angles_file_2), 'r') as file:
+            joint_angles_data_2 = json.load(file)
+
+        # Extract the joint angles lists
+        joint_angles_1 = joint_angles_data_1['joint_angles']
+        joint_angles_2 = joint_angles_data_2['joint_angles']
+
+        # Calculate actual joint displacement
+        joint_displacement = [j2 - j1 for j1, j2 in zip(joint_angles_1, joint_angles_2)]
+
+
         # Combine the data
         combined_data = {
             "start_kp": start_kp,
             "next_kp": next_kp,
-            "position": position
+            "position": position,
+            "actual_joint_displacement": joint_displacement
         }
 
         # Save the combined data to a new JSON file
@@ -81,7 +100,7 @@ import os
 import json
 import random
 
-def append_new_combined_json_to_original_set(data_dir, combine_number, repetitions, last_original_file_num):
+def append_all_combined_json_to_original_set(data_dir, combine_number, repetitions, last_original_file_num):
     original_combined_files = [f for f in sorted(os.listdir(data_dir)) if f.endswith('_combined.json') and int(f.split('_')[0]) <= last_original_file_num]
 
     if len(original_combined_files) < 2:
@@ -142,7 +161,7 @@ import os
 import json
 import random
 
-def corrected_combine_json_files(folder_path, combination_intervals):
+def corrected_combine_json_files(folder_path, combination_intervals, joint_angles_dir):
     # Get a list of all JSON files in the folder, sorted by file number
     json_files = sorted(
         [f for f in os.listdir(folder_path) if f.endswith("_combined.json")],
@@ -162,11 +181,14 @@ def corrected_combine_json_files(folder_path, combination_intervals):
             # Files to combine starting from the current index with the current interval
             files_to_combine = json_files[start_index:start_index + interval]
 
+            print("files to combine", files_to_combine)
+
             # Initialize combined data structure
             combined_data = {
                 "start_kp": None,
                 "next_kp": None,
-                "position": [0.0, 0.0, 0.0]  # Start with zeros for summing positions
+                "position": [0.0, 0.0, 0.0],  # Start with zeros for summing positions
+                "actual_joint_displacement": None 
             }
 
             for index, file_name in enumerate(files_to_combine):
@@ -184,6 +206,44 @@ def corrected_combine_json_files(folder_path, combination_intervals):
 
                 # Sum the position values
                 combined_data["position"] = [sum(x) for x in zip(combined_data["position"], data["position"])]
+
+            # Load joint angles to calculate the actual joint displacement
+            first_joint_angles_file = f"{files_to_combine[0].split('_')[0]}_joint_angles.json"
+            penultimate_joint_angles_file = f"{files_to_combine[-1].split('_')[0]}_joint_angles.json"
+            base_name = penultimate_joint_angles_file.split('_joint_angles.json')[0]
+            # Convert it to an integer and increment by 1
+            last_number = int(base_name.lstrip('0')) + 1
+            last_joint_angles_file = f"{str(last_number).zfill(6)}_joint_angles.json"
+            print("last to last joint to combine", penultimate_joint_angles_file)
+            first_joint_angles_path = os.path.join(joint_angles_dir, first_joint_angles_file)
+            last_joint_angles_path = os.path.join(joint_angles_dir, last_joint_angles_file)
+
+            print(os.path.exists(last_joint_angles_path))
+
+            # if not os.path.exists(last_joint_angles_path):
+            #     penultimate_joint_angles_file = f"{files_to_combine[-2].split('_')[0]}_joint_angles.json"
+            # #     last_joint_angles_file = f"{files_to_combine[-2].split('_')[0]}_joint_angles.json"
+
+            #     last_joint_angles_path = os.path.join(joint_angles_dir, last_joint_angles_file)
+
+            print("First joint to combine", first_joint_angles_file)
+            print("Last joint to combine", last_joint_angles_file)
+
+            # Read the joint angles from the first and last files
+            with open(first_joint_angles_path, 'r') as file:
+                joint_angles_data_1 = json.load(file)
+            with open(last_joint_angles_path, 'r') as file:
+                joint_angles_data_2 = json.load(file)
+
+            # Extract the joint angles lists
+            joint_angles_1 = joint_angles_data_1['joint_angles']
+            joint_angles_2 = joint_angles_data_2['joint_angles']
+
+            # Calculate the actual joint displacement
+            joint_displacement = [j2 - j1 for j1, j2 in zip(joint_angles_1, joint_angles_2)]
+
+            # Set the calculated actual joint displacement in the combined data
+            combined_data["actual_joint_displacement"] = joint_displacement
 
             # Update the file index for new file name
             last_file_index += 1
@@ -258,92 +318,111 @@ def combine_and_renumber_folders(source_folders, dest_folder):
         
         print(f"Copied {file_path} to {new_file_path}")
 
+def is_valid_data(data, file_name):
+    # Check if 'start_kp' and 'next_kp' each have 9 keypoints
+    if len(data.get('start_kp', [])) != 9:
+        print(f"Discarding {file_name}: 'start_kp' does not have 9 keypoints.")
+        return False
+    if len(data.get('next_kp', [])) != 9:
+        print(f"Discarding {file_name}: 'next_kp' does not have 9 keypoints.")
+        return False
     
-
-
-# def combine_json_with_velocity(folder_path, output_path):
-#     # Helper function to sort file names numerically
-#     if not os.path.exists(output_path):
-#         os.makedirs(output_path)
-#     def sort_numerically(file_name):
-#         parts = file_name.split('.')[0]
-#         base, number = parts[:-3], parts[-3:]
-#         return int(number)
-
-#     # Find all json files that don't end with '_vel.json'
-#     json_files = [f for f in sorted(os.listdir(folder_path), key=sort_numerically) if f.endswith('.json') and not f.endswith('_vel.json')]
+    # Check if actual_joint_displacement is not all zero
+    actual_joint_displacement = data.get('actual_joint_displacement', [])
+    if actual_joint_displacement and all(abs(i) < 1e-10 for i in actual_joint_displacement):
+        print(f"Discarding {file_name}: 'actual_joint_displacement' is all zeros.")
+        return False
     
-#     for i in range(len(json_files) - 1):
-#         # Construct file names
-#         start_file = os.path.join(folder_path, json_files[i])
-#         next_file = os.path.join(folder_path, json_files[i + 1])
-#         vel_file = os.path.join(folder_path, json_files[i].replace('.json', '_vel.json'))
-        
-#         # Read start, next, and velocity JSON files
-#         with open(start_file, 'r') as f:
-#             start_data = json.load(f)
-#         with open(next_file, 'r') as f:
-#             next_data = json.load(f)
-#         with open(vel_file, 'r') as f:
-#             vel_data = json.load(f)
-        
-#         # Calculate position (assuming velocity is a vector and time_rate is 1/30)
-#         position = [v * (1/30) for v in vel_data.get('velocity', [])]
-        
-#         # Combine into a new structure
-#         combined_data = {
-#             'start_kp': start_data.get('keypoints', []),
-#             'next_kp': next_data.get('keypoints', []),
-#             'position': position
-#         }
-        
-#         # Write combined data to a new JSON file
-#         combined_file_name = os.path.join(output_path, f"{json_files[i].split('.')[0]}_combined.json")
-#         with open(combined_file_name, 'w') as f:
-#             json.dump(combined_data, f, indent=4)
+    # Check if position is not all zero
+    position = data.get('position', [])
+    if position and all(abs(i) < 1e-10 for i in position):
+        print(f"Discarding {file_name}: 'position' is all zeros.")
+        return False
     
-#     print("Combination complete.")
+    return True
+
+def process_json_files(folder):
+    valid_files = []
+    invalid_folder = os.path.join(folder, "invalid_files")
+    os.makedirs(invalid_folder, exist_ok=True)
+    
+    # Get list of all files in the folder
+    for file_name in sorted(os.listdir(folder)):
+        if file_name.endswith("_combined.json"):
+            file_path = os.path.join(folder, file_name)
+            try:
+                with open(file_path, 'r') as json_file:
+                    data = json.load(json_file)
+                
+                # Check if the data is valid
+                if is_valid_data(data, file_name):
+                    valid_files.append(file_name)
+                else:
+                    # Move invalid file to invalid folder
+                    print(f"Moving {file_name} to invalid_files folder.")
+                    shutil.move(file_path, os.path.join(invalid_folder, file_name))
+            except Exception as e:
+                print(f"Error processing file {file_name}: {e}")
+    
+    # Renumber and rename valid files
+    for idx, valid_file in enumerate(valid_files):
+        old_path = os.path.join(folder, valid_file)
+        new_name = f"{str(idx).zfill(6)}_combined.json"
+        new_path = os.path.join(folder, new_name)
+        print(f"Renaming {valid_file} to {new_name}")
+        os.rename(old_path, new_path)
+    
+    # Remove the invalid_files folder if it exists and contains files
+    if os.path.exists(invalid_folder):
+        if not os.listdir(invalid_folder):
+            os.rmdir(invalid_folder)  # Remove only if it's empty
+            print("Invalid folder was empty and removed.")
+        else:
+            shutil.rmtree(invalid_folder)  # Force remove folder and its contents
+            print("Invalid folder and its contents removed.")
 
 if __name__ == "__main__":
     # Load configurations from JSON files
     # directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_plan_kp_phys/'
     # out_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/path_plan_kp_phys_combined/'
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/20_kp_cleaned/'
-    out_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/20_half_out/'
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/20_kp/'
+    out_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/20_all_out/'
     combination_intervals = [10, 20, 30, 40, 50, 60]
+    # combination_intervals = [5]
 
-
-    # corrected_combine_json_files(out_dir, combination_intervals)
+    # combine_json_with_velocity(directory, out_dir)
+    # process_json_files(out_dir)
+    # corrected_combine_json_files(out_dir, combination_intervals, directory)
 
     # update_velocity_json(directory)
-    # combine_json_with_velocity(directory, out_dir)
-    # append_new_combined_json_to_original_set(out_dir, 100, 1000, 158)
+    
+    # append_all_combined_json_to_original_set(out_dir, 100, 1000, 158)
     # clean_and_renumber_json_files(out_dir)
 
     # Define your source folders and destination folder
     source_folders = [
-                    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/1_half_out/', 
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/2_half_out/', 
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/3_half_out/', 
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/4_half_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/5_half_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/6_half_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/7_half_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/8_half_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/9_half_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/10_half_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/11_half_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/12_half_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/13_half_out/',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/14_half_out',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/15_half_out',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/16_half_out',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/17_half_out',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/18_half_out',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/19_half_out',
-                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/20_half_out']
+                    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/1_all_out/', 
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/2_all_out/', 
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/3_all_out/', 
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/4_all_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/5_all_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/6_all_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/7_all_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/8_all_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/9_all_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/10_all_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/11_all_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/12_all_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/13_all_out/',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/14_all_out',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/15_all_out',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/16_all_out',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/17_all_out',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/18_all_out',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/19_all_out',
+                      '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/20_all_out']
 
-    destination_folder = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/regression_rearranged_half_corrected/'
+    destination_folder = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/regression_rearranged_all_corrected/'
     combine_and_renumber_folders(source_folders, destination_folder)
 
 

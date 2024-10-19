@@ -60,7 +60,7 @@ a = torch.cuda.memory_allocated(0)
 print(a)
 # f = r-a  # free inside reserved
 
-weights_path = '/home/schatterjee/lama/kprcnn_panda/trained_models/keypointsrcnn_planning_b1_e100_v4.pth'
+weights_path = '/home/schatterjee/lama/kprcnn_panda/trained_models/keypointsrcnn_planning_b1_e50_v8.pth'
 
 n_nodes = 9
 
@@ -221,9 +221,9 @@ class KPDataset(Dataset):
 class GraphGCN(torch.nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels):
         super(GraphGCN, self).__init__()
-        self.conv1 = GCNConv(in_channels, hidden_channels)
+        self.conv1 = SAGEConv(in_channels, hidden_channels)
         self.conv2 = GCNConv(hidden_channels, hidden_channels)
-        self.conv3 = GCNConv(hidden_channels, hidden_channels)
+        self.conv3 = SAGEConv(hidden_channels, hidden_channels)
         self.fc = torch.nn.Linear(hidden_channels, out_channels)
     
     def forward(self, x, edge_index):
@@ -279,6 +279,14 @@ def calculate_gt_distances_angles(keypoints_gt):
 #     print("ground truth dist and angles", distances_angles)
     return distances_angles
 
+def post_prediction_transform():
+    return A.Compose([
+        A.Resize(320, 240),  # Resize image and keypoints
+        A.Rotate(limit=30, p=0.5),  # Random rotation up to 30 degrees
+        A.HorizontalFlip(p=0.5),  # Random horizontal flip
+    ], keypoint_params=A.KeypointParams(format='xy', remove_invisible=True),
+       bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels']))
+
 class KeypointPipeline(nn.Module):
     def __init__(self, weights_path):
         super(KeypointPipeline, self).__init__()  
@@ -305,6 +313,23 @@ class KeypointPipeline(nn.Module):
 #         print("initial predicted keypoints", keypoints)
         
         return keypoints
+    
+    
+    def apply_post_transform(self, img, keypoints, bboxes, labels):
+        # Convert tensors to numpy for transformation
+        img_np = img.permute(1, 2, 0).cpu().numpy()  # Convert from (C, H, W) to (H, W, C)
+        keypoints_np = [kp[:2].tolist() for kp in keypoints]  # Extract (x, y) from keypoints
+        bboxes_np = bboxes.cpu().numpy()
+
+        # Apply transformations
+        transformed = self.post_transform(image=img_np, keypoints=keypoints_np, bboxes=bboxes_np, labels=labels)
+
+        # Convert back to tensor
+        transformed_img = F.to_tensor(transformed['image']).to(device)
+        transformed_keypoints = torch.tensor(transformed['keypoints'], dtype=torch.float32).to(device)
+        transformed_bboxes = torch.tensor(transformed['bboxes'], dtype=torch.float32).to(device)
+
+        return transformed_img, transformed_keypoints, transformed_bboxes
     
     def fill_missing_keypoints(self, keypoints, image_width, image_height):
         keypoints_dict = {int(kp[3]): kp for kp in keypoints}
@@ -365,21 +390,33 @@ class KeypointPipeline(nn.Module):
 
         self.keypoint_model.train(mode=keypoint_model_training)
 
-        batch_labeled_keypoints = [self.process_model_output(output) for output in batch_outputs]
+        batch_transformed_data = []
+        
+        for img, output in zip(imgs, batch_outputs):
+            keypoints = self.process_model_output(output)
+            bboxes = output[0]['boxes'].detach()
+            labels = output[0]['labels'].detach().cpu().tolist()
 
-        # Fill missing keypoints first and then normalize them
-        for idx, keypoints in enumerate(batch_labeled_keypoints):
-            image_width, image_height = 640, 480
-            filled_keypoints = self.fill_missing_keypoints(keypoints, image_width, image_height)
-            normalized_keypoints = self.normalize_keypoints(filled_keypoints, image_width, image_height)
-            batch_labeled_keypoints[idx] = normalized_keypoints
-       
-        all_graphs = [self.keypoints_to_graph(keypoints, 640, 480) for keypoints in batch_labeled_keypoints]
-        all_predictions = [self.graph_gcn(graph.x, graph.edge_index) for graph in all_graphs]
+            # Apply random post-prediction transformations
+            transformed_img, transformed_keypoints, transformed_bboxes = self.apply_post_transform(
+                img, keypoints, bboxes, labels
+            )
 
-        final_predictions = torch.stack(all_predictions)
+            # Extract the actual image dimensions dynamically
+            height, width = transformed_img.shape[1], transformed_img.shape[2]
 
-        return final_predictions
+            batch_transformed_data.append((transformed_img, transformed_keypoints, transformed_bboxes, width, height))
+
+            # Use the extracted dimensions for graph creation
+            all_graphs = [
+                self.keypoints_to_graph(keypoints, width, height) 
+                for _, keypoints, _, width, height in batch_transformed_data
+            ]
+
+            all_predictions = [self.graph_gcn(graph.x, graph.edge_index) for graph in all_graphs]
+            final_predictions = torch.stack(all_predictions)
+
+            return final_predictions
 
 def kgnn2d_loss(gt_keypoints, pred_keypoints, gt_distances_next, gt_angles_next, gt_distances_prev, gt_angles_prev, pred_distances_next, pred_angles_next, pred_distances_prev, pred_angles_prev):
     keypoints_loss = func.mse_loss(pred_keypoints, gt_keypoints)

@@ -14,8 +14,11 @@ ros::Publisher model_error_pub;
 
 int no_of_features; // ds column size
 int window; // Estimation window size
-float eps; // update threshold or convergence condition
+float eps_a; // update threshold or convergence condition
+float eps_b;
+float eps;
 int no_of_actuators; // qhat, dr column size
+std::vector<float> mod_err_thresh;
 float alpha_gamma;
 int num_goal_sets;
 int debug_mode = 0;     
@@ -132,12 +135,12 @@ bool computeEnergyFuncCallback(panda_test::energyFuncMsg::Request &req, panda_te
     if(debug_mode == 1){
         std::cout<<"computed energy functional"<<std::endl;
     }
-
+    float eps = (feature_error_magnitude > mod_err_thresh[0]) ? eps_b : eps_a;
+    std::cout << "Error magnitude " << feature_error_magnitude << " " << mod_err_thresh[0] << " " << "epsilon " << eps; 
     // Updated Jacobian Vectors
     for(int j = 0; j < no_of_actuators; j++){
     // Choose the appropriate learning rate based on the joint index
-    float current_gamma = (j == 0) ? gamma_first_actuator : ((j == 1) ? gamma_second_actuator : gamma_third_actuator);
-
+    float current_gamma = (j == 0) ? gamma_first_actuator : ((j == 1) ? gamma_second_actuator : gamma_third_actuator);    
         for(int i=0; i<dSmat.cols(); i++){
             if(Ji(i) > eps){    // Update Jacobian if error greater than convergence threshold
                 // learning rate decreases on the basis of feature_error norm
@@ -226,7 +229,9 @@ int main(int argc, char **argv){
     std::cout <<"Starting Energy Functional Service" <<std::endl;
     
     nh->getParam("vsbot/estimation/window", window); //size of estimation window
-    nh->getParam("vsbot/estimation/epsilon", eps);
+    nh->getParam("vsbot/estimation/epsilon_a", eps_a);
+    nh->getParam("vsbot/estimation/epsilon_b", eps_b);
+    // nh->getParam("vsbot/estimation/epsilon", eps);
     nh->getParam("vsbot/control/alpha_gamma", alpha_gamma);
     nh->getParam("vsbot/control/debug_mode", debug_mode);
 
@@ -234,6 +239,8 @@ int main(int argc, char **argv){
     nh->getParam("vsbot/shape_control/no_of_features", no_of_features);
     nh->getParam("vsbot/shape_control/no_of_actuators", no_of_actuators);
     nh->getParam("dl_controller/num_goal_sets", num_goal_sets);
+    nh->getParam("vsbot/estimation/mod_err_thresh", mod_err_thresh);
+
 
     model_error_pub = nh->advertise<std_msgs::Float64MultiArray>("individual_model_error", 1);
 

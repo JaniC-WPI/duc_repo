@@ -2,14 +2,14 @@ import cv2
 import os
 
 # Parameters
-image_folder = '/home/jc-merlab/Pictures/panda_data/images_for_occlusion/4/'
-video_name = '/home/jc-merlab/Pictures/panda_data/images_for_occlusion/4/occ_test_4.avi'
-frame_rate = 20  # Frames per second
+image_folder = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/ycb_test/'
+video_name = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/ycb_test/ycb_test_01.avi'
+frame_rate = 15  # Frames per second
 extra_frames_for_last_image = 3  # Number of extra times to add the last image
 
 images = []
-for i in range(109):
-    image_path = os.path.join(image_folder, f'image_{i}.jpg')
+for i in range(179):
+    image_path = os.path.join(image_folder, f'zfill{i}.jpg')
     if os.path.exists(image_path):
         images.append(image_path)
     else:

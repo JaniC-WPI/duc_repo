@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 # Load your image
-image_path = '/home/jc-merlab/.ros/sim_published_goal_image_orig.jpg'  # Replace with the path to your image
+image_path = '/home/jc-merlab/.ros/sim_published_goal_image_obs.jpg'  # Replace with the path to your image
 static_image = cv2.imread(image_path)
 gif_image = static_image.copy()
 
@@ -51,6 +51,6 @@ for set_index, (points, color) in enumerate(zip(points_sets, colors)):
             x2, y2 = points[i + 1]
             cv2.line(static_image, (int(x1), int(y1)), (int(x2), int(y2)), tuple(int(c) for c in color), thickness=4)
 
-    cv2.imwrite(os.path.join(output_dir, f'path_{set_index}.jpg'), static_image)
+    cv2.imwrite(os.path.join(output_dir, f'sim_intermediate_goal_image_{set_index}.jpg'), static_image)
 
 cv2.imwrite(output_path, static_image)

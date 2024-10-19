@@ -32,6 +32,38 @@ mv ~/.ros/qhat_feat.csv ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
 
 mv ~/.ros/joint_angles.csv ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
 
+mv ~/.ros/servoing_error.csv ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+
+mv ~/.ros/servoing_error.bag ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+
+mv ~/.ros/current_goal_set_topic.csv ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+
+mv ~/.ros/current_goal_set_topic.bag ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+
+mv ~/.ros/dr_record.csv ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+
+mv ~/.ros/dr_record.bag ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+
+mv ~/.ros/ds_record.csv ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+
+mv ~/.ros/ds_record.bag ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+
+mv ~/.ros/J_modelerror.csv ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+
+mv ~/.ros/J_modelerror.bag ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+
+mv ~/.ros/joint_vel.csv ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+
+mv ~/.ros/joint_vel.bag ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+
+mv ~/.ros/vsbot_control_points.csv ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+
+mv ~/.ros/vsbot_control_points.bag ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+
+mv ~/.ros/vsbot_status.csv ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+
+mv ~/.ros/vsbot_status.bag ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
+
 mv ~/.ros/*.jpg ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/
 
 mv ~/.ros/exp_vid.avi ~/Pictures/Dl_Exps/sim_vs/servoing/exps/$exp_no/

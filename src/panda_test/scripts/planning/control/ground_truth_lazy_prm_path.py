@@ -90,8 +90,8 @@ def add_config_to_roadmap_no_obs(config, joint_angles, G, tree, k_neighbors):
     node_id = len(G.nodes)
     G.add_node(node_id, configuration=config, joint_angles=joint_angles)
     
-    for i in indices[0]:
-        G.add_edge(node_id, i)
+    for d,i in zip(distances[0],indices[0]):
+        G.add_edge(node_id, i, weight=d)
     
     return node_id, distances
 
@@ -110,10 +110,10 @@ def add_config_to_roadmap_with_obs(config, joint_angles, G, tree, k_neighbors, o
         (obstacle_center[0] - (half_diagonal + safe_distance), obstacle_center[1] + (half_diagonal + safe_distance)),
     ])
     
-    for i in indices[0]:
+    for d,i in zip(distances[0],indices[0]):
         neighbor_config = G.nodes[i]['configuration']
         if is_collision_free(config, neighbor_config, obstacle_center, half_diagonal, safe_distance):
-            G.add_edge(node_id, i)
+            G.add_edge(node_id, i, weight=d)
 
     if nx.is_connected(G):
         print("Roadmap is connected")
@@ -159,10 +159,79 @@ def validate_and_remove_invalid_edges(G, obstacle_center, half_diagonal, safe_di
             G.remove_edge(u, v)
             # print(f"Removed invalid edge: {u} <-> {v}")
   
+# def find_path(G, start_node, goal_node):
+#     # path_indices = nx.astar_path(G, source=start_node, target=goal_node)
+#     path_indices = nx.dijkstra_path(G, source=start_node, target=goal_node, weight='weight')
+
+#     path_configurations = [[G.nodes[i]['configuration'], G.nodes[i]['joint_angles']] for i in path_indices]
+
+#     for i in range(len(path_indices) - 1):
+#         u = path_indices[i]
+#         v = path_indices[i + 1]
+#         print(f"Weight from {u} to {v}: {G[u][v]['weight']}")
+
+#     return path_configurations
+            
+def astar_custom(graph, start, goal, heuristic_func):
+    # Priority queue (min-heap) to hold nodes to be evaluated
+    open_set = []
+    heapq.heappush(open_set, (0, start))
+    
+    # Dictionaries to hold the cost of the shortest path to a node and the path to reach it
+    g_costs = {start: 0}
+    came_from = {start: None}
+    
+    # While there are nodes to evaluate
+    while open_set:
+        # Get the node with the lowest f(n) = g(n) + h(n) value
+        _, current = heapq.heappop(open_set)
+
+        # If we reached the goal, reconstruct the path
+        if current == goal:
+            return reconstruct_path(came_from, start, goal)
+
+        # Explore neighbors using networkx graph
+        for neighbor in graph.neighbors(current):
+            # Access the edge weight between current and neighbor
+            weight = graph.edges[current, neighbor]['weight']
+            # Calculate tentative g cost
+            tentative_g_cost = g_costs[current] + weight
+
+            # If this path to neighbor is better, update the costs and the path
+            if neighbor not in g_costs or tentative_g_cost < g_costs[neighbor]:
+                g_costs[neighbor] = tentative_g_cost
+                f_cost = tentative_g_cost + heuristic_func(neighbor, goal)
+                heapq.heappush(open_set, (f_cost, neighbor))
+                came_from[neighbor] = current
+
+    # If the goal was not reached
+    return None
+
+def reconstruct_path(came_from, start, goal):
+    path = []
+    current = goal
+    while current:
+        path.append(current)
+        current = came_from[current]
+    path.reverse()
+    return path
+
+def edge_weight_heuristic(graph, current_node, goal_node):
+    # If there is a direct edge, return its weight
+    if graph.has_edge(current_node, goal_node):
+        return graph.edges[current_node, goal_node]['weight']
+    return 0
+
 def find_path(G, start_node, goal_node):
-    path_indices = nx.astar_path(G, source=start_node, target=goal_node)
+    path_indices = astar_custom(G, start_node, goal_node, lambda u, v: edge_weight_heuristic(G, u, v))
+    
     path_configurations = [[G.nodes[i]['configuration'], G.nodes[i]['joint_angles']] for i in path_indices]
 
+    for i in range(len(path_indices) - 1):
+        u = path_indices[i]
+        v = path_indices[i + 1]
+        print(f"Weight from {u} to {v}: {G[u][v]['weight']}")
+        
     return path_configurations
 
 def save_keypoints_and_joint_angles_to_csv(path, filename):
@@ -278,7 +347,7 @@ def draw_green_rectangle(image_path, rectangle_center, half_diagonal, save_path)
     bottom_right = (rectangle_center[0] + width // 2, rectangle_center[1] + height // 2)
 
     # Define the color of the rectangle (Green in BGR format)
-    green_color = (0, 255, 0)
+    green_color = (0, 255, 255)
 
     # Draw the rectangle on the image
     cv2.rectangle(image, top_left, bottom_right, green_color, -1)
@@ -454,6 +523,65 @@ def discard_close_configurations(path, min_distance=15):
 
     return valid_path
 
+def create_images_with_obstacle(path, obstacle_center, half_diagonal, output_dir):
+    """
+    Create images for each config from the second to the last one in the path.
+    Each image will have the obstacle drawn as a rectangle, intermediate points
+    will be green, and the last point will be red. Only keypoints at indices 
+    3, 4, 6, 7, and 8 will be drawn. Lines between points in each configuration 
+    will be drawn as well.
+    
+    Args:
+    - path (list): List of configurations and joint angles along the found path.
+    - obstacle_center (tuple): (x, y) center of the obstacle.
+    - half_diagonal (int): Half of the diagonal length of the obstacle square.
+    - output_dir (str): Directory where images will be saved.
+    """
+    
+    # Ensure the output directory exists
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    # Iterate over the path, starting from the second configuration
+    for i, (config, _) in enumerate(path[1:], start=1):
+        # Create a blank image
+        image = np.zeros((480, 640, 3), dtype=np.uint8)
+        
+        # Determine if this is the last configuration
+        is_last = (i == len(path) - 1)
+
+        # Calculate the full diagonal to get the rectangle width and height
+        diagonal = 2 * half_diagonal
+        width = int(diagonal / np.sqrt(2))
+        height = width  # Assuming the rectangle is a square for simplicity
+
+        # Calculate top left and bottom right points of the rectangle
+        top_left = (obstacle_center[0] - width // 2, obstacle_center[1] - height // 2)
+        bottom_right = (obstacle_center[0] + width // 2, obstacle_center[1] + height // 2)
+
+        # Draw the keypoints for the current configuration, only taking indices 3, 4, 6, 7, and 8
+        selected_indices = [3, 4, 6, 7, 8]
+        selected_keypoints = config[selected_indices]
+
+        cv2.rectangle(image, top_left, bottom_right, (0, 255, 255), -1)  # Green for the obstacle
+
+        # Use red for the last configuration, green for others
+        point_color = (0, 0, 255) if is_last else (0, 255, 0)
+
+        # Draw keypoints and lines between them
+        for idx, point in enumerate(selected_keypoints):
+            point = tuple(point.astype(int))
+            cv2.circle(image, point, 9, point_color, -1)
+            # Draw line to the next point, if it exists
+            if idx < len(selected_keypoints) - 1:
+                next_point = tuple(selected_keypoints[idx + 1].astype(int))
+                cv2.line(image, point, next_point, point_color, 4)
+
+        # Save the image with the appropriate name
+        output_image_path = os.path.join(output_dir, f'sim_intermediate_goal_image_{i}.jpg')
+        cv2.imwrite(output_image_path, image)
+        print(f"Image saved: {output_image_path}")
+
 def create_joint_position(start_angles_exp, joint_positions):
     # Replace the 2nd, 4th, and 6th positions with the start_angles_exp values
     joint_positions[1] = start_angles_exp[0]
@@ -465,13 +593,13 @@ def create_joint_position(start_angles_exp, joint_positions):
 # Main execution
 if __name__ == "__main__":
     # Load configurations from JSON files
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_rearranged/'  # Replace with the path to your JSON files
-    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b128_e500_v32.pth'
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_rearranged_og/'  # Replace with the path to your JSON files
+    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b128_e400_v32.pth'
     configurations = load_keypoints_from_json(directory)
-    graph_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/joint_space_roadmap_angle_fresh.pkl'
-    tree_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/joint_space_tree_angle_fresh.pkl'
+    graph_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/joint_space_roadmap_angle_fresh_432.pkl'
+    tree_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/joint_space_tree_angle_fresh_432.pkl'
     file_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/'
-    folder_num = 302
+    folder_num = 3
 
     # Define both folder paths
     exp_folder_no_obs = os.path.join(file_path, 'ground_truth', 'no_obs', str(folder_num))
@@ -492,16 +620,14 @@ if __name__ == "__main__":
 
     # Define start and goal configurations as numpy arrays
     start_config = np.array([[250, 442], [252, 311], [211, 273], [169, 235], [188, 212], [215, 148], [244, 81], [242, 50], [280, 47]])
-    goal_config = np.array([[250, 442], [252, 311], [275, 255], [294, 200], [322, 209], [394, 194], [468, 181], [494, 158], [522, 187]])
+    goal_config = np.array([[250, 442], [252, 311], [293, 267], [334, 223], [357, 244], [434, 254], [511, 263], [547, 259], [552, 303]])
 
     start_angles_exp = np.array([-0.9367698173104668, -1.3382993170643418, 2.247841014682137])
     start_joint_angles = np.array([-0.870795, -1.44845, 2.20395])
-    goal_joint_angles = np.array([0.267307, -1.38323, 2.58668])
+    goal_joint_angles = np.array([0.747321032489591, -1.16792377112918, 2.02904351705517])
 
-    SAFE_ZONE = 40 
-    obstacle_center = (404, 117)
-    # obstacle_center = compute_obstacle_center(start_config, goal_config)
-    print(obstacle_center)
+    SAFE_ZONE = 40
+    obstacle_center = (450, 120)
     half_diagonal = 20
 
     joint_position = create_joint_position(start_angles_exp, original_joint_positions)
@@ -510,14 +636,13 @@ if __name__ == "__main__":
     goal_node, distances = add_config_to_roadmap_no_obs(goal_config, goal_joint_angles, roadmap, tree, num_neighbors)
 
     valid_path_no_obs = find_path(roadmap, start_node, goal_node)
-    # valid_path = discard_table_conllision(path_no_obs)
-    # valid_path_no_obs = discard_close_configurations(valid_path)
 
     save_keypoints_and_joint_angles_to_csv(valid_path_no_obs, os.path.join(exp_folder_no_obs, 'joint_keypoints.csv'))
     save_path_with_distances_to_csv(valid_path_no_obs, os.path.join(exp_folder_no_obs, 'save_distances.csv'))
 
 
     if valid_path_no_obs:
+        create_images_with_obstacle(valid_path_no_obs, obstacle_center, half_diagonal, exp_folder_no_obs)
         point_set = []
         goal_sets = []
         # Iterate through the path, excluding the first and last configuration
@@ -568,25 +693,33 @@ if __name__ == "__main__":
         # Save configurations to a .txt file
         
         with open(os.path.join(exp_folder_no_obs, "path_configurations_no_obs.txt"), "w") as file:
-            file.write("Start Configuration:\n")
-            file.write(str(start_config.tolist()) + "\n\n")
-            file.write("Goal Configuration:\n")
-            file.write(str(goal_config.tolist()) + "\n\n")
-            file.write("Experiment Start Angle:\n")
-            file.write(str(start_angles_exp.tolist()) + "\n\n")
-            file.write("Start Angle:\n")
-            file.write(str(start_joint_angles.tolist()) + "\n\n")
-            file.write("Goal Angle:\n")
-            file.write(str(goal_joint_angles.tolist()) + "\n\n")
+            # file.write("Start Configuration:\n")
+            file.write("start_config = np.array(")
+            file.write(str(start_config.tolist()) + ")" + "\n")
+            # file.write("Goal Configuration:\n")
+            file.write("goal_config = np.array(")
+            file.write(str(goal_config.tolist()) + ")" + "\n\n")
+            # file.write("Experiment Start Angle:\n")
+            file.write("start_angles_exp = np.array(")
+            file.write(str(start_angles_exp.tolist()) + ")" + "\n")
+            # file.write("Start Angle:\n")
+            file.write("start_joint_angles = np.array(")
+            file.write(str(start_joint_angles.tolist()) + ")" + "\n")
+            # file.write("Goal Angle:\n")
+            file.write("goal_joint_angles = np.array(")
+            file.write(str(goal_joint_angles.tolist()) + ")" + "\n\n")            
+            # file.write("Obstacle Parameters:\n")
+            # file.write("Safe Zone:\n")
+            file.write("SAFE_ZONE = ")
+            file.write(str(SAFE_ZONE) + "\n")
+            # file.write("Obstacle Center:\n")
+            file.write("obstacle_center = ")
+            file.write(str(obstacle_center) + "\n")
+            # file.write("Half Diagonal:\n")
+            file.write("half_diagonal = ")            
+            file.write(str(half_diagonal) + "\n\n")
             file.write("Original Joint position:\n")
             file.write(str(joint_position) + "\n\n")
-            file.write("Obstacle Parameters:\n")
-            file.write("Safe Zone:\n")
-            file.write(str(SAFE_ZONE) + "\n\n")
-            file.write("Obstacle Center:\n")
-            file.write(str(obstacle_center) + "\n\n")
-            file.write("Half Diagonal:\n")
-            file.write(str(half_diagonal) + "\n\n")
             file.write("Path:\n")
             for config, angles in valid_path_no_obs:
                 file.write(str(config.tolist()) + "\n")
@@ -615,13 +748,12 @@ if __name__ == "__main__":
         
     # Find and print the path from start to goal
     valid_path_with_obs = find_path(roadmap, start_node, goal_node)
-    # valid_path = discard_table_conllision(path_with_obs)
-    # valid_path_with_obs = discard_close_configurations(valid_path)
 
     save_keypoints_and_joint_angles_to_csv(valid_path_with_obs, os.path.join(exp_folder_with_obs, 'joint_keypoints.csv'))
     save_path_with_distances_to_csv(valid_path_with_obs, os.path.join(exp_folder_with_obs, 'save_distances.csv'))
 
     if valid_path_with_obs:
+        create_images_with_obstacle(valid_path_with_obs, obstacle_center, half_diagonal, exp_folder_with_obs)
         point_set = []
         goal_sets = []
         last_configuration = valid_path_with_obs[-1][0]
@@ -663,25 +795,33 @@ if __name__ == "__main__":
         print("Data successfully written to dl_multi_features.yaml")
         # Save configurations to a .txt file
         with open(os.path.join(exp_folder_with_obs, "path_configurations_with_obs.txt"), "w") as file:
-            file.write("Start Configuration:\n")
-            file.write(str(start_config.tolist()) + "\n\n")
-            file.write("Goal Configuration:\n")            
-            file.write(str(goal_config.tolist()) + "\n\n")
-            file.write("Experiment Start Angle:\n")
-            file.write(str(start_angles_exp.tolist()) + "\n\n")
-            file.write("Start Angle:\n")
-            file.write(str(start_joint_angles.tolist()) + "\n\n")
-            file.write("Goal Angle:\n")
-            file.write(str(goal_joint_angles.tolist()) + "\n\n")
+            # file.write("Start Configuration:\n")
+            file.write("start_config = np.array(")
+            file.write(str(start_config.tolist()) + ")" + "\n")
+            # file.write("Goal Configuration:\n")
+            file.write("goal_config = np.array(")
+            file.write(str(goal_config.tolist()) + ")" + "\n\n")
+            # file.write("Experiment Start Angle:\n")
+            file.write("start_angles_exp = np.array(")
+            file.write(str(start_angles_exp.tolist()) + ")" + "\n")
+            # file.write("Start Angle:\n")
+            file.write("start_joint_angles = np.array(")
+            file.write(str(start_joint_angles.tolist()) + ")" + "\n")
+            # file.write("Goal Angle:\n")
+            file.write("goal_joint_angles = np.array(")
+            file.write(str(goal_joint_angles.tolist()) + ")" + "\n\n")            
+            # file.write("Obstacle Parameters:\n")
+            # file.write("Safe Zone:\n")
+            file.write("SAFE_ZONE = ")
+            file.write(str(SAFE_ZONE) + "\n")
+            # file.write("Obstacle Center:\n")
+            file.write("obstacle_center = ")
+            file.write(str(obstacle_center) + "\n")
+            # file.write("Half Diagonal:\n")
+            file.write("half_diagonal = ")            
+            file.write(str(half_diagonal) + "\n\n")
             file.write("Original Joint position:\n")
             file.write(str(joint_position) + "\n\n")
-            file.write("Obstacle Parameters:\n")
-            file.write("Safe Zone:\n")
-            file.write(str(SAFE_ZONE) + "\n\n")
-            file.write("Obstacle Center:\n")
-            file.write(str(obstacle_center) + "\n\n")
-            file.write("Half Diagonal:\n")
-            file.write(str(half_diagonal) + "\n\n")
             file.write("Path:\n")
             for config, angles in valid_path_with_obs:
                 file.write(str(config.tolist()) + "\n")

@@ -56,28 +56,29 @@ def combine_folders(folder_paths, destination_folder):
 
 # List of folders to combine
 folders_to_combine = [
-    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/1_kp_cleaned/',
-    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/2_kp_cleaned/',
-    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/3_kp_cleaned/',
-    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/4_kp_cleaned/',
-    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/6_kp_cleaned/',
-    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/8_kp_cleaned/',
-    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/9_kp_cleaned/',
-    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/10_kp_cleaned/',
-    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/11_kp_cleaned/',
-    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/12_kp_cleaned/',
-    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/13_kp_cleaned/',
-    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/14_kp_cleaned/',
-    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/15_kp_cleaned/',
-    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/16_kp_cleaned/',
-    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/17_kp_cleaned/',
-    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/18_kp_cleaned/',
-    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/19_kp_cleaned/',
-    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/20_kp_cleaned/'
+    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/1_kp/',
+    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/2_kp/',
+    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/3_kp/',
+    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/4_kp/',
+    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/6_kp/',
+    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/8_kp/',
+    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/7_kp/',
+    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/9_kp/',
+    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/10_kp/',
+    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/11_kp/',
+    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/12_kp/',
+    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/13_kp/',
+    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/14_kp/',
+    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/15_kp/',
+    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/16_kp/',
+    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/17_kp/',
+    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/18_kp/',
+    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/19_kp/',
+    '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/20_kp/'
 ]
 
 # Destination folder where all files will be combined
-destination_folder = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_rearranged'
+destination_folder = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_rearranged_og'
 
 combine_folders(folders_to_combine, destination_folder)
 print("Folders combined successfully!")

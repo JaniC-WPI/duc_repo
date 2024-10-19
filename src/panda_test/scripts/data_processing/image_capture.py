@@ -1,7 +1,5 @@
-#!/usr/bin/env python3.8
-
 import cv2
-import numpy as numpy
+import numpy as np
 from sensor_msgs.msg import Image
 from std_msgs.msg import Int32
 from cv_bridge import CvBridge, CvBridgeError
@@ -10,6 +8,7 @@ import rospy
 import os
 from os.path import expanduser
 import glob
+import time
 
 # Define CvBridge for ROS
 home = expanduser("~")
@@ -18,100 +17,61 @@ i = 0
 size = None
 status = -2
 
-# latest changes
-
-# file_path = home + "/Pictures/" + "Data/"
+# Define paths
 file_path = home + "/Pictures/" + "panda_data/"
-print(file_path)
+rgb_path = file_path + 'panda_sim_vel/panda_rearranged_data/ycb_test/'
+video_name = rgb_path + 'ycb_test_01.avi'  # Output video file path
 
-rgb_path = file_path + 'images_for_occlusion/4/'
-dep_path = file_path + 'video_images/dep/'
+frame_rate = 15  # Frames per second
+extra_frames_for_last_image = 3  # Number of extra times to add the last image
 
 if not os.path.exists(rgb_path):
-        os.mkdir(rgb_path)
-
-# path = "/home/fearless/Pictures/video_images"s
-
+    os.mkdir(rgb_path)
 
 def statusCallback(msg):
     global status
     status = msg.data
 
-
-def depth_callback(dep):
-    
-    fname = dep_path + "image_" + str(i) + ".jpg"
-    cv_img = bridge.imgmsg_to_cv2(dep, 'mono8')
-  
-    # cv2.imwrite(path+str(i)+'.jpg', cv_img)
-    cv2.imwrite(fname, cv_img)
-    i = i+1
-
 def image_callback(img):
     global bridge, i, home, size, status
 
-    # if status == -2:
-    # print("is image call back getting called")
-    # convert ros images to numpy/cv images
-    fname = rgb_path + "/image_" + str(i) + ".jpg"
+    fname = rgb_path + "image_" + str(i) + ".jpg"  # Zero padding for sorting
     cv_img = bridge.imgmsg_to_cv2(img, 'bgr8')
-
-    # print(cv_img)
-    # print(fname)
-    # cv2.imwrite(path+str(i)+'.jpg', cv_img)
     cv2.imwrite(fname, cv_img)
-    i = i+1
+    i += 1
 
-    # elif status == 1:
-    #     # stitch video frames
-    #     img_array = []
-    #     file_list = []
-    #     for file in glob.glob("*.jpg"):
-    #         file_tup = file.partition('.')
-    #         file_list.append(int(file_tup[0]))
-    #     file_list.sort()
-    #     for i in file_list:
-    #         img = cv2.imread(str(i)+".jpg")
-    #         cv2.imwrite(file_path+"test_image.jpg", img)
-    #         height, width, layers = img.shape
-    #         print(height, width)
-    #         size = (width, height)
-    #         img_array.append(img)
+def create_video_from_images():
+    images = sorted(glob.glob(rgb_path + '*.jpg'))  # Fetch images sorted by name
+    if not images:
+        print("No images found to create a video.")
+        return
 
-    #     # for filename in sorted([e for e in path.iterdir() if e.is_file() and str(e).endswith(".jpg")]):
-    #     # for filename in sorted(os.listdir(path)):
-    #     #     print(filename)
-    #     #     img = cv2.imread(str(filename))
-    #     #     img_array.append(img)
-    #     print(size)
-    #     out = cv2.VideoWriter("exp_vid.avi",cv2.VideoWriter_fourcc(*'XVID'), 10, size)
-    #     for i in range(len(img_array)):
-    #         out.write(img_array[i])
-    #     out.release()
-    #     print("Video saved")
+    # Create VideoWriter object
+    frame = cv2.imread(images[0])
+    height, width, layers = frame.shape
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    video = cv2.VideoWriter(video_name, fourcc, frame_rate, (width, height))
 
+    # Write images to video
+    for image in images:
+        video.write(cv2.imread(image))
+
+    # Add the last image multiple times
+    last_image = cv2.imread(images[-1])
+    for _ in range(extra_frames_for_last_image):
+        video.write(last_image)
+
+    video.release()
+    cv2.destroyAllWindows()
+    print(f"Video saved as {video_name}")
 
 def main(args):
-  # Initialize ROS
-    print("is main getting called")
     rospy.init_node('capture_images_for_video')
-    # Declare subcscribers
-    # subscriber for rgb images
-    print(home)
-    
-    image_rgb_sub = rospy.Subscriber("/camera/color/image_raw", Image, image_callback, queue_size=1)
-    # image_dep_sub = rospy.Subscriber("/camera/aligned_depth_to_color/image_raw", Image, depth_callback, queue_size=1)
 
-    # status subscriber
-    # status_sub = rospy.Subscriber("vsbot/status", Int32, statusCallback, queue_size = 1)
-    # while not rospy.is_shutdown():
-    #     print("keep capturing")
-
-    # publisher to publish flag to start control points svc
-    # flag_pub = rospy.Publisher("/franka/control_flag", Bool, queue_size = 1)
+    # Subscriber for RGB images
+    image_rgb_sub = rospy.Subscriber("/camera/color/image_raw", Image, image_callback, queue_size=1)rospy.on_shutdown(lambda: (time.sleep(2), create_video_from_images()))  # Ensure that all images are written before video creation
 
     rospy.spin()
-
 
 if __name__ == '__main__':
     main(sys.argv)

@@ -34,7 +34,7 @@ while cap1.isOpened() and cap2.isOpened() and cap3.isOpened():
     cv2.imshow('Videos Side by Side', combined_frame)
 
     # Press 'q' to exit
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    if cv2.waitKey(6) & 0xFF == ord('q'):
         break
 
 # Release the video captures and close OpenCV windows

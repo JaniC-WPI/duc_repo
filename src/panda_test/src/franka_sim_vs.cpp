@@ -1,10 +1,13 @@
 #include "ros/ros.h"
+#include <rosbag/bag.h>
+#include <rosbag/recorder.h>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/SVD>
 #include <math.h>
 #include <iostream>
 #include <vector>
 #include <numeric>  // For std::inner_product
+#include <stdlib.h>
 
 // #include "encoderless_vs/control_points.h"
 #include "panda_test/energyFuncMsg.h"
@@ -24,6 +27,8 @@
 //  0 - Experiment not started
 //  1 - Initial estimation period
 //  2 - Visual servoing period
+//  3 - Approaching intermediate goals
+//  50 - last goal reached
 // -1 - Visual servoing completed
 
 // Declare global vector for spline features
@@ -32,6 +37,7 @@ int no_of_features;
 int no_of_actuators; 
 
 bool end_flag = false;      // true when servoing is completed. Triggered by user
+bool vid_flag = false;
 bool start_flag = false;    // true when camera stream is ready
 
 std::vector<float> initial_feature_errors;
@@ -62,6 +68,10 @@ void start_flag_callback(const std_msgs::Bool &msg){
 
 void end_flag_callback(const std_msgs::Bool &msg){
     end_flag = msg.data;
+}
+
+void vid_flag_callback(const std_msgs::Bool &msg){
+    vid_flag = msg.data;
 }
 
 
@@ -96,6 +106,8 @@ int main(int argc, char **argv){
     // Initializing ROS subscribers
     ros::Subscriber end_flag_sub = n.subscribe("vsbot/end_flag",1,end_flag_callback);
     ros::Subscriber start_flag_sub = n.subscribe("franka/control_flag", 1, start_flag_callback);
+    ros::Subscriber vid_flag_sub = n.subscribe("vsbot/vid_flag", 1, vid_flag_callback);
+
     
     while(!start_flag){
         ros::Duration(10).sleep();
@@ -165,25 +177,32 @@ int main(int argc, char **argv){
     // Estimation variables
     float gamma; // learning rate
     n.getParam("vsbot/estimation/gamma", gamma);    
-    float gamma1; // learning rate during control loop
-    n.getParam("vsbot/estimation/gamma1", gamma1);
-    float gamma2; // learning rate during control loop
-    n.getParam("vsbot/estimation/gamma2", gamma2);
-    float gamma3;
-    n.getParam("vsbot/estimation/gamma3", gamma3);
-    float gamma4;
-    n.getParam("vsbot/estimation/gamma4", gamma4);
+    // float gamma1; // learning rate during control loop
+    // n.getParam("vsbot/estimation/gamma1", gamma1);
+    // float gamma2; // learning rate during control loop
+    // n.getParam("vsbot/estimation/gamma2", gamma2);
+    // float gamma3;
+    // n.getParam("vsbot/estimation/gamma3", gamma3);
+    // float gamma4;
+    // n.getParam("vsbot/estimation/gamma4", gamma4);
     float amplitude;
     n.getParam("vsbot/estimation/amplitude", amplitude);
     float saturation;
     n.getParam("vsbot/control/saturation", saturation);
     std::vector<float> qhat ((no_of_features)*(no_of_actuators), 0);
     n.getParam("vsbot/control/jacobian", qhat);
+    std::vector<float> gamma_control_01;
+    n.getParam("vsbot/estimation/gamma_control_1", gamma_control_01);
+    std::vector<float> gamma_control_02;
+    n.getParam("vsbot/estimation/gamma_control_2", gamma_control_02);
+    std::cout << "gamma_control_1: " << gamma_control_01[0] << " " << gamma_control_01[1] << " " << gamma_control_01[2] << std::endl;
+    std::vector<float> mod_err_thresh;
+    n.getParam("vsbot/estimation/mod_err_thresh", mod_err_thresh);
 
     std::vector<float> ds;          // Current change in key points features
     std::vector<float> dr;          // Current change in joint angles
     std::vector<float> dSinitial;   // Vector list of shape change vectors over sample window
-    std::vector<float> dRinitial;   // Vector list of position change vectors over sample window
+    std::vector<float> dRinitial;   // Vector list of position change vectors over sample window    
 
     std_msgs::Float64MultiArray j_vel;  // msg to store joint vels
     std_msgs::Float64MultiArray ds_msg; // msg to store current dS window
@@ -334,7 +353,7 @@ int main(int argc, char **argv){
         r.sleep();     
     }
     
-
+    
     // Commanding 0 velocity to robot 
     j_vel.data.clear();
     j_vel.data.push_back(0.0);
@@ -465,7 +484,7 @@ int main(int argc, char **argv){
 
     // Switching to control loop rate
     t = 1/rate;
-    ros::Rate control_r{rate};
+    ros::Rate control_r{rate};    
 
     // Publish status
     status.data = 2;
@@ -490,14 +509,16 @@ int main(int argc, char **argv){
         err = sqrt(err_acc);
         err_acc = 0; // Reset error accumulator
 
-        std::vector<float> current_gains;
-        float gamma_third_actuator;
-        if ((current_goal_set < num_goal_sets - 1)) {
+        std::vector<float> current_gains;   
+        std::vector<float> gamma_control; 
+
+        // current_gains = gains1;
+        if ((err <= mod_err_thresh[1])) {
             current_gains = gains1;
-            gamma_third_actuator = gamma3;
+            gamma_control = gamma_control_01;
         }
         else {
-            gamma_third_actuator = gamma4;
+            gamma_control = gamma_control_02;
             current_gains = gains2; // Use the second set of gains for the last goal
         }
         // current_gains = gains1;
@@ -507,6 +528,7 @@ int main(int argc, char **argv){
             std::cout << "Current Threshold in use: " << ((current_goal_set < num_goal_sets - 1) ? thresh1 : thresh2) << std::endl;
             std::cout << "Current Error: " << err << std::endl;
         }
+        std::cout << "gamma: " << gamma_control[0] << " " << gamma_control[1] << " " << gamma_control[2] << std::endl;
 
         // Convert gains to Eigen vector
         Eigen::VectorXf K(no_of_features);
@@ -671,6 +693,12 @@ int main(int argc, char **argv){
                 ++current_goal_set; // Move to the next set of goal features
                 goal = goal_features[current_goal_set]; // Update the goal to the next set
 
+                // Set status to 3 for intermediate goal
+                status.data = 2+current_goal_set;
+                status_pub.publish(status);
+
+                std::cout << "Approaching intermediate goal, setting status = per goal_status." << std::endl;
+
                 // Clear ds and dr windows
                 dSinitial.clear();
                 dRinitial.clear();
@@ -679,7 +707,7 @@ int main(int argc, char **argv){
             } else {
                 // All goals reached
                 std::cout << "All goals reached" << std::endl;
-                break;
+                // break;
             }
         }       
         else{                 
@@ -745,9 +773,11 @@ int main(int argc, char **argv){
             for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr){
                 qhatmsg.data.push_back(*itr);
             }
-            msg.request.gamma_first_actuator = gamma1;
-            msg.request.gamma_second_actuator = gamma2;
-            msg.request.gamma_third_actuator = gamma_third_actuator;
+            std::cout << "gamma: " << gamma_control[0] << " " << gamma_control[1] << " " << gamma_control[2] << std::endl;
+
+            msg.request.gamma_first_actuator = gamma_control[0];
+            msg.request.gamma_second_actuator = gamma_control[1];
+            msg.request.gamma_third_actuator = gamma_control[2];
             msg.request.it = cur_win_size - 1;
             msg.request.dS = dSmsg;
             msg.request.dR = dRmsg;
@@ -797,6 +827,11 @@ int main(int argc, char **argv){
             err_msg.data.push_back(error[i]);
         }
 
+        if (vid_flag && !end_flag) {
+            status.data = 50;
+            status_pub.publish(status); 
+        }
+
         // publish
         std_msgs::Float32 J;
         J.data = msg.response.J;
@@ -833,7 +868,7 @@ int main(int argc, char **argv){
     std::cout<<"Servoing Complete"<<std::endl;
     status.data = -1;
     status_pub.publish(status);
-
+    
     // Shutdown
     // Status flag will shutdown record node which is tied to all other nodes
     // This is done so all the recorded files can be closed and saved safely before

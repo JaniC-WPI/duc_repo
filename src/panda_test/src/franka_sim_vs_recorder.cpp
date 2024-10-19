@@ -323,9 +323,9 @@ void cpCallback(const std_msgs::Float64MultiArray &msg){
 
 void jointCallback(const sensor_msgs::JointState::ConstPtr& msg){
     std::ofstream joint_angle_plot("joint_angles.csv", std::ios::app);
-    // std::cout << "J1" << msg->position[1] << std::endl;
-    // std::cout << "J2" << msg->position[3] << std::endl;
-    // std::cout << "J3" << msg->position[5] << std::endl;
+    // std::cout << "J1 " << msg->position[1] << std::endl;
+    // std::cout << "J2 " << msg->position[3] << std::endl;
+    // std::cout << "J3 " << msg->position[5] << std::endl;
     if (msg->position.size() >= 6) { // Ensure there are at least 6 joints
         joint_angle_plot << current_goal_set << ",";
         joint_angle_plot << msg->position[1] << ","; // 2nd joint, index 1
