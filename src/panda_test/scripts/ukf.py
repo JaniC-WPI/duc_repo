@@ -181,3 +181,20 @@ class UnscentedKalmanFilter(object):
         self.P = self.P - np.dot(K, np.dot(S, K.T))
         
         return self.x
+
+
+## USAGE:
+
+# # Initialize
+# ukf = UnscentedKalmanFilter(
+#     dt=0.1,
+#     x_std_meas=0.1,
+#     y_std_meas=0.1,
+#     vx_std_meas=0.1,
+#     vy_std_meas=0.1
+# )
+
+# # Use in loop
+# predicted_state = ukf.predict()
+# measurement = np.array([[x], [y], [vx], [vy]])  # Your measurements
+# corrected_state = ukf.update(measurement)
