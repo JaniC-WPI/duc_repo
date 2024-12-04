@@ -239,6 +239,68 @@ def find_path_no_lazy(G, start_node, goal_node):
         
     return path_configurations
 
+def add_edge_validated_attribute(G):
+    """
+    Initialize the "validated" attribute for all edges in the graph.
+
+    Args:
+    - G: nx.Graph, the roadmap graph.
+
+    Returns:
+    - None
+    """
+    for u, v in G.edges:
+        G.edges[u, v]["validated"] = False  # Initially mark all edges as unvalidated
+
+def lazy_prm_find_path(graph, start_node, goal_node, heuristic_func, is_collision_free):
+    """
+    Perform pathfinding using Lazy PRM, deferring collision checks until necessary.
+
+    Args:
+    - graph (nx.Graph): The roadmap graph with edges marked as "validated=False".
+    - start_node (int): The start node in the graph.
+    - goal_node (int): The goal node in the graph.
+    - is_collision_free (function): Function to check edge collision.
+
+    Returns:
+    - List[Tuple]: A list of configurations and joint angles along the path, or None if no path is found.
+    """
+    open_set = []
+    heapq.heappush(open_set, (0, start_node))
+    g_costs = {start_node: 0}
+    came_from = {start_node: None}
+
+    while open_set:
+        _, current = heapq.heappop(open_set)
+
+        if current == goal_node:
+            return reconstruct_path(came_from, start_node, goal_node)
+
+        for neighbor in list(graph.neighbors(current)):
+            edge_data = graph[current][neighbor]
+
+            # Check edge validation
+            if not edge_data.get('validated', False):
+                # Perform collision check
+                config1 = graph.nodes[current]['configuration']
+                config2 = graph.nodes[neighbor]['configuration']
+                if not is_collision_free(config1, config2):
+                    graph.remove_edge(current, neighbor)
+                    continue
+                # Mark the edge as validated
+                graph[current][neighbor]['validated'] = True
+
+            # Compute tentative cost
+            weight = graph[current][neighbor]['weight']
+            tentative_g_cost = g_costs[current] + weight
+            if neighbor not in g_costs or tentative_g_cost < g_costs[neighbor]:
+                g_costs[neighbor] = tentative_g_cost
+                f_cost = tentative_g_cost + heuristic_func(neighbor, goal_node)
+                heapq.heappush(open_set, (f_cost, neighbor))
+                came_from[neighbor] = current
+
+    return None  # No path found
+
 def find_path_with_lazy(G, start_node, goal_node, obstacle_center, half_diagonal, SAFE_ZONE):
     path_indices = lazy_prm_find_path(G, start_node, goal_node, lambda u, v: edge_weight_heuristic(G, u, v), lambda c1, c2: is_collision_free(c1, c2, obstacle_center, half_diagonal, SAFE_ZONE))
     
@@ -607,67 +669,7 @@ def create_images_with_obstacle(path, obstacle_center, half_diagonal, output_dir
         cv2.imwrite(output_image_path, image)
         # print(f"Image saved: {output_image_path}")
 
-def add_edge_validated_attribute(G):
-    """
-    Initialize the "validated" attribute for all edges in the graph.
 
-    Args:
-    - G: nx.Graph, the roadmap graph.
-
-    Returns:
-    - None
-    """
-    for u, v in G.edges:
-        G.edges[u, v]["validated"] = False  # Initially mark all edges as unvalidated
-
-def lazy_prm_find_path(graph, start_node, goal_node, heuristic_func, is_collision_free):
-    """
-    Perform pathfinding using Lazy PRM, deferring collision checks until necessary.
-
-    Args:
-    - graph (nx.Graph): The roadmap graph with edges marked as "validated=False".
-    - start_node (int): The start node in the graph.
-    - goal_node (int): The goal node in the graph.
-    - is_collision_free (function): Function to check edge collision.
-
-    Returns:
-    - List[Tuple]: A list of configurations and joint angles along the path, or None if no path is found.
-    """
-    open_set = []
-    heapq.heappush(open_set, (0, start_node))
-    g_costs = {start_node: 0}
-    came_from = {start_node: None}
-
-    while open_set:
-        _, current = heapq.heappop(open_set)
-
-        if current == goal_node:
-            return reconstruct_path(came_from, start_node, goal_node)
-
-        for neighbor in list(graph.neighbors(current)):
-            edge_data = graph[current][neighbor]
-
-            # Check edge validation
-            if not edge_data.get('validated', False):
-                # Perform collision check
-                config1 = graph.nodes[current]['configuration']
-                config2 = graph.nodes[neighbor]['configuration']
-                if not is_collision_free(config1, config2):
-                    graph.remove_edge(current, neighbor)
-                    continue
-                # Mark the edge as validated
-                graph[current][neighbor]['validated'] = True
-
-            # Compute tentative cost
-            weight = graph[current][neighbor]['weight']
-            tentative_g_cost = g_costs[current] + weight
-            if neighbor not in g_costs or tentative_g_cost < g_costs[neighbor]:
-                g_costs[neighbor] = tentative_g_cost
-                f_cost = tentative_g_cost + heuristic_func(neighbor, goal_node)
-                heapq.heappush(open_set, (f_cost, neighbor))
-                came_from[neighbor] = current
-
-    return None  # No path found
 
 # Main execution
 if __name__ == "__main__":
