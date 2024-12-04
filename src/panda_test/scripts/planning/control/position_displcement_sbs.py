@@ -3,7 +3,8 @@ import os
 import json
 import numpy as np
 import matplotlib.pyplot as plt
-
+import seaborn as sns
+import numpy as np
 
 json_folder = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/regression_rearranged_all_corrected/'
 
@@ -125,25 +126,91 @@ def plot_histograms_side_by_side(data1, data2, label1, label2, xlabel, ylabel, t
     plt.show()
 
 # Plot X-axis histograms (side by side)
-plot_histograms_side_by_side(
+# plot_histograms_side_by_side(
+#     position_displacement_j1, actual_displacement_j1,
+#     'Estimated Joint 1 Displacement', 'Actual Joint 1 Displacement',
+#     'Joint 1 Displacement', 'Frequency', 'Comparison')
+
+# # Plot Y-axis histograms (side by side)
+# plot_histograms_side_by_side(
+#     position_displacement_j2, actual_displacement_j2,
+#     'Estimated Joint 2 Displacement', 'Actual Joint 2 Displacement',
+#     'Joint 2 Displacement', 'Frequency', 'Comparison')
+
+# # Plot Z-axis histograms (side by side)
+# plot_histograms_side_by_side(
+#     position_displacement_j3, actual_displacement_j3,
+#     'Estimated Joint 3 Displacement', 'Actual Joint 3 Displacement',
+#     'Joint 3 Displacement', 'Frequency', 'Comparison')
+
+# # Plot Overall displacement magnitude histograms (side by side)
+# plot_histograms_side_by_side(
+#     position_displacement_magnitude, actual_displacement_magnitude,
+#     'Estimated Joint Displacement Magnitude', 'Actual Joint Displacement Magnitude',
+#     'Displacement Magnitude', 'Frequency', 'Comparison')
+
+# Plot histograms for each axis with darker colors, side-by-side, and same bin width using Seaborn
+# Plot histograms for each axis with darker colors, side-by-side, and same bin width using Seaborn
+def plot_histograms_side_by_side_seaborn(data1, data2, label1, label2, xlabel, ylabel, title, color1='blue', color2='green'):
+    # Calculate the bin edges to ensure same bin width
+    min_value = min(min(data1), min(data2))
+    max_value = max(max(data1), max(data2))
+    bin_width = 0.025  # Define your bin width
+    bins = np.arange(min_value, max_value, bin_width)  # Create bins with equal width
+
+    # Create subplots
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6), sharey=True)
+
+    # Plot histograms using seaborn with custom colors
+    sns.histplot(data1, bins=bins, color=color1, ax=ax1, kde=False, label=label1, alpha=0.9)
+    sns.histplot(data2, bins=bins, color=color2, ax=ax2, kde=False, label=label2, alpha=1.0)
+
+    # Customize the axes labels and titles
+    ax1.set_xlabel(xlabel, fontsize=14, fontweight='bold')
+    ax1.set_ylabel(ylabel, fontsize=14, fontweight='bold')
+    ax1.set_title(f'{label1} {title}', fontsize=14, fontweight='bold')
+
+    ax2.set_xlabel(xlabel, fontsize=14, fontweight='bold')
+    ax2.set_title(f'{label2} {title}', fontsize=14, fontweight='bold')
+
+    # Customize tick parameters for both axes
+    ax1.tick_params(axis='both', which='major', labelsize=16)
+    ax2.tick_params(axis='both', which='major', labelsize=16)
+
+    # Set tick label fonts to bold manually
+    for label in ax1.get_xticklabels() + ax1.get_yticklabels():
+        label.set_fontsize(18)
+        label.set_fontweight('bold')
+
+    for label in ax2.get_xticklabels() + ax2.get_yticklabels():
+        label.set_fontsize(18)
+        label.set_fontweight('bold')  
+    
+
+    plt.tight_layout()
+    plt.show()
+
+# Example: Changing the color of the histograms
+# Plot X-axis histograms (side by side) using Seaborn with custom colors
+plot_histograms_side_by_side_seaborn(
     position_displacement_j1, actual_displacement_j1,
     'Estimated Joint 1 Displacement', 'Actual Joint 1 Displacement',
-    'Joint 1 Displacement', 'Frequency', 'Comparison')
+    'Joint 1 Displacement', 'Frequency', 'Comparison', color1='#E66100', color2='#5D3A9B')
 
-# Plot Y-axis histograms (side by side)
-plot_histograms_side_by_side(
+# Plot Y-axis histograms (side by side) using Seaborn with custom colors
+plot_histograms_side_by_side_seaborn(
     position_displacement_j2, actual_displacement_j2,
     'Estimated Joint 2 Displacement', 'Actual Joint 2 Displacement',
-    'Joint 2 Displacement', 'Frequency', 'Comparison')
+    'Joint 2 Displacement', 'Frequency', 'Comparison', color1='#E66100', color2='#5D3A9B')
 
-# Plot Z-axis histograms (side by side)
-plot_histograms_side_by_side(
+# Plot Z-axis histograms (side by side) using Seaborn with custom colors
+plot_histograms_side_by_side_seaborn(
     position_displacement_j3, actual_displacement_j3,
     'Estimated Joint 3 Displacement', 'Actual Joint 3 Displacement',
-    'Joint 3 Displacement', 'Frequency', 'Comparison')
+    'Joint 3 Displacement', 'Frequency', 'Comparison', color1='#E66100', color2='#5D3A9B')
 
-# Plot Overall displacement magnitude histograms (side by side)
-plot_histograms_side_by_side(
+# Plot Overall displacement magnitude histograms (side by side) using Seaborn with custom colors
+plot_histograms_side_by_side_seaborn(
     position_displacement_magnitude, actual_displacement_magnitude,
     'Estimated Joint Displacement Magnitude', 'Actual Joint Displacement Magnitude',
-    'Displacement Magnitude', 'Frequency', 'Comparison')
+    'Displacement Magnitude', 'Frequency', 'Comparison', color1='#E66100', color2='#5D3A9B')

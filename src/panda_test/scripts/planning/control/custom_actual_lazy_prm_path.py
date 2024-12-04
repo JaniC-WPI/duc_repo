@@ -30,15 +30,18 @@ print(device)
 # Load keypoints from JSON files in a given directory
 def load_keypoints_from_json(directory):
     configurations = []
+    configuration_ids = []
     for filename in os.listdir(directory):
-        # if filename.endswith('.json'):
         if filename.endswith('.json') and not filename.endswith('_joint_angles.json') and not filename.endswith('_vel.json'):
             with open(os.path.join(directory, filename), 'r') as file:
                 data = json.load(file)
-                # Convert keypoints to integers
                 keypoints = [np.array(point[0][:2], dtype=int) for point in data['keypoints']]  # Extracting x, y coordinates
+                
                 configurations.append(np.array(keypoints))
-    return configurations
+                configuration_ids.append(data['id'])  # Store the configuration ID
+
+    # print("length of configurations", len(configurations))
+    return configurations, configuration_ids
 
 def load_keypoints_from_truncated_json(directory):
     configurations = []
@@ -70,6 +73,28 @@ def load_and_sample_configurations(directory, num_samples):
 
     return sampled_configurations
 
+def load_model_for_inference(model_path):    
+    model = PosRegModel(18)
+    model.load_state_dict(torch.load(model_path))
+    model.eval()  # Set the model to inference mode
+    return model
+
+def predict_custom_distance(current_config, next_config, model):
+    # Convert to 2D tensors if necessary
+    start_kp_flat = torch.tensor(current_config.flatten(), dtype=torch.float).unsqueeze(0)  # Add batch dimension
+    next_kp_flat = torch.tensor(next_config.flatten(), dtype=torch.float).unsqueeze(0)  # Add batch dimension
+
+    # Predict the next configuration
+    with torch.no_grad():
+        output = model(start_kp_flat, next_kp_flat).squeeze(0).numpy()  # Remove batch dimension for output
+
+    distance = np.linalg.norm(output)
+    return float(distance)  # Reshape to the original configuration format
+
+def custom_distance(x, y):
+    # Ensure x and y are in the format the model expects (flattened arrays)
+    return predict_custom_distance(x, y, model)
+
 # Load the roadmap and KDTree from files
 def load_graph_and_tree(graph_path, tree_path):
     with open(graph_path, 'rb') as f:
@@ -98,9 +123,11 @@ def add_config_to_roadmap_with_obs(config, joint_angles, G, tree, k_neighbors, o
     # print("Shape of config being added:", config.shape)
     flattened_config = config.flatten().reshape(1, -1)
     dist, indices = tree.query(flattened_config, k=k_neighbors)
+    connections = 0    
     node_id = len(G.nodes)
     G.add_node(node_id, configuration=config, joint_angles=joint_angles)
-    for d,i in zip(dist[0],indices[0]):
+    
+    for d,i in zip(dist[0], indices[0]):
         neighbor_config = G.nodes[i]['configuration']
         if is_collision_free(config, neighbor_config, obstacle_center, half_diagonal, safe_distance):
             G.add_edge(node_id, i, weight=d)
@@ -149,18 +176,6 @@ def validate_and_remove_invalid_edges(G, obstacle_center, half_diagonal, safe_di
             G.remove_edge(u, v)
             # print(f"Removed invalid edge: {u} <-> {v}")
   
-# def find_path(G, start_node, goal_node):
-#     # path_indices = nx.astar_path(G, source=start_node, target=goal_node)
-#     path_indices = nx.dijkstra_path(G, source=start_node, target=goal_node, weight='weight')
-#     path_configurations = [[G.nodes[i]['configuration'], G.nodes[i]['joint_angles']] for i in path_indices]
-
-#     for i in range(len(path_indices) - 1):
-#         u = path_indices[i]
-#         v = path_indices[i + 1]
-#         print(f"Weight from {u} to {v}: {G[u][v]['weight']}")
-
-#     return path_configurations
-            
 def astar_custom(graph, start, goal, heuristic_func):
     # Priority queue (min-heap) to hold nodes to be evaluated
     open_set = []
@@ -190,6 +205,7 @@ def astar_custom(graph, start, goal, heuristic_func):
             if neighbor not in g_costs or tentative_g_cost < g_costs[neighbor]:
                 g_costs[neighbor] = tentative_g_cost
                 f_cost = tentative_g_cost + heuristic_func(neighbor, goal)
+                # f_cost = tentative_g_cost
                 heapq.heappush(open_set, (f_cost, neighbor))
                 came_from[neighbor] = current
 
@@ -211,7 +227,7 @@ def edge_weight_heuristic(graph, current_node, goal_node):
         return graph.edges[current_node, goal_node]['weight']
     return 0
 
-def find_path(G, start_node, goal_node):
+def find_path_no_lazy(G, start_node, goal_node):
     path_indices = astar_custom(G, start_node, goal_node, lambda u, v: edge_weight_heuristic(G, u, v))
     
     path_configurations = [[G.nodes[i]['configuration'], G.nodes[i]['joint_angles']] for i in path_indices]
@@ -219,7 +235,19 @@ def find_path(G, start_node, goal_node):
     for i in range(len(path_indices) - 1):
         u = path_indices[i]
         v = path_indices[i + 1]
-        print(f"Weight from {u} to {v}: {G[u][v]['weight']}")
+        # print(f"Weight from {u} to {v}: {G[u][v]['weight']}")
+        
+    return path_configurations
+
+def find_path_with_lazy(G, start_node, goal_node, obstacle_center, half_diagonal, SAFE_ZONE):
+    path_indices = lazy_prm_find_path(G, start_node, goal_node, lambda u, v: edge_weight_heuristic(G, u, v), lambda c1, c2: is_collision_free(c1, c2, obstacle_center, half_diagonal, SAFE_ZONE))
+    
+    path_configurations = [[G.nodes[i]['configuration'], G.nodes[i]['joint_angles']] for i in path_indices]
+
+    for i in range(len(path_indices) - 1):
+        u = path_indices[i]
+        v = path_indices[i + 1]
+        # print(f"Weight from {u} to {v}: {G[u][v]['weight']}")
         
     return path_configurations
 
@@ -290,54 +318,6 @@ def save_image_with_points(image_path, output_path, output_dir, points_sets):
 
     # Save the final modified image
     cv2.imwrite(output_path, static_image)
-
-def save_path_with_distances_to_csv(path, filename):
-    """
-    Saves the path, distances between configurations, and joint angle distances to a CSV file.
-    
-    Args:
-    - path: List of configurations and joint angles.
-    - filename: Name of the CSV file to save the data.
-    - model: The model used for calculating custom distances between keypoints.
-    """
-    kp_distances = []
-    joint_angle_distances = []
-
-    # Calculate distances between consecutive configurations and joint angles
-    for i in range(1, len(path)):
-        current_config = path[i-1][0]
-        next_config = path[i][0]
-        current_angles = path[i-1][1]
-        next_angles = path[i][1]
-
-        # Distance between keypoint configurations
-        kp_distance = np.linalg.norm(np.array(next_config) - np.array(current_config))
-        kp_distances.append(kp_distance)
-
-        # Euclidean distance between joint angles
-        joint_angle_distance = np.linalg.norm(np.array(next_angles) - np.array(current_angles))
-        joint_angle_distances.append(joint_angle_distance)
-
-    # Write the configurations, joint angles, keypoint distances, and joint angle distances to a CSV file
-    with open(filename, 'w', newline='') as csvfile:
-        csv_writer = csv.writer(csvfile)
-        
-        # Define headers
-        headers = ['Config'] + [f'KP_{i}_x' for i in range(len(path[0][0]))] + \
-                  [f'KP_{i}_y' for i in range(len(path[0][0]))] + \
-                  ['Joint 1', 'Joint 2', 'Joint 3', 'Distance to next KP', 'Distance to next Joint Angles']
-        csv_writer.writerow(headers)
-
-        # Write each configuration and its joint angles
-        for i, (config, angles) in enumerate(path):
-            flat_config = [coord for kp in config for coord in kp]  # Flatten the keypoint configuration
-            if i < len(kp_distances):
-                row = [f'Config_{i}'] + flat_config + list(angles) + [kp_distances[i], joint_angle_distances[i]]
-            else:
-                row = [f'Config_{i}'] + flat_config + list(angles) + ['', '']  # No distance for the last configuration
-            csv_writer.writerow(row)
-
-    print(f"Path, keypoint distances, and joint angle distances successfully saved to {filename}")
 
 def create_goal_image(goal_config, output_path):
     """
@@ -412,6 +392,54 @@ def compute_obstacle_center(start_config, goal_config):
 
     return tuple(obstacle_center)
 
+def save_path_with_distances_to_csv(path, filename, model):
+    """
+    Saves the path, distances between configurations, and joint angle distances to a CSV file.
+    
+    Args:
+    - path: List of configurations and joint angles.
+    - filename: Name of the CSV file to save the data.
+    - model: The model used for calculating custom distances between keypoints.
+    """
+    kp_distances = []
+    joint_angle_distances = []
+
+    # Calculate distances between consecutive configurations and joint angles
+    for i in range(1, len(path)):
+        current_config = path[i-1][0]
+        next_config = path[i][0]
+        current_angles = path[i-1][1]
+        next_angles = path[i][1]
+
+        # Distance between keypoint configurations
+        kp_distance = predict_custom_distance(current_config, next_config, model)
+        kp_distances.append(kp_distance)
+
+        # Euclidean distance between joint angles
+        joint_angle_distance = np.linalg.norm(np.array(next_angles) - np.array(current_angles))
+        joint_angle_distances.append(joint_angle_distance)
+
+    # Write the configurations, joint angles, keypoint distances, and joint angle distances to a CSV file
+    with open(filename, 'w', newline='') as csvfile:
+        csv_writer = csv.writer(csvfile)
+        
+        # Define headers
+        headers = ['Config'] + [f'KP_{i}_x' for i in range(len(path[0][0]))] + \
+                  [f'KP_{i}_y' for i in range(len(path[0][0]))] + \
+                  ['Joint 1', 'Joint 2', 'Joint 3', 'Distance to next KP', 'Distance to next Joint Angles']
+        csv_writer.writerow(headers)
+
+        # Write each configuration and its joint angles
+        for i, (config, angles) in enumerate(path):
+            flat_config = [coord for kp in config for coord in kp]  # Flatten the keypoint configuration
+            if i < len(kp_distances):
+                row = [f'Config_{i}'] + flat_config + list(angles) + [kp_distances[i], joint_angle_distances[i]]
+            else:
+                row = [f'Config_{i}'] + flat_config + list(angles) + ['', '']  # No distance for the last configuration
+            csv_writer.writerow(row)
+
+    # print(f"Path, keypoint distances, and joint angle distances successfully saved to {filename}")
+
 def discard_invalid_configurations(path, half_diagonal, safe_zone=80):
     """
     Discards configurations where the last keypoint is too far from the second keypoint.
@@ -442,7 +470,31 @@ def discard_invalid_configurations(path, half_diagonal, safe_zone=80):
     
     return valid_path
 
-def discard_close_configurations(path, min_distance=15):
+def discard_table_collision(path, safe_zone = 390):
+    """
+    Discards configurations where the last keypoint is too far from the second keypoint.
+    
+    Args:
+    - path: List of configurations (each configuration is a list of keypoints).
+    - max y value for last keypoints
+
+    Returns:
+    - List of valid configurations.
+    """
+    valid_path = []
+    
+    for config, angles in path:
+        last_keypoint_y = config[-1][1]   # Last keypoint
+        
+        # If the distance is within the acceptable limit, keep the configuration
+        if last_keypoint_y < safe_zone:
+            valid_path.append((config, angles))
+        else:
+            print(f"Configuration discarded: y of last keypoint = {last_keypoint_y}, exceeds {safe_zone}")
+    
+    return valid_path
+
+def discard_close_configurations(path, min_distance=50):
     """
     Discards intermediate configurations if the Euclidean distance between consecutive ones is less than the threshold.
     Keeps the first configuration. If the penultimate configuration is too close to the last one, discard it.
@@ -553,26 +605,90 @@ def create_images_with_obstacle(path, obstacle_center, half_diagonal, output_dir
         # Save the image with the appropriate name
         output_image_path = os.path.join(output_dir, f'sim_intermediate_goal_image_{i}.jpg')
         cv2.imwrite(output_image_path, image)
-        print(f"Image saved: {output_image_path}")
+        # print(f"Image saved: {output_image_path}")
+
+def add_edge_validated_attribute(G):
+    """
+    Initialize the "validated" attribute for all edges in the graph.
+
+    Args:
+    - G: nx.Graph, the roadmap graph.
+
+    Returns:
+    - None
+    """
+    for u, v in G.edges:
+        G.edges[u, v]["validated"] = False  # Initially mark all edges as unvalidated
+
+def lazy_prm_find_path(graph, start_node, goal_node, heuristic_func, is_collision_free):
+    """
+    Perform pathfinding using Lazy PRM, deferring collision checks until necessary.
+
+    Args:
+    - graph (nx.Graph): The roadmap graph with edges marked as "validated=False".
+    - start_node (int): The start node in the graph.
+    - goal_node (int): The goal node in the graph.
+    - is_collision_free (function): Function to check edge collision.
+
+    Returns:
+    - List[Tuple]: A list of configurations and joint angles along the path, or None if no path is found.
+    """
+    open_set = []
+    heapq.heappush(open_set, (0, start_node))
+    g_costs = {start_node: 0}
+    came_from = {start_node: None}
+
+    while open_set:
+        _, current = heapq.heappop(open_set)
+
+        if current == goal_node:
+            return reconstruct_path(came_from, start_node, goal_node)
+
+        for neighbor in list(graph.neighbors(current)):
+            edge_data = graph[current][neighbor]
+
+            # Check edge validation
+            if not edge_data.get('validated', False):
+                # Perform collision check
+                config1 = graph.nodes[current]['configuration']
+                config2 = graph.nodes[neighbor]['configuration']
+                if not is_collision_free(config1, config2):
+                    graph.remove_edge(current, neighbor)
+                    continue
+                # Mark the edge as validated
+                graph[current][neighbor]['validated'] = True
+
+            # Compute tentative cost
+            weight = graph[current][neighbor]['weight']
+            tentative_g_cost = g_costs[current] + weight
+            if neighbor not in g_costs or tentative_g_cost < g_costs[neighbor]:
+                g_costs[neighbor] = tentative_g_cost
+                f_cost = tentative_g_cost + heuristic_func(neighbor, goal_node)
+                heapq.heappush(open_set, (f_cost, neighbor))
+                came_from[neighbor] = current
+
+    return None  # No path found
 
 # Main execution
 if __name__ == "__main__":
     # Load configurations from JSON files
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_rearranged_og/'  
-    configurations = load_keypoints_from_json(directory)
-    graph_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/euclidean_roadmap_angle_fresh_432.pkl'
-    tree_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/euclidean_tree_angle_fresh_432.pkl'
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_rearranged/'  # Replace with the path to your JSON files
+    model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b128_e400_v32.pth'
+    configurations, configuration_ids = load_keypoints_from_json(directory)
+    model = load_model_for_inference(model_path)
+    graph_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/custom_roadmap_angle_fresh_432.pkl'
+    tree_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/custom_tree_angle_fresh_432.pkl'
     file_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/'
-    folder_num = 20
+    folder_num = 1
 
     # Define both folder paths
-    exp_folder_no_obs = os.path.join(file_path, 'euclidean', 'no_obs', str(folder_num))
-    exp_folder_with_obs = os.path.join(file_path, 'euclidean', 'with_obs', str(folder_num))
+    exp_folder_no_lazy = os.path.join(file_path, 'lazy_prm', 'custom', 'no_lazy', str(folder_num))
+    exp_folder_with_lazy = os.path.join(file_path, 'lazy_prm', 'custom', 'with_lazy', str(folder_num))
 
     original_joint_positions = [0.007195404887023141, 0, -0.008532170082858044, 0, 0.0010219530727038648, 0, 0.8118303423692146]    
 
     # Create both folders if they don't exist
-    for folder in [exp_folder_no_obs, exp_folder_with_obs]:
+    for folder in [exp_folder_no_lazy, exp_folder_with_lazy]:
         if not os.path.exists(folder):
             os.makedirs(folder)
 
@@ -582,40 +698,58 @@ if __name__ == "__main__":
     # load roadmap for no collision check
     roadmap, tree = load_graph_and_tree(graph_path, tree_path)
 
-    # Define start and goal configurations as numpy arrays    
-    start_config = np.array([[250, 442], [252, 311], [283, 260], [314, 210], [339, 224], [394, 175], [452, 129], [474, 105], [505, 132]])
-    goal_config = np.array([[250, 442], [252, 311], [198, 302], [141, 291], [147, 261], [162, 193], [179, 123], [185, 92], [225, 99]])
-    
-    start_angles_exp = np.array([0.430689500869326, -0.45463804931435, 2.02625223276343])
-    start_joint_angles = np.array([0.495685, -0.564753, 1.96706])
-    goal_joint_angles = np.array([-1.40828, -1.80466, 1.77762])
-    
+    # Define start and goal configurations as numpy arrays
+    start_config = np.array([[250, 442], [252, 311], [211, 273], [169, 235], [188, 212], [215, 148], [244, 81], [242, 50], [280, 47]])
+    goal_config = np.array([[250, 442], [252, 311], [275, 255], [294, 200], [322, 209], [394, 194], [468, 181], [494, 158], [522, 187]])
+
+    start_angles_exp = np.array([-0.9367698173104668, -1.3382993170643418, 2.247841014682137])
+    start_joint_angles = np.array([-0.870795, -1.44845, 2.20395])
+    goal_joint_angles = np.array([0.267307, -1.38323, 2.58668])
+
     SAFE_ZONE = 40
-    obstacle_center = (350, 50)
+    obstacle_center = (404, 117)
     half_diagonal = 20
 
 
+    obstacle_boundary = geom.Polygon([
+        (obstacle_center[0] - (half_diagonal + SAFE_ZONE), obstacle_center[1] - (half_diagonal + SAFE_ZONE)),
+        (obstacle_center[0] + (half_diagonal + SAFE_ZONE), obstacle_center[1] - (half_diagonal + SAFE_ZONE)),
+        (obstacle_center[0] + (half_diagonal + SAFE_ZONE), obstacle_center[1] + (half_diagonal + SAFE_ZONE)),
+        (obstacle_center[0] - (half_diagonal + SAFE_ZONE), obstacle_center[1] + (half_diagonal + SAFE_ZONE)), 
+    ])
+
     joint_position = create_joint_position(start_angles_exp, original_joint_positions)
 
-    start_node = add_config_to_roadmap_no_obs(start_config, start_joint_angles, roadmap, tree, num_neighbors)
-    goal_node = add_config_to_roadmap_no_obs(goal_config, goal_joint_angles, roadmap, tree, num_neighbors)
+    # start_time = time.time()
+    # Add start and goal configurations to the roadmap
+    start_node = add_config_to_roadmap_with_obs(start_config, start_joint_angles, roadmap, tree, num_neighbors, obstacle_center, half_diagonal, SAFE_ZONE)
+    goal_node = add_config_to_roadmap_with_obs(goal_config, goal_joint_angles, roadmap, tree, num_neighbors, obstacle_center, half_diagonal, SAFE_ZONE) 
 
-    valid_path_no_obs = find_path(roadmap, start_node, goal_node)
+    start_time = time.time()
+    validate_and_remove_invalid_edges(roadmap, obstacle_center, half_diagonal, SAFE_ZONE)  
 
-    save_keypoints_and_joint_angles_to_csv(valid_path_no_obs, os.path.join(exp_folder_no_obs, 'joint_keypoints.csv'))
-    save_path_with_distances_to_csv(valid_path_no_obs, os.path.join(exp_folder_no_obs, 'save_distances.csv'))
+    valid_path_no_lazy = find_path_no_lazy(roadmap, start_node, goal_node)
 
-    if valid_path_no_obs:
-        create_images_with_obstacle(valid_path_no_obs, obstacle_center, half_diagonal, exp_folder_no_obs)
+    end_time = time.time()
+
+    time_taken_no_lazy =  end_time - start_time
+
+    print(time_taken_no_lazy)
+
+    save_keypoints_and_joint_angles_to_csv(valid_path_no_lazy, os.path.join(exp_folder_no_lazy, 'joint_keypoints.csv'))
+    save_path_with_distances_to_csv(valid_path_no_lazy, os.path.join(exp_folder_no_lazy, 'save_distances.csv'), model)
+
+    if valid_path_no_lazy:
+        create_images_with_obstacle(valid_path_no_lazy, obstacle_center, half_diagonal, exp_folder_no_lazy)
         point_set = []
         goal_sets = []
         # Iterate through the path, excluding the first and last configuration
-        last_configuration = valid_path_no_obs[-1][0]
+        last_configuration = valid_path_no_lazy[-1][0]
         last_config = last_configuration[[3, 4, 6, 7, 8]]
 
-        create_goal_image(last_config, os.path.join(exp_folder_no_obs, 'sim_published_goal_image_orig.jpg'))
+        create_goal_image(last_config, os.path.join(exp_folder_no_lazy, 'sim_published_goal_image_orig.jpg'))
 
-        for configuration in valid_path_no_obs[0:-1]:
+        for configuration in valid_path_no_lazy[0:-1]:
             # Extract the last three keypoints of each configuration
             keypoints = configuration[0]
             selected_points = keypoints[[3, 4, 6, 7, 8]]
@@ -624,7 +758,7 @@ if __name__ == "__main__":
             point_set.append(selected_points_float)
 
         # Iterate through the path, excluding start and goal            
-        for configuration in valid_path_no_obs[1:]: 
+        for configuration in valid_path_no_lazy[1:]: 
             keypoints = configuration[0]
             selected_points = keypoints[[3, 4, 6, 7, 8]]
             selected_points_float = [[float(point[0]), float(point[1])] for point in selected_points]
@@ -633,15 +767,15 @@ if __name__ == "__main__":
                 goal_features.extend(point)  # Add x, y as a pair
             goal_sets.append(goal_features)
 
-        save_image_with_points(os.path.join(exp_folder_no_obs, 'sim_published_goal_image_orig.jpg'), \
-                                os.path.join(exp_folder_no_obs, 'sim_published_goal_image_all.jpg'), \
-                                    os.path.join(exp_folder_no_obs, 'path'), point_set)
+        save_image_with_points(os.path.join(exp_folder_no_lazy, 'sim_published_goal_image_orig.jpg'), \
+                                os.path.join(exp_folder_no_lazy, 'sim_published_goal_image_all.jpg'), \
+                                    os.path.join(exp_folder_no_lazy, 'path'), point_set)
          
-        draw_green_rectangle(os.path.join(exp_folder_no_obs, 'sim_published_goal_image_all.jpg'), \
+        draw_green_rectangle(os.path.join(exp_folder_no_lazy, 'sim_published_goal_image_all.jpg'), \
                               obstacle_center, half_diagonal, \
-                                os.path.join(exp_folder_no_obs, 'sim_published_goal_image.jpg'))
+                                os.path.join(exp_folder_no_lazy, 'sim_published_goal_image.jpg'))
            
-        with open(os.path.join(exp_folder_no_obs, "dl_multi_features.yaml"), "w") as yaml_file:
+        with open(os.path.join(exp_folder_no_lazy, "dl_multi_features.yaml"), "w") as yaml_file:
             s = "dl_controller:\n"
             s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
             for i, goal in enumerate(goal_sets, start=1):
@@ -656,7 +790,7 @@ if __name__ == "__main__":
 
         # Save configurations to a .txt file
         
-        with open(os.path.join(exp_folder_no_obs, "path_configurations_no_obs.txt"), "w") as file:
+        with open(os.path.join(exp_folder_no_lazy, "path_configurations_no_lazy.txt"), "w") as file:
             # file.write("Start Configuration:\n")
             file.write("start_config = np.array(")
             file.write(str(start_config.tolist()) + ")" + "\n")
@@ -684,8 +818,10 @@ if __name__ == "__main__":
             file.write(str(half_diagonal) + "\n\n")
             file.write("Original Joint position:\n")
             file.write(str(joint_position) + "\n\n")
+            file.write("time_taken_no_lazy:\n")
+            file.write(str(time_taken_no_lazy) + "\n\n")
             file.write("Path:\n")
-            for config, angles in valid_path_no_obs:
+            for config, angles in valid_path_no_lazy:
                 file.write(str(config.tolist()) + "\n")
             file.write("\nPoint Set:\n")
             for points in point_set:
@@ -696,36 +832,38 @@ if __name__ == "__main__":
     # load fresh roadmap for collision check
     roadmap, tree = load_graph_and_tree(graph_path, tree_path)
 
-    obstacle_boundary = geom.Polygon([
-        (obstacle_center[0] - (half_diagonal + SAFE_ZONE), obstacle_center[1] - (half_diagonal + SAFE_ZONE)),
-        (obstacle_center[0] + (half_diagonal + SAFE_ZONE), obstacle_center[1] - (half_diagonal + SAFE_ZONE)),
-        (obstacle_center[0] + (half_diagonal + SAFE_ZONE), obstacle_center[1] + (half_diagonal + SAFE_ZONE)),
-        (obstacle_center[0] - (half_diagonal + SAFE_ZONE), obstacle_center[1] + (half_diagonal + SAFE_ZONE)), 
-    ])
+    # Initialize "validated" attribute for edges
+    # add_edge_validated_attribute(roadmap)
 
+    # start_time = time.time()
+    add_edge_validated_attribute(roadmap)
+    # Add start and goal nodes without collision checking
+    start_node = add_config_to_roadmap_no_obs(start_config, start_joint_angles, roadmap, tree, num_neighbors)
+    goal_node = add_config_to_roadmap_no_obs(goal_config, goal_joint_angles, roadmap, tree, num_neighbors)
 
-    # Add start and goal configurations to the roadmap
-    start_node = add_config_to_roadmap_with_obs(start_config, start_joint_angles, roadmap, tree, num_neighbors, obstacle_center, half_diagonal, SAFE_ZONE)
-    goal_node = add_config_to_roadmap_with_obs(goal_config, goal_joint_angles, roadmap, tree, num_neighbors, obstacle_center, half_diagonal, SAFE_ZONE) 
+    start_time = time.time()
+    # Perform Lazy PRM pathfinding with deferred collision checking
+    valid_path_with_lazy = find_path_with_lazy(roadmap, start_node, goal_node, obstacle_center, half_diagonal, SAFE_ZONE)
+    end_time =  time.time()
 
-    validate_and_remove_invalid_edges(roadmap, obstacle_center, half_diagonal, SAFE_ZONE)
-        
-    # Find and print the path from start to goal
-    valid_path_with_obs = find_path(roadmap, start_node, goal_node)
+    time_taken_with_lazy = end_time - start_time
 
-    save_keypoints_and_joint_angles_to_csv(valid_path_with_obs, os.path.join(file_path, os.path.join(exp_folder_with_obs, 'joint_keypoints.csv')))
-    save_path_with_distances_to_csv(valid_path_with_obs, os.path.join(exp_folder_with_obs, 'save_distances.csv'))
+    # print(valid_path_no_lazy, valid_path_with_lazy)
 
+    print(time_taken_with_lazy)
 
-    if valid_path_with_obs:
-        create_images_with_obstacle(valid_path_with_obs, obstacle_center, half_diagonal, exp_folder_with_obs)
+    # save_keypoints_and_joint_angles_to_csv(valid_path_with_lazy, os.path.join(file_path, os.path.join(exp_folder_with_lazy, 'joint_keypoints.csv')))
+    # save_path_with_distances_to_csv(valid_path_with_lazy, os.path.join(exp_folder_with_lazy, 'save_distances.csv'), model)
+
+    if valid_path_with_lazy:
+        create_images_with_obstacle(valid_path_with_lazy, obstacle_center, half_diagonal, exp_folder_with_lazy)
         point_set = []
         goal_sets = []
-        last_configuration = valid_path_with_obs[-1][0]
+        last_configuration = valid_path_with_lazy[-1][0]
         last_config = last_configuration[[3, 4, 6, 7, 8]]
-        create_goal_image(last_config, os.path.join(exp_folder_with_obs, 'sim_published_goal_image_orig.jpg'))
+        create_goal_image(last_config, os.path.join(exp_folder_with_lazy, 'sim_published_goal_image_orig.jpg'))
         # Iterate through the path, excluding the first and last configuration
-        for configuration in valid_path_with_obs[0:-1]:
+        for configuration in valid_path_with_lazy[0:-1]:
            # Extract the last three keypoints of each configuration
            keypoints = configuration[0]
            selected_points = keypoints[[3, 4, 6, 7, 8]]
@@ -733,7 +871,7 @@ if __name__ == "__main__":
            # Append these points to the point_set list
            point_set.append(selected_points_float)
         # Iterate through the path, excluding start and goal            
-        for configuration in valid_path_with_obs[1:]: 
+        for configuration in valid_path_with_lazy[1:]: 
            keypoints = configuration[0]
            selected_points = keypoints[[3, 4, 6, 7, 8]]
            selected_points_float = [[float(point[0]), float(point[1])] for point in selected_points]
@@ -741,14 +879,14 @@ if __name__ == "__main__":
            for point in selected_points_float:
                goal_features.extend(point)  # Add x, y as a pair
            goal_sets.append(goal_features)
-        save_image_with_points(os.path.join(exp_folder_with_obs, 'sim_published_goal_image_orig.jpg'), \
-                            os.path.join(exp_folder_with_obs, 'sim_published_goal_image_all.jpg'), \
-                                os.path.join(exp_folder_with_obs, 'path'), point_set)
+        save_image_with_points(os.path.join(exp_folder_with_lazy, 'sim_published_goal_image_orig.jpg'), \
+                            os.path.join(exp_folder_with_lazy, 'sim_published_goal_image_all.jpg'), \
+                                os.path.join(exp_folder_with_lazy, 'path'), point_set)
         
-        draw_green_rectangle(os.path.join(exp_folder_with_obs, 'sim_published_goal_image_all.jpg'), \
+        draw_green_rectangle(os.path.join(exp_folder_with_lazy, 'sim_published_goal_image_all.jpg'), \
                           obstacle_center, half_diagonal, \
-                            os.path.join(exp_folder_with_obs, 'sim_published_goal_image.jpg'))
-        with open(os.path.join(exp_folder_with_obs, "dl_multi_features.yaml"), "w") as yaml_file:
+                            os.path.join(exp_folder_with_lazy, 'sim_published_goal_image.jpg'))
+        with open(os.path.join(exp_folder_with_lazy, "dl_multi_features.yaml"), "w") as yaml_file:
             s = "dl_controller:\n"
             s += "  num_goal_sets: " + str(len(goal_sets)) + "\n"
             for i, goal in enumerate(goal_sets, start=1):
@@ -759,7 +897,7 @@ if __name__ == "__main__":
             yaml_file.write(s)
         print("Data successfully written to dl_multi_features.yaml")
         # Save configurations to a .txt file
-        with open(os.path.join(exp_folder_with_obs, "path_configurations_with_obs.txt"), "w") as file:
+        with open(os.path.join(exp_folder_with_lazy, "path_configurations_with_lazy.txt"), "w") as file:
             # file.write("Start Configuration:\n")
             file.write("start_config = np.array(")
             file.write(str(start_config.tolist()) + ")" + "\n")
@@ -787,11 +925,16 @@ if __name__ == "__main__":
             file.write(str(half_diagonal) + "\n\n")
             file.write("Original Joint position:\n")
             file.write(str(joint_position) + "\n\n")
+            file.write("time_taken_with_lazy:\n")
+            file.write(str(time_taken_with_lazy) + "\n\n")
             file.write("Path:\n")
-            for config, angles in valid_path_with_obs:
+            for config, angles in valid_path_with_lazy:
                 file.write(str(config.tolist()) + "\n")
             file.write("\nPoint Set:\n")
             for points in point_set:
                 file.write(str(points) + "\n")
         print("Configurations successfully saved to configurations.txt")
+
+    
+    
 

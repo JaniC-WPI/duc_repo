@@ -279,7 +279,7 @@ class KeypointPipeline(nn.Module):
     def __init__(self, weights_path):
         super(KeypointPipeline, self).__init__()  
         self.keypoint_model = torch.load(weights_path).to(device)
-        self.graph_gcn = GraphGCN(8,1024,4)
+        self.graph_gcn = GraphGCN(8,512,4)
         
     def process_model_output(self, output):
         scores = output[0]['scores'].detach().cpu().numpy()
@@ -297,9 +297,7 @@ class KeypointPipeline(nn.Module):
         unique_labels, best_keypoint_indices = torch.unique(keypoints[:, 3], return_inverse=True)
         best_scores, best_indices = torch.max(keypoints[:, 2].unsqueeze(0) * (best_keypoint_indices == torch.arange(len(unique_labels)).unsqueeze(1).cuda()), dim=1)
         keypoints = keypoints[best_indices]
-        
-#         print("initial predicted keypoints", keypoints)
-        
+                
         return keypoints
     
     def fill_missing_keypoints(self, keypoints, image_width, image_height):
@@ -535,7 +533,7 @@ model = KeypointPipeline(weights_path)
 model = model.to(device)
 
 # Load the checkpoint
-checkpoint_path = '/home/jc-merlab/Pictures/Data/trained_models/gcn_ckpt/kprcnn_occ_gcn_ckpt_b128e17.pth'
+checkpoint_path = '/home/jc-merlab/Pictures/Data/trained_models/gcn_ckpt_v2/kprcnn_occ_gcn_ckpt_b128e23.pth'
 checkpoint = torch.load(checkpoint_path)
 
 # Extract the state dictionary
@@ -579,17 +577,48 @@ def postprocess_keypoints(keypoints, width=640, height=480):
     denormalized_keypoints = denormalize_keypoints(keypoints, width, height)
     return denormalized_keypoints
 
+# def visualize_keypoints_with_ground_truth(image_path, predicted_keypoints, ground_truth_keypoints, out_dir):
+#     img = cv2.imread(image_path)
+#     if torch.is_tensor(predicted_keypoints):
+#         predicted_keypoints = predicted_keypoints.cpu().numpy()
+#     for kp in predicted_keypoints[0]:
+#         x, y = int(kp[0]), int(kp[1])
+#         cv2.circle(img, (x, y), radius=8, color=(255, 0, 0), thickness=-1)
+    
+#     for x, y, _ in ground_truth_keypoints:
+#         cv2.circle(img, (x, y), radius=6, color=(0, 0, 255), thickness=-1)
+    
+#     filename = os.path.basename(image_path)
+#     output_path = os.path.join(out_dir, filename)
+#     cv2.imwrite(output_path, img)
+
 def visualize_keypoints_with_ground_truth(image_path, predicted_keypoints, ground_truth_keypoints, out_dir):
     img = cv2.imread(image_path)
+    
+    # Ensure predicted keypoints are in NumPy format
     if torch.is_tensor(predicted_keypoints):
         predicted_keypoints = predicted_keypoints.cpu().numpy()
-    for kp in predicted_keypoints[0]:
+
+    # Annotate predicted keypoints
+    for idx, kp in enumerate(predicted_keypoints[0]):
         x, y = int(kp[0]), int(kp[1])
-        cv2.circle(img, (x, y), radius=8, color=(255, 0, 0), thickness=-1)
-    
+        cv2.circle(img, (x, y), radius=8, color=(255, 0, 0), thickness=-1)  # Draw circle around keypoint
+        cv2.putText(
+            img, 
+            str(idx + 1), 
+            (x + 10, y - 10), 
+            cv2.FONT_HERSHEY_SIMPLEX, 
+            0.8, 
+            (255, 0, 255), 
+            1, 
+            cv2.LINE_AA
+        )  # Annotate with keypoint order
+
+    # Annotate ground truth keypoints
     for x, y, _ in ground_truth_keypoints:
-        cv2.circle(img, (x, y), radius=6, color=(0, 0, 255), thickness=-1)
-    
+        cv2.circle(img, (x, y), radius=6, color=(0, 0, 255), thickness=-1)  # Ground truth keypoints in red
+
+    # Save annotated image
     filename = os.path.basename(image_path)
     output_path = os.path.join(out_dir, filename)
     cv2.imwrite(output_path, img)
@@ -639,8 +668,8 @@ def process_folder(folder_path, output_path, output_path_line):
             end_time = time.time()
             inference_time = end_time - start_time
             print(f"Inference time for {filename}: {inference_time:.4f} seconds")
-            ordered_keypoints = reorder_batch_keypoints(KGNN2D)
-            denormalized_keypoints = postprocess_keypoints(ordered_keypoints)
+            # ordered_keypoints = reorder_batch_keypoints(KGNN2D)
+            denormalized_keypoints = postprocess_keypoints(KGNN2D)
             
             json_filename = filename.split('.')[0] + '.json'
             json_path = os.path.join(folder_path, json_filename)
@@ -680,20 +709,6 @@ folder_path = '/home/jc-merlab/Pictures/Data/occ_panda_phys_test_data/'
 output_path = '/home/jc-merlab/Pictures/Data/occ_phys_test_data/gcn_output_v2/'
 output_path_line = '/home/jc-merlab/Pictures/Data/occ_test_op_line/'
 process_folder(folder_path, output_path, output_path_line)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -16,6 +16,7 @@ import splitfolders
 import shutil
 from define_path import Def_Path
 from datetime import datetime
+import random
 
 from tqdm import tqdm
 
@@ -36,6 +37,10 @@ import albumentations as A # Library for augmentations
 
 import matplotlib.pyplot as plt 
 from PIL import Image
+
+import transforms, utils, engine, train
+from utils import collate_fn
+from engine import train_one_epoch, evaluate
 
 import torch
 import torch.nn as nn
@@ -65,10 +70,13 @@ path = Def_Path()
 
 # parent_path =  path.home + "/Pictures/" + "Data/"
 
+# parent_path =  "/home/jc-merlab/Pictures/Data/"
+
 parent_path =  "/home/schatterjee/lama/kprcnn_panda/"
 
 # root_dir = parent_path + path.year + "-" + path.month + "-" + path.day + "/"
-root_dir = parent_path + "occ_panda_physical_dataset/"
+root_dir = parent_path + "occ_new_panda_physical_dataset/"
+
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # torch.cuda.set_per_process_memory_fraction(0.9, 0)
@@ -103,8 +111,7 @@ def train_test_split(src_dir):
     for jsonfile in glob.iglob(os.path.join(src_dir, "*.json")):
         shutil.copy(jsonfile, dst_dir_anno)
         
-    output = parent_path + "split_folder_output_occ_sage" + "-" + path.year + "-" + path.month + "-" + path.day
-
+    output = parent_path + "split_folder_output_occ_gcn_sage_v1" + "-" + path.year + "-" + path.month + "-" + path.day 
     
     splitfolders.ratio(src_dir, # The location of dataset
                    output=output, # The output location
@@ -118,6 +125,7 @@ def train_test_split(src_dir):
     shutil.rmtree(dst_dir_anno)
     
     return output  
+
 
 class KPDataset(Dataset):
     def __init__(self, root, transform=None, demo=False):                
@@ -214,29 +222,6 @@ class KPDataset(Dataset):
     def __len__(self):
         return len(self.imgs_files)
 
-class GraphGCN(torch.nn.Module):
-    def __init__(self, in_channels, hidden_channels, out_channels):
-        super(GraphGCN, self).__init__()
-        self.conv1 = GCNConv(in_channels, hidden_channels)
-        self.conv2 = GCNConv(hidden_channels, hidden_channels)
-        self.conv3 = GCNConv(hidden_channels, hidden_channels)
-        self.fc = torch.nn.Linear(hidden_channels, out_channels)
-    
-    def forward(self, x, edge_index):
-        x = x.cuda()
-        edge_index = edge_index.cuda()
-        x = self.conv1(x, edge_index)
-        x = torch.nn.functional.relu(x)
-        x = torch.nn.functional.dropout(x, p=0.5, training=self.training)
-        x = self.conv2(x, edge_index)
-        x = torch.nn.functional.relu(x)
-        x = torch.nn.functional.dropout(x, p=0.5, training=self.training)
-        x = self.conv3(x, edge_index)
-        x = torch.nn.functional.relu(x)
-        x = self.fc(x)
-        return x
-    
-
 def calculate_distance_angle(kp1, kp2):
     dx = kp2[0] - kp1[0]
     dy = kp2[1] - kp1[1]
@@ -247,13 +232,14 @@ def calculate_distance_angle(kp1, kp2):
 
 def calculate_gt_distances_angles(keypoints_gt):
 #     print(f"keypoints_gt shape: {keypoints_gt.shape}")  # Debug print
-    batch_size, num_keypoints, num_dims = keypoints_gt.shape
+    print(keypoints_gt.shape)
+    batch_size, num_keypoints, num_dims = keypoints_gt.shape    
     assert num_keypoints == n_nodes and num_dims == 2, "keypoints_gt must have shape (batch_size, 9, 2)"
     distances_angles = []
 
     for b in range(batch_size):
         batch_distances_angles = torch.zeros((num_keypoints, 4), dtype=torch.float32).to(device)  # Initialize with zeros
-        
+
         for i in range(num_keypoints):
             current_kp = keypoints_gt[b, i]
             next_i = (i + 1) % num_keypoints
@@ -275,11 +261,60 @@ def calculate_gt_distances_angles(keypoints_gt):
 #     print("ground truth dist and angles", distances_angles)
     return distances_angles
 
+def visualize_keypoints(image, pred_keypoints, gt_keypoints=None, title="Keypoints Visualization"):
+    # Convert the image tensor to a numpy array and move channels (C, H, W) -> (H, W, C)
+    image_np = image.permute(1, 2, 0).cpu().numpy()
+    
+    plt.figure(figsize=(10, 10))
+    plt.imshow(image_np)
+    
+    # Plot predicted keypoints (blue)
+    if pred_keypoints is not None:
+        pred_keypoints_np = pred_keypoints.cpu().numpy()
+        for kp in pred_keypoints_np:
+            plt.scatter(kp[0], kp[1], c='blue', marker='x', s=100, label='Predicted' if kp is pred_keypoints_np[0] else "")
+    
+    # Plot ground truth keypoints (green)
+    if gt_keypoints is not None:
+        gt_keypoints_np = gt_keypoints.cpu().numpy()
+        for kp in gt_keypoints_np:
+            plt.scatter(kp[0], kp[1], c='green', marker='o', s=100, label='Ground Truth' if kp is gt_keypoints_np[0] else "")
+    
+    plt.title(title)
+    plt.legend(loc="upper right")
+    plt.show()
+
+class GraphGCN(torch.nn.Module):
+    def __init__(self, in_channels, hidden_channels_1, hidden_channels_2,  out_channels):
+        super(GraphGCN, self).__init__()
+        self.conv1 = SAGEConv(in_channels, hidden_channels_1)
+        self.conv2 = GCNConv(hidden_channels_1, hidden_channels_1)
+        self.conv3 = SAGEConv(hidden_channels_1, hidden_channels_2)
+        self.conv4 = GCNConv(hidden_channels_2, hidden_channels_2)
+        self.fc = torch.nn.Linear(hidden_channels_2, out_channels)
+
+    def forward(self, x, edge_index):
+        x = x.cuda()
+        edge_index = edge_index.cuda()
+        x = self.conv1(x, edge_index)
+        x = torch.nn.functional.relu(x)
+        x = torch.nn.functional.dropout(x, p=0.5, training=self.training)
+        x = self.conv2(x, edge_index)
+        x = torch.nn.functional.relu(x)
+        x = torch.nn.functional.dropout(x, p=0.5, training=self.training)
+        x = self.conv3(x, edge_index)
+        x = torch.nn.functional.relu(x)
+        x = torch.nn.functional.dropout(x, p=0.5, training=self.training)
+        x = self.conv4(x, edge_index)
+        x = torch.nn.functional.relu(x)
+        x = self.fc(x)
+        return x
+
 class KeypointPipeline(nn.Module):
     def __init__(self, weights_path):
-        super(KeypointPipeline, self).__init__()  
+        super(KeypointPipeline, self).__init__()
         self.keypoint_model = torch.load(weights_path).to(device)
-        self.graph_gcn = GraphGCN(8,1024,4)
+        self.graph_gcn = GraphGCN(8,1024,512,4)
         
     def process_model_output(self, output):
         scores = output[0]['scores'].detach().cpu().numpy()
@@ -290,17 +325,92 @@ class KeypointPipeline(nn.Module):
         keypoints = []
         for idx, kps in enumerate(output[0]['keypoints'][high_scores_idxs].detach().cpu().numpy()):
             keypoints.append(list(map(int, kps[0, 0:2])) + [confidence[idx]] + [labels[idx]])
-        
+
         keypoints = [torch.tensor(kp, dtype=torch.float32).to(device) if not isinstance(kp, torch.Tensor) else kp for kp in keypoints]
         keypoints = torch.stack(keypoints).to(device)
-        
+
         unique_labels, best_keypoint_indices = torch.unique(keypoints[:, 3], return_inverse=True)
         best_scores, best_indices = torch.max(keypoints[:, 2].unsqueeze(0) * (best_keypoint_indices == torch.arange(len(unique_labels)).unsqueeze(1).cuda()), dim=1)
         keypoints = keypoints[best_indices]
-        
+
 #         print("initial predicted keypoints", keypoints)
-        
+
         return keypoints
+
+    
+    def apply_transform(self, img, pred_keypoints, gt_keypoints=None):
+        img_np = img.permute(1, 2, 0).cpu().numpy()  # Convert (C, H, W) -> (H, W, C)
+
+        # Prepare keypoints for transformation with all attributes (x, y, confidence, label)
+        pred_keypoints_np = [kp[:2].tolist() for kp in pred_keypoints]
+        pred_attributes = [kp[2:].tolist() for kp in pred_keypoints]
+
+        pred_keypoints_np = pred_keypoints[:, :2].cpu().numpy().tolist()
+
+        gt_keypoints_np = [kp[:2].tolist() for kp in gt_keypoints] if gt_keypoints is not None else []
+
+        # Get the original image height and width
+        orig_height, orig_width = img_np.shape[:2]
+
+        # Clamp keypoints to stay within the original image bounds BEFORE transformation
+        def clamp_keypoints(keypoints, max_width, max_height):
+            clamped_kps = []
+            for kp in keypoints:
+                x, y = kp[:2]
+                # Clamp x and y within the image boundaries (max_width-1, max_height-1)
+                x_clamped = min(max(x, 0), max_width - 1)  # x should be within [0, max_width-1]
+                y_clamped = min(max(y, 0), max_height - 1)  # y should be within [0, max_height-1]
+                clamped_kps.append([x_clamped, y_clamped])
+            return clamped_kps
+
+        # Clamp the predicted keypoints to the original image bounds
+        pred_keypoints_np = clamp_keypoints(pred_keypoints_np, orig_width, orig_height)
+
+        # Clamp the ground truth keypoints to the original image bounds if they exist
+        if gt_keypoints_np:
+            gt_keypoints_np = clamp_keypoints(gt_keypoints_np, orig_width, orig_height)
+
+        post_prediction_transform = A.Compose(
+            [
+                A.RandomRotate90(p=0.5),
+                A.HorizontalFlip(p=0.2),
+                A.VerticalFlip(p=0.2),
+                A.OneOf([
+                    A.Resize(height=random.randint(240, 720), width=random.randint(320, 1280)),
+                    A.NoOp()  # No operation (keeps original size)
+                ], p=0.5)  # 50% chance to resize
+            ],
+            keypoint_params=A.KeypointParams(format='xy', remove_invisible=True)
+        )
+
+        # Apply the transformation after clamping
+        transformed = post_prediction_transform(
+            image=img_np, keypoints=pred_keypoints_np + gt_keypoints_np
+        )
+
+        transformed_img = F.to_tensor(transformed['image']).to(device)
+
+        # Get the new image size after transformation
+        new_height, new_width = transformed_img.shape[1], transformed_img.shape[2]
+
+        # Separate transformed predicted and ground truth keypoints
+        pred_kps_transformed = transformed['keypoints'][:len(pred_keypoints_np)]
+        gt_kps_transformed = transformed['keypoints'][len(pred_keypoints_np):] if gt_keypoints_np else None
+
+        # Add back the confidence and labels to the transformed predicted keypoints
+        pred_kps_transformed = [
+            list(pred_kp) + pred_attr for pred_kp, pred_attr in zip(pred_kps_transformed, pred_attributes)
+        ]
+
+        # Fix the warning by using .clone().detach()
+        pred_kps_transformed = torch.tensor(pred_kps_transformed, dtype=torch.float32).clone().detach().to(device)
+
+        # Convert ground truth keypoints to a tensor
+        gt_kps_transformed_tensor = (
+            torch.tensor(gt_kps_transformed, dtype=torch.float32).clone().detach().to(device) if gt_kps_transformed else None
+        )
+
+        return transformed_img, pred_kps_transformed, gt_kps_transformed_tensor
     
     def fill_missing_keypoints(self, keypoints, image_width, image_height):
         keypoints_dict = {int(kp[3]): kp for kp in keypoints}
@@ -319,14 +429,26 @@ class KeypointPipeline(nn.Module):
             else:
                 prev_label = i - 1 if i > 1 else 9
                 next_label = i + 1 if i < 9 else 1
-                prev_kp = keypoints_dict.get(prev_label, [image_width / 2, image_height / 2, 0, prev_label])
-                next_kp = keypoints_dict.get(next_label, [image_width / 2, image_height / 2, 0, next_label])
                 
-                if next_label in missing_labels:
-                    next_kp = [image_width / 2, image_height / 2, 0, next_label]
-                avg_x = (prev_kp[0] + next_kp[0]) / 2
-                avg_y = (prev_kp[1] + next_kp[1]) / 2
+                prev_kp = keypoints_dict.get(prev_label, None)
+                next_kp = keypoints_dict.get(next_label, None)
+                
+#                 print("Previous Kp", prev_kp)
+#                 print("Next Kp", next_kp)
+
+                if prev_kp is None and next_kp is None:
+                    avg_x, avg_y = image_width / 2, image_height / 2
+                elif prev_kp is None:
+                    avg_x, avg_y = (next_kp[0] + image_width / 2) / 2, (next_kp[1] + image_height / 2) / 2
+                elif next_kp is None:
+                    avg_x, avg_y = (prev_kp[0] + image_width / 2) / 2, (prev_kp[1] + image_height / 2) / 2
+                else:
+                    avg_x = (prev_kp[0] + next_kp[0]) / 2
+                    avg_y = (prev_kp[1] + next_kp[1]) / 2
+
                 complete_keypoints.append([avg_x, avg_y, 0, i])
+#                 print(f"Filled missing keypoint for label {i} at position ({avg_x}, {avg_y})")
+
                 
 #         print("filled missing keypoints", complete_keypoints)
         
@@ -350,9 +472,11 @@ class KeypointPipeline(nn.Module):
         node_features = torch.tensor(node_features, dtype=torch.float32).to(device)
         edge_index = torch.tensor([[i, (i + 1) % len(keypoints)] for i in range(len(keypoints))] + 
                                   [[(i + 1) % len(keypoints), i] for i in range(len(keypoints))], dtype=torch.long).t().contiguous().to(device)
+        
+#         print(Data(x=node_features, edge_index=edge_index))
         return Data(x=node_features, edge_index=edge_index)
     
-    def forward(self, imgs):
+    def forward(self, imgs, gt_keypoints_batch=None):
         keypoint_model_training = self.keypoint_model.training
         self.keypoint_model.eval()
 
@@ -361,21 +485,37 @@ class KeypointPipeline(nn.Module):
 
         self.keypoint_model.train(mode=keypoint_model_training)
 
-        batch_labeled_keypoints = [self.process_model_output(output) for output in batch_outputs]
+        batch_pred_keypoints = [self.process_model_output(output) for output in batch_outputs]
+        
+        if gt_keypoints_batch is not None:  # If ground truth is provided (Training Mode)
+            batch_transformed_data = []
+            for img, pred_kp, gt_kp in zip(imgs, batch_pred_keypoints, gt_keypoints_batch):
+                transformed_img, pred_kp_transformed, gt_kp_transformed = \
+                    self.apply_transform(img, pred_kp, gt_kp)
+#                 print("Pred KP transformed: ", pred_kp_transformed)
+                # Call the visualization function
+                # visualize_keypoints(transformed_img, pred_kp_transformed, gt_kp_transformed, \
+                #                  title="Transformed Keypoints")
+                pred_kp_filled = self.fill_missing_keypoints(pred_kp_transformed, transformed_img.shape[1], transformed_img.shape[0])
+                pred_kp_normalized = self.normalize_keypoints(pred_kp_filled, transformed_img.shape[1], transformed_img.shape[0])
 
-        # Fill missing keypoints first and then normalize them
-        for idx, keypoints in enumerate(batch_labeled_keypoints):
-            image_width, image_height = 640, 480
-            filled_keypoints = self.fill_missing_keypoints(keypoints, image_width, image_height)
-            normalized_keypoints = self.normalize_keypoints(filled_keypoints, image_width, image_height)
-            batch_labeled_keypoints[idx] = normalized_keypoints
-       
-        all_graphs = [self.keypoints_to_graph(keypoints, 640, 480) for keypoints in batch_labeled_keypoints]
-        all_predictions = [self.graph_gcn(graph.x, graph.edge_index) for graph in all_graphs]
+                batch_transformed_data.append((pred_kp_filled[:, :2], pred_kp_normalized, gt_kp_transformed))
 
-        final_predictions = torch.stack(all_predictions)
+            all_graphs = [self.keypoints_to_graph(kp, transformed_img.shape[1], transformed_img.shape[0]) \
+                          for _, kp, _ in batch_transformed_data]
+            all_predictions = [self.graph_gcn(graph.x, graph.edge_index) for graph in all_graphs]
 
-        return final_predictions
+            return torch.stack(all_predictions), [gt_kp for _, _, gt_kp in batch_transformed_data], [init_kp for init_kp, _, _ in batch_transformed_data], transformed_img.shape[1], transformed_img.shape[0]
+        
+        else:  # Inference Mode
+            batch_final_keypoints = []
+            for pred_kp in batch_pred_keypoints:
+                pred_kp_filled = self.fill_missing_keypoints(pred_kp, 640, 480)
+                pred_kp_normalized = self.normalize_keypoints(pred_kp_filled, 640, 480)
+                batch_final_keypoints.append(pred_kp_normalized)
+
+            return batch_final_keypoints  # Final keypoints for inference
+
 
 def kgnn2d_loss(gt_keypoints, pred_keypoints, gt_distances_next, gt_angles_next, gt_distances_prev, gt_angles_prev, pred_distances_next, pred_angles_next, pred_distances_prev, pred_angles_prev):
     keypoints_loss = func.mse_loss(pred_keypoints, gt_keypoints)
@@ -384,6 +524,7 @@ def kgnn2d_loss(gt_keypoints, pred_keypoints, gt_distances_next, gt_angles_next,
     next_distances_loss = func.mse_loss(pred_distances_next, gt_distances_next)
     next_angles_loss = func.mse_loss(pred_angles_next, gt_angles_next)
     return keypoints_loss + prev_distances_loss + prev_angles_loss + next_distances_loss + next_angles_loss
+
 
 def process_batch_keypoints(target_dicts):
     batch_size = len(target_dicts)
@@ -395,20 +536,29 @@ def process_batch_keypoints(target_dicts):
     keypoints_gt = torch.stack(keypoints_list).float().cuda()
     return keypoints_gt
 
-def reorder_batch_keypoints(batch_keypoints):
+def reorder_batch_keypoints(batch_keypoints):    
     batch_size, num_keypoints, num_features = batch_keypoints.shape
     reordered_keypoints_batch = []
     for i in range(batch_size):
         normalized_keypoints = batch_keypoints[i]
+#         print("predicted normalized keypoints for reordering")
+#         print(normalized_keypoints)
         reordered_normalized_keypoints = torch.zeros(num_keypoints, 2, device=batch_keypoints.device)
-        rounded_labels = torch.round(normalized_keypoints[:, -1]).int()
+        rounded_labels = torch.round(normalized_keypoints[:, 3]).int()
+#         print("rounded labels", rounded_labels)
         used_indices = []
         for label in range(1, 10):
+#             print("label", label)
             valid_idx = (rounded_labels == label).nonzero(as_tuple=True)[0]
+#             print("valid index", valid_idx.numel())
             if valid_idx.numel() > 0:
+#                 print("index in valid index is present")
                 reordered_normalized_keypoints[label - 1] = normalized_keypoints[valid_idx[0], :2]
             else:
+#                 print("used_indices")
+#                 print("index in valid index is not present")
                 invalid_idx = ((rounded_labels < 1) | (rounded_labels > 9)).nonzero(as_tuple=True)[0]
+#                 print("invalid idx ", invalid_idx)
                 invalid_idx = [idx for idx in invalid_idx if idx not in used_indices]
                 if invalid_idx:
                     reordered_normalized_keypoints[label - 1] = normalized_keypoints[invalid_idx[0], :2]
@@ -535,8 +685,8 @@ model = KeypointPipeline(weights_path)
 model = model.to(device)
 
 # Load the checkpoint
-checkpoint_path = '/home/jc-merlab/Pictures/Data/trained_models/gcn_ckpt/kprcnn_occ_gcn_ckpt_b128e17.pth'
-checkpoint = torch.load(checkpoint_path)
+checkpoint_path = '/home/jc-merlab/Pictures/Data/trained_models/gcn_sage_ckpt_v1_v1/kprcnn_occ_gcn_sage_ckpt_v1_b128e23.pth'
+checkpoint = torch.load(checkpoint_path, map_location=device)
 
 # Extract the state dictionary
 model_state_dict = checkpoint['model_state_dict']
@@ -571,9 +721,10 @@ def draw_lines_between_keypoints(image, keypoints, color=(255, 255, 255)):
 def predict(model, img_tensor):
     with torch.no_grad():
         KGNN2D = model([img_tensor])
+        output = KGNN2D[0].unsqueeze(0)
 
-    print("Predicted keypoints", KGNN2D)
-    return KGNN2D
+    print("Predicted keypoints", output.shape)
+    return output
 
 def postprocess_keypoints(keypoints, width=640, height=480):
     denormalized_keypoints = denormalize_keypoints(keypoints, width, height)
@@ -635,7 +786,7 @@ def process_folder(folder_path, output_path, output_path_line):
             img_tensor = prepare_image(image_path).to(device)
             start_time = time.time()
             KGNN2D = predict(model, img_tensor)
-            print(KGNN2D.shape)
+            print(type(KGNN2D))
             end_time = time.time()
             inference_time = end_time - start_time
             print(f"Inference time for {filename}: {inference_time:.4f} seconds")
@@ -677,7 +828,7 @@ def process_folder(folder_path, output_path, output_path_line):
     print(f"Average inference time: {avg_inference_time}")
 
 folder_path = '/home/jc-merlab/Pictures/Data/occ_panda_phys_test_data/'
-output_path = '/home/jc-merlab/Pictures/Data/occ_phys_test_data/gcn_output_v2/'
+output_path = '/home/jc-merlab/Pictures/Data/occ_phys_test_data/gcn_sage_op_v1_v1/'
 output_path_line = '/home/jc-merlab/Pictures/Data/occ_test_op_line/'
 process_folder(folder_path, output_path, output_path_line)
 

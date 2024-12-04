@@ -17,6 +17,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 import pandas as pd
+from torchsummary import summary
+# from torch.utils.tensorboard import SummaryWriter
+from torchviz import make_dot
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(device)
@@ -38,17 +41,7 @@ class KpVelDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
-    # def __getitem__(self, idx):
-    #     start_kp, next_kp, position = self.data[idx]
-    #     # Ensure start_kp and next_kp have consistent dimensions
-    #     # if not start_kp or not next_kp:
-    #     #     raise ValueError(f"Empty keypoints found at index {idx}")
-    #     start_kp_flat = torch.tensor([kp for sublist in start_kp for kp in sublist[0][:2]], dtype=torch.float)
-    #     next_kp_flat = torch.tensor([kp for sublist in next_kp for kp in sublist[0][:2]], dtype=torch.float)
-    #     position = torch.tensor(position, dtype=torch.float)
-
-    #     return start_kp_flat, next_kp_flat, position
-
+    
     def __getitem__(self, idx):
         start_kp, next_kp, position = self.data[idx]
         try:
@@ -111,6 +104,16 @@ class PosRegModel(nn.Module):
         x = func.relu(self.bn3(self.fc3(x)))
         x = self.fc4(x)
         return x
+    
+model = PosRegModel(18).to(device)
+
+# summary(model, [(18,), (18,)], device=device)
+
+
+# x = torch.randn(128, 18)  # example input for start_kp
+# y = torch.randn(128, 18)  # example input for next_kp
+# output = model(x.cuda(), y.cuda())
+# make_dot(output, params=dict(model.named_parameters())).render("/home/jc-merlab/model_architecture", format="png")
     
 # def evaluate_model(model, data_loader, criterion):
 #     model.to(device)

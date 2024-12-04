@@ -197,7 +197,7 @@ def plot_joint_distance_histograms(distance_list, labels, colors, output_prefix,
     Returns:
     - None
     """
-    plt.figure(figsize=(15, 5))  # Create a figure for the histograms
+    plt.figure(figsize=(20, 10))  # Create a figure for the histograms
 
     
     # Determine the common range across all datasets (min and max distances)
@@ -245,8 +245,8 @@ def plot_joint_distance_histograms(distance_list, labels, colors, output_prefix,
         plt.xlim(min_dist, 2.5)
         plt.ylim(0, 21000)
 
-        plt.xticks(fontsize=fontsize, weight='bold')
-        plt.yticks(fontsize=fontsize, weight='bold')
+        plt.xticks(fontsize=18, weight='bold')
+        plt.yticks(fontsize=18, weight='bold')
 
         # plt.title(f'{labels[i]}', fontsize=fontsize + 2)
         # plt.xlabel('Joint Distance', fontsize=fontsize)
