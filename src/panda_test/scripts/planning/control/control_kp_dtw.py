@@ -4,345 +4,341 @@ from scipy.spatial.distance import euclidean
 from fastdtw import fastdtw  # Fast implementation of DTW
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
+import os
+
+save_directory = "/media/jc-merlab/Crucial X9/paper_data/trajectory_pics/"
+# File paths
+file_paths = [
+    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/ground_truth/astar_latest_with_obs/9/cp.csv',
+    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/custom/astar_latest_with_obs/9/cp.csv',
+    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/euclidean/astar_latest_with_obs/9/cp.csv'
+]
 
 # Load the CSV file
-csv_file_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/custom/astar_latest_with_obs/20/cp.csv'
-control_data = pd.read_csv(csv_file_path, header=0)  # Adjust 'header' if necessary
+# Goal configurations for each file
+goal_configurations = [
+    # Ground Truth
+    [
+        [[177.0, 226.0], [199.0, 206.0], [331.0, 149.0], [364.0, 147.0], [366.0, 186.0]],
+[[178.0, 221.0], [201.0, 201.0], [344.0, 168.0], [377.0, 176.0], [367.0, 217.0]],
+[[195.0, 208.0], [222.0, 193.0], [367.0, 220.0], [392.0, 242.0], [365.0, 274.0]],
+[[230.0, 195.0], [260.0, 189.0], [376.0, 280.0], [390.0, 311.0], [351.0, 329.0]],
+[[267.0, 193.0], [298.0, 196.0], [416.0, 287.0], [428.0, 320.0], [388.0, 335.0]],
+[[282.0, 196.0], [312.0, 203.0], [440.0, 284.0], [456.0, 315.0], [416.0, 335.0]],
+[[282.0, 196.0], [312.0, 203.0], [452.0, 262.0], [473.0, 290.0], [438.0, 316.0]],
+        [[303, 203], [331, 215], [472, 275], [494, 303], [458, 330]]
+],
+    # Learned
+    [
+        [[177.0, 226.0], [199.0, 206.0], [331.0, 149.0], [364.0, 147.0], [366.0, 186.0]],
+[[178.0, 221.0], [201.0, 201.0], [344.0, 168.0], [377.0, 176.0], [367.0, 217.0]],
+[[195.0, 208.0], [222.0, 193.0], [367.0, 220.0], [392.0, 242.0], [365.0, 274.0]],
+[[195.0, 208.0], [222.0, 193.0], [367.0, 220.0], [396.0, 236.0], [376.0, 273.0]],
+[[245.0, 193.0], [276.0, 190.0], [413.0, 249.0], [440.0, 272.0], [412.0, 305.0]],
+[[282.0, 196.0], [312.0, 203.0], [452.0, 262.0], [480.0, 283.0], [452.0, 318.0]],
+[[282.0, 196.0], [312.0, 203.0], [452.0, 262.0], [476.0, 287.0], [445.0, 318.0]],
+        [[303, 203], [331, 215], [472, 275], [494, 303], [458, 330]]
+    ],
+    # Image Space
+    [
+        [[177.0, 226.0], [199.0, 206.0], [331.0, 149.0], [364.0, 147.0], [366.0, 186.0]],
+[[166.0, 232.0], [187.0, 209.0], [328.0, 167.0], [360.0, 159.0], [369.0, 200.0]],
+[[167.0, 231.0], [188.0, 209.0], [331.0, 178.0], [364.0, 175.0], [368.0, 216.0]],
+[[167.0, 231.0], [188.0, 209.0], [334.0, 202.0], [368.0, 200.0], [370.0, 242.0]],
+[[167.0, 231.0], [188.0, 209.0], [333.0, 226.0], [366.0, 231.0], [359.0, 273.0]],
+[[195.0, 208.0], [222.0, 193.0], [360.0, 243.0], [385.0, 266.0], [356.0, 297.0]],
+[[230.0, 195.0], [260.0, 189.0], [395.0, 251.0], [405.0, 283.0], [365.0, 296.0]],
+[[245.0, 193.0], [276.0, 190.0], [415.0, 244.0], [418.0, 278.0], [375.0, 281.0]],
+[[267.0, 193.0], [298.0, 196.0], [436.0, 253.0], [448.0, 286.0], [408.0, 301.0]],
+[[282.0, 196.0], [312.0, 203.0], [453.0, 258.0], [456.0, 293.0], [412.0, 296.0]],
+[[303.0, 203.0], [331.0, 215.0], [474.0, 269.0], [466.0, 303.0], [424.0, 292.0]],
+[[303.0, 203.0], [331.0, 215.0], [473.0, 271.0], [485.0, 303.0], [445.0, 319.0]],
+       [[303, 203], [331, 215], [472, 275], [494, 303], [458, 330]]
+    ]
+]
 
+# Load control data from each file
+control_data = [pd.read_csv(fp, header=48) for fp in file_paths]
+
+# Helper functions
 def calculate_norm(configurations):
-    """
-    Calculates the Euclidean norm of the 5 keypoints for each configuration.
-    Args:
-        configurations: A numpy array of shape (N, 5, 2), where N is the number of configurations.
-    Returns:
-        A numpy array of shape (N,) representing the norm for each configuration.
-    """
-
-    norm_1 = np.sqrt(np.sum(configurations**2, axis=(1, 2)))
-    norm_2 = np.linalg.norm(configurations, axis=(1, 2))
-    return norm_2
-
-# def interpolate_configurations(start, goal, num_points):
-#     """
-#     Dynamically interpolates between two configurations for all keypoints to match the number of points.
-#     Args:
-#         start: Starting configuration (5 keypoints with x, y coordinates).
-#         goal: Goal configuration (5 keypoints with x, y coordinates).
-#         num_points: Number of points to interpolate (matches control data rows).
-#     Returns:
-#         Interpolated configurations as a numpy array of shape (num_points, 5, 2).
-#     """
-#     start = np.array(start)
-#     goal = np.array(goal)
-#     interpolated_path = []
-    
-#     for keypoint_idx in range(start.shape[0]):  # Loop over each keypoint
-#         x_interp = interp1d([0, num_points - 1], [start[keypoint_idx, 0], goal[keypoint_idx, 0]])
-#         y_interp = interp1d([0, num_points - 1], [start[keypoint_idx, 1], goal[keypoint_idx, 1]])
-#         keypoint_path = [(x_interp(t), y_interp(t)) for t in range(num_points)]
-#         interpolated_path.append(keypoint_path)
-
-        # return np.array(interpolated_path).transpose(1, 0, 2)
+    """Calculates the Euclidean norm of the 5 keypoints for each configuration."""
+    return np.linalg.norm(configurations, axis=(1, 2))
 
 def interpolate_norms_continuous(start_config, goal_config, num_points):
-    """
-    Interpolates the norms of the start and goal configurations as a continuous trajectory.
-    Args:
-        start_config: Starting configuration (5 keypoints with x, y coordinates).
-        goal_config: Goal configuration (5 keypoints with x, y coordinates).
-        num_points: Number of points to interpolate (matches control data rows).
-    Returns:
-        A numpy array of interpolated norms with shape (num_points,).
-    """
+    """Interpolates the norms of the start and goal configurations as a continuous trajectory."""
     start_norm = np.linalg.norm(start_config)
     goal_norm = np.linalg.norm(goal_config)
     return np.linspace(start_norm, goal_norm, num_points)
 
-        
+# Colors and labels for plotting
+colors = ['#40B0A6', '#5D3A9B', '#D41159']
+labels = ['Ground Truth', 'Learned', 'Image Space']
 
-# Extract goal column and reshape keypoints into (5, 2) structure per row
-goal_column = control_data.iloc[:, 0].values
-control_keypoints = control_data.iloc[:, 1:11].to_numpy().reshape(-1, 5, 2)
+# Plot setup for combined figure
+plt.figure(figsize=(20, 15))
 
-# Define the goal configurations (start, intermediate, and final)
-goal_configurations = [
-    [[314.0, 210.0], [339.0, 224.0], [452.0, 129.0], [474.0, 105.0], [505.0, 132.0]],
-    [[303.0, 203.0], [331.0, 215.0], [426.0, 101.0], [444.0, 73.0], [479.0, 96.0]],
-    [[303.0, 203.0], [331.0, 215.0], [426.0, 101.0], [449.0, 76.0], [479.0, 104.0]],
-    [[267.0, 193.0], [298.0, 196.0], [373.0, 71.0], [395.0, 46.0], [426.0, 72.0]],
-    [[231.0, 195.0], [261.0, 189.0], [329.0, 60.0], [349.0, 35.0], [381.0, 61.0]],
-    [[209.0, 202.0], [238.0, 190.0], [313.0, 64.0], [333.0, 38.0], [366.0, 63.0]],
-    [[196.0, 208.0], [223.0, 193.0], [300.0, 70.0], [319.0, 44.0], [352.0, 68.0]],
-    [[167.0, 232.0], [188.0, 209.0], [246.0, 77.0], [260.0, 48.0], [296.0, 65.0]],
-    [[147.0, 262.0], [160.0, 234.0], [197.0, 96.0], [204.0, 65.0], [243.0, 73.0]],
-    [[138.0, 283.0], [146.0, 253.0], [182.0, 112.0], [189.0, 80.0], [228.0, 88.0]],
-    [[141.0, 291.0], [147.0, 261.0], [179.0, 123.0], [185.0, 92.0], [225.0, 99.0]]
-]
+# Process each type of data
+for idx, (data, goals, color, method) in enumerate(zip(control_data, goal_configurations, colors, labels)):
+    print("Method", method)
+    # Extract goal column and keypoints from control data
+    goal_column = data.iloc[:, 0].values
+    control_keypoints = data.iloc[:, 1:11].to_numpy().reshape(-1, 5, 2)
 
-# # Results dictionary
-# results = {}
+    # Calculate actual norms
+    actual_norms = calculate_norm(control_keypoints)
 
-# # Compare paths for each goal
-# for goal_idx in range(1, len(goal_configurations)):  # Skip the start configuration
-#     # Define start and goal configurations
-#     start = goal_configurations[goal_idx - 1]
-#     goal = goal_configurations[goal_idx]
+    # Calculate ideal norms
+    ideal_norms = []
+    start_config = np.array(goals[0])
+    for goal_idx in range(1, len(goals)):
+        start = np.array(goals[goal_idx - 1])
+        goal = np.array(goals[goal_idx])
+        num_points = len(control_keypoints[goal_column == (goal_idx - 1)])
+        interpolated_norms = interpolate_norms_continuous(start, goal, num_points)
+        ideal_norms.extend(interpolated_norms)
+    ideal_norms = np.array(ideal_norms)
 
-#     # Extract the actual path for this goal from control data
-#     actual_path = control_keypoints[goal_column == (goal_idx - 1)]
+    # Ensure both paths start from the same configuration
+    start_norm = np.linalg.norm(start_config)
+    actual_norms[0] = start_norm
+    ideal_norms[0] = start_norm
 
-#     # Dynamically interpolate the ideal path to match the number of actual points
-#     interpolated_path = interpolate_configurations(start, goal, len(actual_path))
+    # Extract goal points
+    ideal_goal_points = [start_config] + goals[1:]
+    actual_goal_points = [start_config]
+    for goal_idx in range(1, len(goals)):
+        print("Current Goal", goal_idx)
+        last_row = control_keypoints[goal_column == (goal_idx - 1)][-1]
+        # last_row = control_keypoints[goal_mask][-1]
+        actual_goal_points.append(last_row)
+    ideal_goal_points = np.array(ideal_goal_points)
+    actual_goal_points = np.array(actual_goal_points)
 
-#     # Compare each interpolated point with the corresponding actual point
-#     point_differences = np.linalg.norm(interpolated_path - actual_path, axis=2)  # Euclidean distance
-
-#     # Compare the last row of actual path with the goal configuration
-#     final_actual = actual_path[-1]
-#     final_goal = np.array(goal)
-#     final_differences = np.linalg.norm(final_actual - final_goal, axis=1)  # Per keypoint
-
-#     # Store results
-#     results[f"Goal {goal_idx}"] = {
-#         "point_differences": point_differences,  # Differences for each point
-#         "final_differences": final_differences,  # Final row comparison
-#     }
-# Compute norms for the entire control data (actual trajectory)
-# Compute norms for the entire control data (actual trajectory)
-actual_norms = calculate_norm(control_keypoints)
-
-# Compute ideal norms for the entire trajectory (goal-based interpolation)
-ideal_norms = []
-start_config = np.array(goal_configurations[0])
-
-for goal_idx in range(1, len(goal_configurations)):
-    # Define start and goal configurations for the current goal
-    start = np.array(goal_configurations[goal_idx - 1])
-    goal = np.array(goal_configurations[goal_idx])
-    
-    # Extract the number of points for this goal from the control data
-    num_points = len(control_keypoints[goal_column == (goal_idx - 1)])
-    
-    # Interpolate norms for this goal
-    interpolated_norms = interpolate_norms_continuous(start, goal, num_points)
-    ideal_norms.extend(interpolated_norms)  # Append to the ideal norms list
-
-# Convert ideal norms to a numpy array for consistency
-ideal_norms = np.array(ideal_norms)
-
-# Add the same starting norm for both trajectories
-start_norm = np.linalg.norm(start_config)
-actual_norms[0] = start_norm  # Ensure the actual trajectory starts from the same point
-ideal_norms[0] = start_norm
-
-
-# Extract the start and goal points for both paths
-ideal_goal_points = [start_config] + goal_configurations[1:]  # All configurations in `goal_configurations`
-actual_goal_points = [start_config]  # Start with the shared start configuration
-
-for goal_idx in range(1, len(goal_configurations)):
-    # Extract the last row for the current goal from control data
-    last_row = control_keypoints[goal_column == (goal_idx - 1)][-1]
-    actual_goal_points.append(last_row)
-
-# Convert to numpy arrays for consistency
-ideal_goal_points = np.array(ideal_goal_points)
-actual_goal_points = np.array(actual_goal_points)
-
-plt.figure(figsize=(12, 8))
-
-# Plot the actual norms
-plt.plot(
-    range(len(actual_norms)),
-    actual_norms,
-    linestyle='--',
-    linewidth=2,
-    label="Actual Norm Trajectory"
-)
-
-# Plot the ideal norms
-plt.plot(
-    range(len(ideal_norms)),
-    ideal_norms,
-    linestyle='-',
-    linewidth=2,
-    label="Ideal Norm Trajectory"
-)
-
-# Highlight the start and goal points for both paths and add dashed lines for distances
-for idx, (ideal_point, actual_point) in enumerate(zip(ideal_goal_points, actual_goal_points)):
-    # Calculate the norm of the goal points
-    ideal_norm = np.linalg.norm(ideal_point)
-    actual_norm = np.linalg.norm(actual_point)
-    
-    # Compute the x-position for the goal points
-    x_position = sum(len(control_keypoints[goal_column == (i - 1)]) for i in range(1, idx + 1)) - 1
-    
-    # Plot the ideal point
-    plt.scatter(
-        x_position,
-        ideal_norm,
-        color='red', marker='o', s=150,
-        label="Ideal Start/Goal" if idx == 0 else ""
-    )
-    
-    # Plot the actual point
-    plt.scatter(
-        x_position,
-        actual_norm,
-        color='blue', marker='o', s=150,
-        label="Actual Start/Goal" if idx == 0 else ""
-    )
-    
-    # Draw a dashed line between corresponding goal points
+    # Plot actual and ideal norms
     plt.plot(
-        [x_position, x_position],
-        [ideal_norm, actual_norm],
+        range(len(actual_norms)),
+        actual_norms,
         linestyle='--',
-        color='gray'
+        linewidth=5,
+        color=color,
+        alpha=0.9,
+        label=f"{method} - Control Trajectory"
     )
-    
-    # Calculate and annotate the distance between the actual and ideal goals
-    distance = np.abs(ideal_norm - actual_norm)
-    plt.text(
-        x_position + 0.5,  # Offset to avoid overlap
-        (ideal_norm + actual_norm) / 2,  # Midpoint of the line
-        f"{distance:.2f}",
-        color='black',
-        fontsize=10,
-        ha='left'
+    plt.plot(
+        range(len(ideal_norms)),
+        ideal_norms,
+        linestyle='-',
+        linewidth=5,
+        color=color,
+        label=f"{method} - Planned Path"
     )
 
-# Add title, labels, and legend
-plt.title("Robot Trajectory: Norm-Based Continuous Comparison with Goal Distances")
+    # Highlight start and goal points
+    for g_idx, (ideal_point, actual_point) in enumerate(zip(ideal_goal_points, actual_goal_points)):
+        ideal_norm = np.linalg.norm(ideal_point)
+        actual_norm = np.linalg.norm(actual_point)
+        x_position = sum(len(control_keypoints[goal_column == (i - 1)]) for i in range(1, g_idx + 1)) - 1
+
+        # Plot start, intermediate, and goal points
+        if g_idx == 0:  # Start configuration
+            plt.scatter(x_position, ideal_norm, color='#34C742', marker='o', s=150, label="Start Configuration" if idx == 0 else '')
+            plt.scatter(x_position, actual_norm, color='#34C742', marker='o', s=150)
+        elif g_idx == len(ideal_goal_points) - 1:  # Final goal configuration
+            plt.scatter(x_position, ideal_norm, color='#CB48EB', marker='o', s=150, label="Final Goal Configuration" if idx == 0 else '')
+            plt.scatter(x_position, actual_norm, color='#CB48EB', marker='o', s=150)
+        else:  # Intermediate configurations
+            plt.scatter(x_position, ideal_norm, color=color, marker='o', s=150, label="")
+            plt.scatter(x_position, actual_norm, color=color, marker='o', s=150, label="Intermediate Goal Configurations in Path" if idx == 0 else "")
+
+        # Draw dashed lines between actual and ideal points
+        plt.plot([x_position, x_position], [ideal_norm, actual_norm], linestyle='--', color='gray')
+        distance = np.abs(ideal_norm - actual_norm)
+        plt.text(x_position + 0.5, (ideal_norm + actual_norm) / 2, f"{distance:.2f}", fontsize=14, ha='left')
+
+# Add legend, labels, and title for combined plot
+plt.title("Norm-Based Continuous Comparison for Keypoints")
 plt.xlabel("Total Number of Control Points")
 plt.ylabel("Norm of Keypoints")
-plt.legend()
-# plt.grid()
+# plt.legend(loc='lower right', fontsize=14)
+save_path = os.path.join(save_directory, "kp_traj_comp_obs_09a.svg")
+# plt.savefig(save_path)
 plt.show()
 
-
-# # Results dictionary
-# results = {}
-
-# # Create a single plot for the norm trajectories
-# plt.figure(figsize=(12, 8))
-
-# # Plot the actual norms
-# plt.plot(
-#     range(len(actual_norms)),
-#     actual_norms,
-#     linestyle='--',
-#     linewidth=2,
-#     label="Actual Norm Trajectory"
-# )
-
-# # Plot the ideal norms
-# plt.plot(
-#     range(len(ideal_norms)),
-#     ideal_norms,
-#     linestyle='-',
-#     linewidth=2,
-#     label="Ideal Norm Trajectory"
-# )
-
-# # Highlight the start and goal points for both paths
-# for idx, (ideal_point, actual_point) in enumerate(zip(ideal_goal_points, actual_goal_points)):
-#     # Calculate the norm of the goal points
-#     ideal_norm = np.linalg.norm(ideal_point)
-#     actual_norm = np.linalg.norm(actual_point)
+#Separate figure for each type
+for idx, (data, goals, color, label) in enumerate(zip(control_data, goal_configurations, colors, labels)):
+    plt.figure(figsize=(20, 15))
     
-#     # Compute the x-position for the goal points
-#     x_position = sum(len(control_keypoints[goal_column == (i - 1)]) for i in range(1, idx + 1)) - 1
+    # Extract goal column and keypoints
+    goal_column = data.iloc[:, 0].values
+    control_keypoints = data.iloc[:, 1:11].to_numpy().reshape(-1, 5, 2)
     
-#     # Plot the ideal point
-#     plt.scatter(
-#         x_position,
-#         ideal_norm,
-#         color='red', marker='o', s=150,
-#         label="Ideal Start/Goal" if idx == 0 else ""
-#     )
+    # Align goal_column with keypoints
+    goal_column = goal_column[:control_keypoints.shape[0]]
     
-#     # Plot the actual point
-#     plt.scatter(
-#         x_position,
-#         actual_norm,
-#         color='blue', marker='o', s=150,
-#         label="Actual Start/Goal" if idx == 0 else ""
-#     )
-
-# # Add title, labels, and legend
-# plt.title("Robot Trajectory: Norm-Based Continuous Comparison (Ideal vs Actual)")
-# plt.xlabel("Total Number of Control Points")
-# plt.ylabel("Norm of Keypoints")
-# plt.legend()
-# plt.grid()
-# plt.show()
-
-
-# # Visualize ideal vs. actual paths for each goal
-# # Create a single plot for all goals
-# # Create a single plot for all goals
-# plt.figure(figsize=(12, 8))
-
-# # Loop through all goals
-# for goal_idx in range(1, len(goal_configurations)):  # Skip the start configuration
-#     # Define start and goal configurations
-#     start = goal_configurations[goal_idx - 1]
-#     goal = goal_configurations[goal_idx]
+    # Calculate norms
+    actual_norms = calculate_norm(control_keypoints)
+    ideal_norms = []
     
-#     # Extract the actual path for this goal
-#     actual_path = control_keypoints[goal_column == (goal_idx - 1)]
+    # Extract goal points for highlighting
+    ideal_goal_points = [np.array(goals[0])] + [np.array(goal) for goal in goals[1:]]
+    actual_goal_points = [np.array(goals[0])]
     
-#     # Dynamically interpolate the ideal path to match the number of actual points
-#     interpolated_path = interpolate_configurations(start, goal, len(actual_path))
-    
-#     # Plot trajectories for each keypoint
-#     for keypoint_idx in range(5):  # Loop through each keypoint
-#         # Plot actual path for the keypoint
-#         # Highlight the start and goal points for the actual path
-#         plt.scatter(
-#             actual_path[0, keypoint_idx, 0], 
-#             actual_path[0, keypoint_idx, 1], 
-#             color='red', marker='x', s = 200, label = ""
-#         )
-#         plt.scatter(
-#             actual_path[-1, keypoint_idx, 0], 
-#             actual_path[-1, keypoint_idx, 1], 
-#             color='blue', marker='x', s = 200, label = ""
-#         )
+    for goal_idx in range(1, len(goals)):
+        start = np.array(goals[goal_idx - 1])
+        goal = np.array(goals[goal_idx])
         
-#         # Highlight the start and goal points for the ideal path
-#         plt.scatter(
-#             interpolated_path[0, keypoint_idx, 0], 
-#             interpolated_path[0, keypoint_idx, 1], 
-#             color='red', marker='o', s = 100, label="" 
-#         )
-#         plt.scatter(
-#             interpolated_path[-1, keypoint_idx, 0], 
-#             interpolated_path[-1, keypoint_idx, 1], 
-#             color='blue', marker='o', s = 100, label = ""
-#         )
-#         plt.plot(
-#             actual_path[:, keypoint_idx, 0], 
-#             actual_path[:, keypoint_idx, 1], 
-#             linestyle='-', linewidth=4, label=f"Keypoint {keypoint_idx + 1} Actual" if goal_idx == 1 else ""
-#         )
+        # Boolean mask for rows belonging to this goal
+        goal_mask = goal_column == (goal_idx - 1)
+        num_points = np.sum(goal_mask)
         
-#         # Plot ideal interpolated path for the keypoint
-#         plt.plot(
-#             interpolated_path[:, keypoint_idx, 0], 
-#             interpolated_path[:, keypoint_idx, 1], 
-#             linestyle='-', linewidth=4, label=f"Keypoint {keypoint_idx + 1} Ideal" if goal_idx == 1 else ""
-#         )
+        if num_points == 0:
+            raise ValueError(f"No rows found for goal {goal_idx - 1}.")
         
+        interpolated_norms = interpolate_norms_continuous(start, goal, num_points)
+        ideal_norms.extend(interpolated_norms)
         
+        # Extract last actual configuration for the goal
+        last_row = control_keypoints[goal_mask][-1]
+        actual_goal_points.append(last_row)
+    
+    # Convert to numpy array
+    ideal_norms = np.array(ideal_norms)
+    start_norm = np.linalg.norm(np.array(goals[0]))
+    actual_norms[0] = start_norm
+    ideal_norms[0] = start_norm
+    
+    # Plot actual and ideal norms
+    plt.plot(
+        range(len(actual_norms)), actual_norms,
+        linestyle='--', linewidth=5, color=color,
+        alpha=0.7, label=f"{label} - Control Trajectory"
+    )
+    plt.plot(
+        range(len(ideal_norms)), ideal_norms,
+        linestyle='-', linewidth=5, color=color,
+        label=f"{label} - Planned Path"
+    )
+    
+    # Highlight goal points
+    for g_idx, (ideal_point, actual_point) in enumerate(zip(ideal_goal_points, actual_goal_points)):
+        ideal_norm = np.linalg.norm(ideal_point)
+        actual_norm = np.linalg.norm(actual_point)
 
-# # Add title, labels, and legend
-# plt.title("Robot Trajectory: Ideal vs Actual Paths with Highlighted Starts and Goals")
-# plt.xlabel("X Position")
-# plt.ylabel("Y Position")
-# plt.gca().invert_yaxis()
-# plt.legend()
-# plt.grid()
-# plt.show()
+        # print("Ideal Norm", ideal_norm)
+        # print("Actual norm", actual_norm)
+        # print("Ideal point", ideal_point)
+        # print("Actual point", actual_point)
+        
+        x_position = sum(len(control_keypoints[goal_column == (i - 1)]) for i in range(1, g_idx + 1)) - 1
+        
+        # Mark start, intermediate, and final goals
+        if g_idx == 0:  # Start configuration
+            plt.scatter(x_position, ideal_norm, color='#34C742', marker='o', s=150, label="Start Configuration")
+            plt.scatter(x_position, actual_norm, color='#34C742', marker='o', s=150)
+        elif g_idx == len(ideal_goal_points) - 1:  # Final goal configuration
+            plt.scatter(x_position, ideal_norm, color='#CB48EB', marker='o', s=150, label="Final Goal Configuration")
+            plt.scatter(x_position, actual_norm, color='#CB48EB', marker='o', s=150)
+        else:  # Intermediate goals
+            # plt.scatter(x_position, ideal_norm, color=color, marker='o', s=150)
+            # plt.scatter(x_position, actual_norm, color=color, marker='o', s=150)
+            plt.scatter(x_position, ideal_norm, color=color, marker='o', s=150, label="")
+            plt.scatter(x_position, actual_norm, color=color, marker='o', s=150, label="Intermediate Goal Configurations in Path" if g_idx == 1 else "")
+        
+        # Draw dashed lines between ideal and actual points
+        plt.plot([x_position, x_position], [ideal_norm, actual_norm], linestyle='--', color='gray')
+        distance = np.abs(ideal_norm - actual_norm)
+        plt.text(x_position + 0.5, (ideal_norm + actual_norm) / 2, f"{distance:.2f}", fontsize=14, ha='left')
+    
+    # Add title, labels, legend
+    # plt.title(f"Norm-Based Continuous Comparison: {label}")
+    # plt.xlabel("Control Points")
+    # plt.ylabel("Norm of Keypoints")
+    plt.xlim(-100, 1000)
+    plt.ylim(600, 1200)
+    plt.legend(
+    fontsize=24,
+    loc='lower right',
+    frameon=True,
+    fancybox=True,
+    shadow=True,
+    title_fontsize=24,
+    edgecolor='black',
+    labelspacing=1.2,
+    prop={'size':16, 'weight': 'bold'},  # Make the legend text bold
+)
+    # plt.grid()
+    # plt.tick_params(axis='both', which='major', labelsize=18)
+    for label in plt.gca().get_xticklabels():
+        label.set_fontweight('bold')
+        label.set_fontsize(20)
+    for label in plt.gca().get_yticklabels():
+        label.set_fontweight('bold')
+        label.set_fontsize(20)
+
+    if isinstance(label, str):
+        label_text = label
+    else:
+        label_text = label.get_text() if hasattr(label, 'get_text') else str(label)
+    # plt.legend(fontsize=14, loc='upper left')
+    # Save the figure
+    save_path = os.path.join(save_directory, f"kp_{label.get_text().replace(' ', '_').lower()}_traj_obs_09a.svg")
+    # plt.savefig(save_path, bbox_inches='tight')
+    print(f"Figure saved as {save_path}")
+    plt.show()
+
+# Initialize variables to store statistics
+deviation_stats = []
+
+# Loop through each roadmap
+for idx, (data, goals, color, label) in enumerate(zip(control_data, goal_configurations, colors, labels)):
+    plt.figure(figsize=(20, 15))
+
+    # Extract goal column and keypoints
+    goal_column = data.iloc[:, 0].values
+    control_keypoints = data.iloc[:, 1:11].to_numpy().reshape(-1, 5, 2)
+
+    print(control_keypoints.shape[0])
+
+    # Align goal_column with keypoints
+    goal_column = goal_column[:control_keypoints.shape[0]]
+
+    # Interpolate ideal trajectories
+    interpolated_ideal_trajectory = []
+    deviations = []
+    for goal_idx in range(1, len(goals)):
+        start = np.array(goals[goal_idx - 1])
+        end = np.array(goals[goal_idx])
+        # Boolean mask for rows belonging to this goal
+        goal_mask = goal_column == (goal_idx - 1)
+        num_points = np.sum(goal_mask)
+        
+        if num_points == 0:
+            raise ValueError(f"No rows found for goal {goal_idx - 1}.")
+        
+        # Interpolate keypoints
+        interpolated_segment = np.linspace(start, end, num_points)
+        interpolated_ideal_trajectory.extend(interpolated_segment)
+
+        # Calculate deviations for each point
+        actual_points = control_keypoints[goal_mask]
+        for actual_point, interpolated_point in zip(actual_points, interpolated_segment):
+            distance = np.linalg.norm(actual_point - interpolated_point)
+            deviations.append(distance)
+
+    interpolated_ideal_trajectory = np.array(interpolated_ideal_trajectory)
+
+    # Compute statistics
+    total_deviation = sum(deviations)
+    max_deviation = max(deviations)
+    total_points = len(deviations)
+    deviation_stats.append({
+        "Roadmap": label,
+        "Total Points": total_points,
+        "Total Deviation": total_deviation,
+        "Max Deviation": max_deviation
+    })
+
+    
+deviation_stats_df = pd.DataFrame(deviation_stats)
+print(deviation_stats_df)

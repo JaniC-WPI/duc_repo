@@ -79,7 +79,7 @@ import os
 # cv2.imwrite(goal_4, blend_4)
 
 image_1 = cv2.imread('/media/jc-merlab/Crucial X9/paper_data/figure_1_images/v2/fig_for_wksp.png')
-image_2 = cv2.imread('/media/jc-merlab/Crucial X9/paper_data/workspace_coverage_v2.png')
+image_2 = cv2.imread('/media/jc-merlab/Crucial X9/paper_data/figure_1_images/v2/valid_nodes_with_obstacle.png')
 # image_3 = cv2.imread('/media/jc-merlab/Crucial X9/paper_data/figure_1_images/v2/fig_path_with_obs/obs_c.png')
 # image_4 = cv2.imread('/media/jc-merlab/Crucial X9/paper_data/figure_1_images/v2/fig_path_with_obs/obs_d.png')
 
@@ -88,9 +88,11 @@ blend_1 = cv2.addWeighted(image_1, 1.0, image_2, 0.7, 0)
 
 # final_blend = cv2.addWeighted(blend_1, 0.7, blend_2, 0.7, 0)
 
-goal_image = '/media/jc-merlab/Crucial X9/paper_data/figure_1_images/v2/fig_for_wksp_cov_v2.png'
+goal_image = '/media/jc-merlab/Crucial X9/paper_data/figure_1_images/v2/fig_for_wksp_cov_obs.png'
 
 cv2.imwrite(goal_image, blend_1)
+
+
 
 
 

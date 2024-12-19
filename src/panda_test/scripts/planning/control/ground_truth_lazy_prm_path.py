@@ -599,7 +599,7 @@ if __name__ == "__main__":
     graph_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/joint_space_roadmap_angle_fresh_432.pkl'
     tree_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/joint_space_tree_angle_fresh_432.pkl'
     file_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/'
-    folder_num = 3
+    folder_num = 18
 
     # Define both folder paths
     exp_folder_no_obs = os.path.join(file_path, 'ground_truth', 'no_obs', str(folder_num))
@@ -619,15 +619,15 @@ if __name__ == "__main__":
     roadmap, tree = load_graph_and_tree(graph_path, tree_path)
 
     # Define start and goal configurations as numpy arrays
-    start_config = np.array([[250, 442], [252, 311], [211, 273], [169, 235], [188, 212], [215, 148], [244, 81], [242, 50], [280, 47]])
-    goal_config = np.array([[250, 442], [252, 311], [293, 267], [334, 223], [357, 244], [434, 254], [511, 263], [547, 259], [552, 303]])
-
-    start_angles_exp = np.array([-0.9367698173104668, -1.3382993170643418, 2.247841014682137])
-    start_joint_angles = np.array([-0.870795, -1.44845, 2.20395])
-    goal_joint_angles = np.array([0.747321032489591, -1.16792377112918, 2.02904351705517])
-
+    start_config = np.array([[250, 442], [252, 311], [273, 254], [294, 200], [321, 210], [374, 260], [428, 311], [453, 335], [422, 363]])
+    goal_config = np.array([[250, 442], [252, 311], [210, 271], [167, 231], [188, 209], [227, 147], [265, 85], [293, 69], [314, 104]])
+    
+    start_angles_exp = np.array([0.243478341723588, -2.10317410764257, 1.81778787943753])
+    start_joint_angles = np.array([0.307833, -2.22372, 1.76207])
+    goal_joint_angles = np.array([-0.832662957634752, -1.59266347734466, 1.27916326449137])
+    
     SAFE_ZONE = 40
-    obstacle_center = (450, 120)
+    obstacle_center = (400, 150)
     half_diagonal = 20
 
     joint_position = create_joint_position(start_angles_exp, original_joint_positions)

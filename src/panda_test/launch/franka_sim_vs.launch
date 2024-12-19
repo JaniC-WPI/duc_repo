@@ -8,7 +8,7 @@
     <include file="$(find realsense2_camera)/launch/rs_aligned_depth.launch"/>    
 
     <node name="set_auto_exposure_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera enable_auto_exposure False"/>
-    <node name="set_brigtness_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera brightness -40"/>
+    <node name="set_brigtness_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera brightness -30"/>
 
 
     
@@ -31,6 +31,9 @@
     <!-- Data record -->
     <node name="franka_sim_vs_recorder" pkg="panda_test" type="franka_sim_record_node" output="screen" respawn="false" />
     <node name="Image_writer" pkg="panda_test" type="img_write.py" output="log" respawn="false" />
+    <node name="rosbag_recorder" pkg="panda_test" type="rosbag_recorder.py" output="screen" respawn="false" />
+
+
     <!-- <node name="depth_writer" pkg="panda_test" type="depth_write.py" output="screen" respawn="false" /> -->
     
     <!-- Visualization node -->

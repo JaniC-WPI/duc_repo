@@ -563,7 +563,7 @@ if __name__ == "__main__":
     graph_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/euclidean_roadmap_angle_fresh_432.pkl'
     tree_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/euclidean_tree_angle_fresh_432.pkl'
     file_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/'
-    folder_num = 20
+    folder_num =18
 
     # Define both folder paths
     exp_folder_no_obs = os.path.join(file_path, 'euclidean', 'no_obs', str(folder_num))
@@ -583,15 +583,15 @@ if __name__ == "__main__":
     roadmap, tree = load_graph_and_tree(graph_path, tree_path)
 
     # Define start and goal configurations as numpy arrays    
-    start_config = np.array([[250, 442], [252, 311], [283, 260], [314, 210], [339, 224], [394, 175], [452, 129], [474, 105], [505, 132]])
-    goal_config = np.array([[250, 442], [252, 311], [198, 302], [141, 291], [147, 261], [162, 193], [179, 123], [185, 92], [225, 99]])
+    start_config = np.array([[250, 442], [252, 311], [273, 254], [294, 200], [321, 210], [374, 260], [428, 311], [453, 335], [422, 363]])
+    goal_config = np.array([[250, 442], [252, 311], [210, 271], [167, 231], [188, 209], [227, 147], [265, 85], [293, 69], [314, 104]])
     
-    start_angles_exp = np.array([0.430689500869326, -0.45463804931435, 2.02625223276343])
-    start_joint_angles = np.array([0.495685, -0.564753, 1.96706])
-    goal_joint_angles = np.array([-1.40828, -1.80466, 1.77762])
+    start_angles_exp = np.array([0.243478341723588, -2.10317410764257, 1.81778787943753])
+    start_joint_angles = np.array([0.307833, -2.22372, 1.76207])
+    goal_joint_angles = np.array([-0.832662957634752, -1.59266347734466, 1.27916326449137])
     
     SAFE_ZONE = 40
-    obstacle_center = (350, 50)
+    obstacle_center = (400, 150)
     half_diagonal = 20
 
 
