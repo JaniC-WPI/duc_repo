@@ -8,27 +8,27 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.animation import FuncAnimation
 import matplotlib
 import os
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 
 save_directory = "/media/jc-merlab/Crucial X9/paper_data/trajectory_pics/"
 
 # File paths
 file_paths = [
-    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/ground_truth/astar_latest_with_obs/1/joint_angles.csv',
-    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/custom/astar_latest_with_obs/1/joint_angles.csv',
-    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/euclidean/astar_latest_with_obs/1_a/joint_angles.csv'
+    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/ground_truth/astar_latest_no_obs/3/joint_angles.csv',
+    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/custom/astar_latest_no_obs/3/joint_angles.csv',
+    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/euclidean/astar_latest_no_obs/3/joint_angles.csv'
 ]
 
 kp_file_paths = [
-    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/ground_truth/astar_latest_with_obs/1/cp.csv',
-    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/custom/astar_latest_with_obs/1/cp.csv',
-    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/euclidean/astar_latest_with_obs/1_a/cp.csv'
+    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/ground_truth/astar_latest_no_obs/3/cp.csv',
+    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/custom/astar_latest_no_obs/3/cp.csv',
+    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/euclidean/astar_latest_no_obs/3/cp.csv'
 ]
 
 jt_file_paths = [
-    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/ground_truth/with_obs/nn_25_astar_custom_old/1/save_distances.csv',
-    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/custom/with_obs/nn_25_astar_custom_old/1/save_distances.csv',
-    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/euclidean/with_obs/1/save_distances.csv'
+    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/ground_truth/no_obs/nn_25_astar_custom_old/3/save_distances.csv',
+    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/custom/no_obs/nn_25_astar_custom_old/3/save_distances.csv',
+    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/euclidean/no_obs/3/save_distances.csv'
 ]
 
 # Initialize the goal_configurations list
@@ -165,7 +165,7 @@ def interpolate_norms_continuous(start_config, goal_config, num_points):
 
 # Colors and labels for plotting
 colors=['#40B0A6', '#5D3A9B', '#D41159']
-labels = ['Ground Truth', 'Learned', 'Image Space']
+labels = [str('Ground Truth'), str('Learned'), str('Image Space')]
 
 # Define consistent x-positions for start and goal points
 goal_x_positions = [0]  # Start from 0
@@ -256,7 +256,7 @@ for idx, (data, goals, color, method) in enumerate(zip(control_data, goal_config
 # plt.title("Norm-Based Continuous Comparison for All Paths")
 # plt.xlabel("Total Number of Control Points")
 # plt.ylabel("Norm of Configurations")
-plt.xlim()
+# plt.xlim()
 # plt.legend(
 #     # fontsize=28,
 #     loc='upper right',
@@ -269,8 +269,8 @@ plt.xlim()
 #     prop={'size':14, 'weight': 'bold'},  # Make the legend text bold
 # )
 # plt.grid()
-save_path = os.path.join(save_directory, "jt_traj_comp_09a.svg")
-plt.savefig(save_path)
+save_path = os.path.join(save_directory, "jt_traj_comp_03_paper.svg")
+# plt.savefig(save_path)
 plt.show()
 
 # for idx, (data, goals, color, method) in enumerate(zip(control_data, goal_configurations, colors, labels)):
@@ -346,7 +346,7 @@ plt.show()
 
 # separate figure
 for idx, (data, goals, color, label) in enumerate(zip(control_data, goal_configurations, colors, labels)):
-    plt.figure(figsize=(20, 15))
+    plt.figure(figsize=(10, 10))
 
     # Extract goal column and joint angles
     goal_column = data.iloc[:, 0].values
@@ -378,7 +378,7 @@ for idx, (data, goals, color, label) in enumerate(zip(control_data, goal_configu
         linestyle='--',
         linewidth=5,
         color=color,
-        alpha=0.7,
+        alpha=0.9,
         label=f"{label} - Control Trajectory"
     )
     plt.plot(
@@ -407,14 +407,14 @@ for idx, (data, goals, color, label) in enumerate(zip(control_data, goal_configu
         marker_color = 'green' if g_idx == 0 else color
 
         if g_idx == 0:  # Start configuration
-            plt.scatter(x_position, ideal_norm, color='#34C742', marker='o', s=150, label="Start Configuration")
-            plt.scatter(x_position, actual_norm, color='#34C742', marker='o', s=150)
+            plt.scatter(x_position, ideal_norm, color='#34C742', marker='o', s=250, label="Start Configuration")
+            plt.scatter(x_position, actual_norm, color='#34C742', marker='o', s=250)
         elif g_idx == len(ideal_goal_points) - 1:  # Final goal configuration
-            plt.scatter(x_position, ideal_norm, color='#CB48EB', marker='o', s=150, label="Final Goal Configuration")
-            plt.scatter(x_position, actual_norm, color='#CB48EB', marker='o', s=150)
+            plt.scatter(x_position, ideal_norm, color='#CB48EB', marker='o', s=250, label="Final Goal Configuration")
+            plt.scatter(x_position, actual_norm, color='#CB48EB', marker='o', s=250)
         else:  # Intermediate configurations
-            plt.scatter(x_position, ideal_norm, color=marker_color, marker='o', s=150, label="")
-            plt.scatter(x_position, actual_norm, color=marker_color, marker='o', s=150, label="Intermediate Goal Configurations in Path" if g_idx == 1 else "")
+            plt.scatter(x_position, ideal_norm, color=marker_color, marker='o', s=250, label="")
+            plt.scatter(x_position, actual_norm, color=marker_color, marker='o', s=250, label="Intermediate Goal Configurations in Path" if g_idx == 1 else "")
         
         # # # Plot the start and goal points
         # plt.scatter(x_position, ideal_norm, color=color, marker='o', s=150, label="")
@@ -429,7 +429,7 @@ for idx, (data, goals, color, label) in enumerate(zip(control_data, goal_configu
             x_position + 0.5,  # Slight offset to avoid overlap
             (ideal_norm + actual_norm) / 2,  # Midpoint of the line
             f"{distance:.2f}",
-            fontsize=14,
+            fontsize=28,
             ha='left'
         )
 
@@ -437,32 +437,32 @@ for idx, (data, goals, color, label) in enumerate(zip(control_data, goal_configu
     # plt.title(f"Norm-Based Continuous Comparison: {label}")
     # plt.xlabel("Total Number of Control Points")
     # plt.ylabel("Norm of Configurations")
-    plt.xlim(-100, 3200)
-    plt.ylim(1.5, 3.5)
+    plt.xlim(-100, 6500)
+    plt.ylim(1.5, 4.5)
     plt.legend(
     fontsize=24,
-    loc='upper right',
+    loc='lower right',
     frameon=True,
     fancybox=True,
     shadow=True,
     title_fontsize=24,
     edgecolor='black',
     labelspacing=1.2,
-    prop={'size':16, 'weight': 'bold'},  # Make the legend text bold
+    prop={'size':18, 'weight': 'bold'},  # Make the legend text bold
 )
     # plt.grid()
     # plt.tick_params(axis='both', which='major', labelsize=18)
     for label in plt.gca().get_xticklabels():
         label.set_fontweight('bold')
-        label.set_fontsize(20)
+        label.set_fontsize(28)
     for label in plt.gca().get_yticklabels():
         label.set_fontweight('bold')
-        label.set_fontsize(20)
+        label.set_fontsize(28)
 
 
-    save_path = os.path.join(save_directory, f"jt_{label.get_text().replace(' ', '_').lower()}_traj_09a.svg")
-    plt.savefig(save_path, bbox_inches='tight')
-    print(f"Figure saved as {save_path}")
+    # save_path = os.path.join(save_directory, f"jt_{label.replace(' ', '_').lower()}_traj_03_paper.svg")
+    # plt.savefig(save_path, bbox_inches='tight')
+    # print(f"Figure saved as {save_path}")
     plt.show()
 
 

@@ -9,9 +9,9 @@ import os
 save_directory = "/media/jc-merlab/Crucial X9/paper_data/trajectory_pics/"
 # File paths
 file_paths = [
-    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/ground_truth/astar_latest_with_obs/9/cp.csv',
-    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/custom/astar_latest_with_obs/9/cp.csv',
-    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/euclidean/astar_latest_with_obs/9/cp.csv'
+    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/ground_truth/astar_latest_no_obs/3/cp.csv',
+    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/custom/astar_latest_no_obs/3/cp.csv',
+    '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/exps/euclidean/astar_latest_no_obs/3/cp.csv'
 ]
 
 # Load the CSV file
@@ -19,41 +19,42 @@ file_paths = [
 goal_configurations = [
     # Ground Truth
     [
-        [[177.0, 226.0], [199.0, 206.0], [331.0, 149.0], [364.0, 147.0], [366.0, 186.0]],
-[[178.0, 221.0], [201.0, 201.0], [344.0, 168.0], [377.0, 176.0], [367.0, 217.0]],
-[[195.0, 208.0], [222.0, 193.0], [367.0, 220.0], [392.0, 242.0], [365.0, 274.0]],
-[[230.0, 195.0], [260.0, 189.0], [376.0, 280.0], [390.0, 311.0], [351.0, 329.0]],
-[[267.0, 193.0], [298.0, 196.0], [416.0, 287.0], [428.0, 320.0], [388.0, 335.0]],
-[[282.0, 196.0], [312.0, 203.0], [440.0, 284.0], [456.0, 315.0], [416.0, 335.0]],
-[[282.0, 196.0], [312.0, 203.0], [452.0, 262.0], [473.0, 290.0], [438.0, 316.0]],
-        [[303, 203], [331, 215], [472, 275], [494, 303], [458, 330]]
+        [[169.0, 235.0], [188.0, 212.0], [244.0, 81.0], [242.0, 50.0], [280.0, 47.0]],
+[[178.0, 221.0], [201.0, 201.0], [277.0, 76.0], [276.0, 44.0], [316.0, 43.0]],
+[[178.0, 221.0], [201.0, 201.0], [278.0, 76.0], [277.0, 44.0], [317.0, 43.0]],
+[[209.0, 202.0], [238.0, 190.0], [364.0, 113.0], [379.0, 83.0], [416.0, 101.0]],
+[[230.0, 195.0], [260.0, 189.0], [407.0, 167.0], [430.0, 143.0], [460.0, 172.0]],
+[[245.0, 193.0], [276.0, 190.0], [422.0, 220.0], [455.0, 208.0], [470.0, 248.0]],
+        [[245.0, 193.0], [276.0, 190.0], [422.0, 220.0], [455.0, 208.0], [470.0, 248.0]]
 ],
     # Learned
     [
-        [[177.0, 226.0], [199.0, 206.0], [331.0, 149.0], [364.0, 147.0], [366.0, 186.0]],
-[[178.0, 221.0], [201.0, 201.0], [344.0, 168.0], [377.0, 176.0], [367.0, 217.0]],
-[[195.0, 208.0], [222.0, 193.0], [367.0, 220.0], [392.0, 242.0], [365.0, 274.0]],
-[[195.0, 208.0], [222.0, 193.0], [367.0, 220.0], [396.0, 236.0], [376.0, 273.0]],
-[[245.0, 193.0], [276.0, 190.0], [413.0, 249.0], [440.0, 272.0], [412.0, 305.0]],
-[[282.0, 196.0], [312.0, 203.0], [452.0, 262.0], [480.0, 283.0], [452.0, 318.0]],
-[[282.0, 196.0], [312.0, 203.0], [452.0, 262.0], [476.0, 287.0], [445.0, 318.0]],
-        [[303, 203], [331, 215], [472, 275], [494, 303], [458, 330]]
+        [[169.0, 235.0], [188.0, 212.0], [244.0, 81.0], [242.0, 50.0], [280.0, 47.0]],
+[[178.0, 221.0], [201.0, 201.0], [302.0, 94.0], [308.0, 62.0], [348.0, 69.0]],
+[[209.0, 202.0], [238.0, 190.0], [385.0, 179.0], [414.0, 160.0], [437.0, 196.0]],
+[[230.0, 195.0], [260.0, 189.0], [409.0, 190.0], [439.0, 176.0], [457.0, 215.0]],
+    [[245.0, 193.0], [276.0, 190.0], [422.0, 220.0], [455.0, 208.0], [470.0, 248.0]]
+
     ],
     # Image Space
     [
-        [[177.0, 226.0], [199.0, 206.0], [331.0, 149.0], [364.0, 147.0], [366.0, 186.0]],
-[[166.0, 232.0], [187.0, 209.0], [328.0, 167.0], [360.0, 159.0], [369.0, 200.0]],
-[[167.0, 231.0], [188.0, 209.0], [331.0, 178.0], [364.0, 175.0], [368.0, 216.0]],
-[[167.0, 231.0], [188.0, 209.0], [334.0, 202.0], [368.0, 200.0], [370.0, 242.0]],
-[[167.0, 231.0], [188.0, 209.0], [333.0, 226.0], [366.0, 231.0], [359.0, 273.0]],
-[[195.0, 208.0], [222.0, 193.0], [360.0, 243.0], [385.0, 266.0], [356.0, 297.0]],
-[[230.0, 195.0], [260.0, 189.0], [395.0, 251.0], [405.0, 283.0], [365.0, 296.0]],
-[[245.0, 193.0], [276.0, 190.0], [415.0, 244.0], [418.0, 278.0], [375.0, 281.0]],
-[[267.0, 193.0], [298.0, 196.0], [436.0, 253.0], [448.0, 286.0], [408.0, 301.0]],
-[[282.0, 196.0], [312.0, 203.0], [453.0, 258.0], [456.0, 293.0], [412.0, 296.0]],
-[[303.0, 203.0], [331.0, 215.0], [474.0, 269.0], [466.0, 303.0], [424.0, 292.0]],
-[[303.0, 203.0], [331.0, 215.0], [473.0, 271.0], [485.0, 303.0], [445.0, 319.0]],
-       [[303, 203], [331, 215], [472, 275], [494, 303], [458, 330]]
+        [[169.0, 235.0], [188.0, 212.0], [244.0, 81.0], [242.0, 50.0], [280.0, 47.0]],
+[[167.0, 232.0], [188.0, 209.0], [259.0, 82.0], [267.0, 52.0], [306.0, 62.0]],
+[[167.0, 231.0], [188.0, 209.0], [265.0, 85.0], [276.0, 56.0], [313.0, 70.0]],
+[[166.0, 232.0], [187.0, 209.0], [275.0, 93.0], [295.0, 67.0], [327.0, 92.0]],
+[[167.0, 231.0], [188.0, 209.0], [285.0, 100.0], [311.0, 80.0], [336.0, 113.0]],
+[[166.0, 232.0], [187.0, 209.0], [293.0, 107.0], [321.0, 91.0], [341.0, 127.0]],
+[[167.0, 231.0], [188.0, 209.0], [301.0, 116.0], [330.0, 100.0], [350.0, 137.0]],
+[[166.0, 232.0], [187.0, 209.0], [307.0, 125.0], [336.0, 109.0], [356.0, 145.0]],
+[[167.0, 231.0], [188.0, 209.0], [314.0, 134.0], [343.0, 118.0], [364.0, 154.0]],
+[[167.0, 231.0], [188.0, 209.0], [324.0, 153.0], [351.0, 134.0], [375.0, 168.0]],
+[[167.0, 231.0], [188.0, 209.0], [325.0, 157.0], [353.0, 138.0], [376.0, 172.0]],
+[[178.0, 221.0], [201.0, 201.0], [344.0, 168.0], [375.0, 152.0], [394.0, 190.0]],
+[[195.0, 208.0], [222.0, 193.0], [369.0, 196.0], [392.0, 172.0], [422.0, 201.0]],
+[[209.0, 202.0], [238.0, 190.0], [385.0, 203.0], [419.0, 204.0], [418.0, 247.0]],
+[[230.0, 195.0], [260.0, 189.0], [406.0, 214.0], [439.0, 225.0], [425.0, 265.0]],
+    [[245.0, 193.0], [276.0, 190.0], [422.0, 220.0], [455.0, 208.0], [470.0, 248.0]]
+
     ]
 ]
 
@@ -167,7 +168,7 @@ plt.show()
 
 #Separate figure for each type
 for idx, (data, goals, color, label) in enumerate(zip(control_data, goal_configurations, colors, labels)):
-    plt.figure(figsize=(20, 15))
+    plt.figure(figsize=(10, 10))
     
     # Extract goal column and keypoints
     goal_column = data.iloc[:, 0].values
@@ -234,16 +235,16 @@ for idx, (data, goals, color, label) in enumerate(zip(control_data, goal_configu
         
         # Mark start, intermediate, and final goals
         if g_idx == 0:  # Start configuration
-            plt.scatter(x_position, ideal_norm, color='#34C742', marker='o', s=150, label="Start Configuration")
-            plt.scatter(x_position, actual_norm, color='#34C742', marker='o', s=150)
+            plt.scatter(x_position, ideal_norm, color='#34C742', marker='o', s=250, label="Start Configuration")
+            plt.scatter(x_position, actual_norm, color='#34C742', marker='o', s=250)
         elif g_idx == len(ideal_goal_points) - 1:  # Final goal configuration
-            plt.scatter(x_position, ideal_norm, color='#CB48EB', marker='o', s=150, label="Final Goal Configuration")
-            plt.scatter(x_position, actual_norm, color='#CB48EB', marker='o', s=150)
+            plt.scatter(x_position, ideal_norm, color='#CB48EB', marker='o', s=250, label="Final Goal Configuration")
+            plt.scatter(x_position, actual_norm, color='#CB48EB', marker='o', s=250)
         else:  # Intermediate goals
             # plt.scatter(x_position, ideal_norm, color=color, marker='o', s=150)
             # plt.scatter(x_position, actual_norm, color=color, marker='o', s=150)
-            plt.scatter(x_position, ideal_norm, color=color, marker='o', s=150, label="")
-            plt.scatter(x_position, actual_norm, color=color, marker='o', s=150, label="Intermediate Goal Configurations in Path" if g_idx == 1 else "")
+            plt.scatter(x_position, ideal_norm, color=color, marker='o', s=250, label="")
+            plt.scatter(x_position, actual_norm, color=color, marker='o', s=250, label="Intermediate Goal Configurations in Path" if g_idx == 1 else "")
         
         # Draw dashed lines between ideal and actual points
         plt.plot([x_position, x_position], [ideal_norm, actual_norm], linestyle='--', color='gray')
@@ -254,8 +255,8 @@ for idx, (data, goals, color, label) in enumerate(zip(control_data, goal_configu
     # plt.title(f"Norm-Based Continuous Comparison: {label}")
     # plt.xlabel("Control Points")
     # plt.ylabel("Norm of Keypoints")
-    plt.xlim(-100, 1000)
-    plt.ylim(600, 1200)
+    plt.xlim(-100, 2300)
+    plt.ylim(550, 1200)
     plt.legend(
     fontsize=24,
     loc='lower right',
@@ -265,16 +266,16 @@ for idx, (data, goals, color, label) in enumerate(zip(control_data, goal_configu
     title_fontsize=24,
     edgecolor='black',
     labelspacing=1.2,
-    prop={'size':16, 'weight': 'bold'},  # Make the legend text bold
+    prop={'size':18, 'weight': 'bold'},  # Make the legend text bold
 )
     # plt.grid()
     # plt.tick_params(axis='both', which='major', labelsize=18)
     for label in plt.gca().get_xticklabels():
         label.set_fontweight('bold')
-        label.set_fontsize(20)
+        label.set_fontsize(28)
     for label in plt.gca().get_yticklabels():
         label.set_fontweight('bold')
-        label.set_fontsize(20)
+        label.set_fontsize(28)
 
     if isinstance(label, str):
         label_text = label
@@ -282,7 +283,7 @@ for idx, (data, goals, color, label) in enumerate(zip(control_data, goal_configu
         label_text = label.get_text() if hasattr(label, 'get_text') else str(label)
     # plt.legend(fontsize=14, loc='upper left')
     # Save the figure
-    save_path = os.path.join(save_directory, f"kp_{label.get_text().replace(' ', '_').lower()}_traj_obs_09a.svg")
+    save_path = os.path.join(save_directory, f"kp_{label.get_text().replace(' ', '_').lower()}_traj_obs_03_paper.svg")
     # plt.savefig(save_path, bbox_inches='tight')
     print(f"Figure saved as {save_path}")
     plt.show()
@@ -322,8 +323,11 @@ for idx, (data, goals, color, label) in enumerate(zip(control_data, goal_configu
 
         # Calculate deviations for each point
         actual_points = control_keypoints[goal_mask]
-        for actual_point, interpolated_point in zip(actual_points, interpolated_segment):
+        for actual_point, interpolated_point in zip(actual_points, interpolated_segment): 
+            # print(actual_point)
+            # print(interpolated_point)
             distance = np.linalg.norm(actual_point - interpolated_point)
+            print(distance)
             deviations.append(distance)
 
     interpolated_ideal_trajectory = np.array(interpolated_ideal_trajectory)

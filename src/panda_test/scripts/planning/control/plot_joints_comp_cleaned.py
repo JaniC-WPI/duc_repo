@@ -6,16 +6,24 @@ import matplotlib.pyplot as plt
 # Function to calculate Euclidean distances between consecutive joint configurations
 def calculate_euclidean_joint_distances(file_path):
     df = pd.read_csv(file_path)
-    joint_columns = ['Joint 1', 'Joint 2', 'Joint 3']
+
+    joint_columns = df[['Joint 1', 'Joint 2', 'Joint 3']].to_numpy()
+
+    jt_diff = np.diff(joint_columns, axis = 0)
+    jt_distances = np.linalg.norm(jt_diff, axis=1)
+
+    jt_dist_direct_norm = (jt_distances - np.min(jt_distances)) / (np.max(jt_distances) - np.min(jt_distances))
+
+
     euclidean_distances = []
     
-    for i in range(len(df) - 1):
-        distance = np.linalg.norm([
-            df[joint_columns[0]].iloc[i + 1] - df[joint_columns[0]].iloc[i],
-            df[joint_columns[1]].iloc[i + 1] - df[joint_columns[1]].iloc[i],
-            df[joint_columns[2]].iloc[i + 1] - df[joint_columns[2]].iloc[i]
-        ])
-        euclidean_distances.append(distance)
+    # for i in range(len(df) - 1):
+    #     distance = np.linalg.norm([
+    #         df[joint_columns[0]].iloc[i + 1] - df[joint_columns[0]].iloc[i],
+    #         df[joint_columns[1]].iloc[i + 1] - df[joint_columns[1]].iloc[i],
+    #         df[joint_columns[2]].iloc[i + 1] - df[joint_columns[2]].iloc[i]
+    #     ])
+    #     euclidean_distances.append(distance)
     
     return euclidean_distances
 
@@ -245,9 +253,9 @@ def main():
 
     fig, ax = plt.subplots(figsize=(20, 10))
 
-    plot_euclidean_joint_distances_combined([file_path3, file_path1, file_path2], labels, colors)
+    # plot_euclidean_joint_distances_combined([file_path3, file_path1, file_path2], labels, colors)
 
-    plot_distances(file_path3, file_path1, file_path2)
+    plot_distances(file_path3, file_path1, file_path2) 
 
 
 if __name__ == "__main__":

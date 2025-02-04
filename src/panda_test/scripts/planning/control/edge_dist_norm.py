@@ -333,6 +333,7 @@ def normalize_and_print_mean_distances(roadmaps, roadmap_names):
     for roadmap, name in zip(roadmaps, roadmap_names):
         # Extract all edge weights
         edge_weights = [data['weight'] for _, _, data in roadmap.edges(data=True)]
+        mean_edge_distance = sum(edge_weights)/len(edge_weights)
         
         if edge_weights:
             # Normalize the edge weights
@@ -341,68 +342,41 @@ def normalize_and_print_mean_distances(roadmaps, roadmap_names):
             normalized_weights = [(w - min_weight) / (max_weight - min_weight) for w in edge_weights]
             
             # Calculate the mean normalized distance
+            sum_normalized_weights = sum(normalized_weights)
             mean_normalized_distance = sum(normalized_weights) / len(normalized_weights)
-            print(f"{name}: Mean Normalized Distance = {mean_normalized_distance:.4f}")
+            print(f"{name}: Mean Edge Weights = {mean_edge_distance}, Mean Normalized Distance = {mean_normalized_distance:.4f}, Sum Normalized Distance = {sum_normalized_weights}")
         else:
             print(f"{name}: No edges found!")
+
+# Load the roadmap and KDTree from files
+def load_graph_and_tree(graph_path, tree_path):
+    with open(graph_path, 'rb') as f:
+        graph = pickle.load(f)
+    with open(tree_path, 'rb') as f:
+        tree = pickle.load(f)
+    print(f"Graph loaded from {graph_path}")
+    print(f"KDTree loaded from {tree_path}")
+    return graph, tree
 
 
 # Main execution
 if __name__ == "__main__":
     # Load configurations from JSON files
-    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_rearranged_og/'  # Replace with the path to your JSON files
+    directory = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_rearranged/'  # Replace with the path to your JSON files
     model_path = '/home/jc-merlab/Pictures/Data/trained_models/reg_pos_b128_e400_v32.pth'
+    configurations, configuration_ids = load_keypoints_from_json(directory)
+    model = load_model_for_inference(model_path)
     custom_graph_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/custom_roadmap_angle_fresh_all_432_edges_dist_check.pkl'
     custom_tree_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/custom_tree_angle_fresh_all_432_edges_dist_check.pkl'
     euclidean_g_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/euclidean_roadmap_angle_fresh_all_432_edges_dist_check.pkl'
     euclidean_tree_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/euclidean_tree_angle_fresh_all_432_edges_dist_check.pkl'
     gt_graph_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/joint_space_roadmap_angle_fresh_all_432_edges_dist_check.pkl'
     gt_tree_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/joint_space_tree_angle_fresh_all_432_edges_dist_check.pkl'
+ 
+    gt_roadmap, gt_tree = load_graph_and_tree(gt_graph_path, gt_tree_path)
+    custom_roadmap, custom_tree = load_graph_and_tree(custom_graph_path, custom_tree_path)
+    euclidean_roadmap, euclidean_tree = load_graph_and_tree(euclidean_g_path, euclidean_tree_path)
 
-    configurations, configuration_ids = load_keypoints_from_json(directory)
-    model = load_model_for_inference(model_path)
-    joint_angles_dict = load_joint_angles_from_json(directory)
-
-    # correspondence_log_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/config_joint_correspondence.csv'
-    # log_config_joint_correspondence(configuration_ids, configurations, joint_angles_dict, correspondence_log_path)
-
-    skip_step = 10
-    start_index = 1
-    end_index = 28000
-
-    skipped_configs, skipped_ids = skip_configurations(configurations, configuration_ids, \
-                                                       skip_step, start_index, end_index)
-    
-    # skipped_log_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/skipped_config_joint_correspondence.csv'
-    # log_skipped_config_joint_correspondence(skipped_ids, skipped_configs, joint_angles_dict, skipped_log_path)
-
-    # Parameters for PRM
-    num_neighbors = 25
-
-     # Number of neighbors for each node in the roadmap
-    start_time = time.time()
-    # Build the roadmap
-    custom_roadmap, custom_tree, euclidean_roadmap, euclidean_tree, gt_roadmap, gt_tree = build_lazy_roadmap_with_kdtree(\
-                                skipped_configs, skipped_ids, joint_angles_dict, model, num_neighbors)   
-    end_time = time.time()
-
-    print("time taken to find the graph", end_time - start_time)  
-
-    print_edge_distances(gt_roadmap)
-    # print_edge_distances(custom_roadmap) 
-    # print_edge_distances(euclidean_roadmap)
-        
-
-
-
-    # verify_roadmap(custom_roadmap, configurations, name="Custom Roadmap")
-    # verify_roadmap(euclidean_roadmap, configurations, name="Euclidean Roadmap")
-    # verify_roadmap(gt_roadmap, configurations, name="Ground Truth Roadmap")
-   
-    save_graph(custom_roadmap, custom_tree, euclidean_roadmap, euclidean_tree, \
-                gt_roadmap, gt_tree, custom_graph_path, custom_tree_path, \
-                euclidean_g_path, euclidean_tree_path, gt_graph_path, gt_tree_path)
-    
 
     # Normalize and print mean distances
     roadmaps = [gt_roadmap, custom_roadmap, euclidean_roadmap]

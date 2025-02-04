@@ -269,3 +269,68 @@ plt.legend('')
 # plt.gca().invert_yaxis()  # Invert y-axis for image-style display
 plt.axis('equal')
 plt.show()
+
+import pickle
+import networkx as nx
+import matplotlib.pyplot as plt
+
+# Paths to the graph and KDTree files
+custom_graph_path = '/home/jc-merlab/Pictures/Dl_Exps/sim_vs/servoing/configurations_and_goals/euclidean_roadmap_angle_fresh_all_432_edges_dist_check.pkl'
+
+# Load the graph from the .pkl file
+def load_graph(graph_path):
+    with open(graph_path, 'rb') as f:
+        graph = pickle.load(f)
+    print(f"Graph loaded from {graph_path}")
+    return graph
+
+# Load the graph
+graph = load_graph(custom_graph_path)
+
+# Visualize the graph with edge weights if available
+def visualize_graph_with_edges(graph):
+    plt.figure(figsize=(10, 8))
+    
+    # Get positions for nodes using spring layout
+    pos = nx.spring_layout(graph)
+    
+    # Draw nodes and edges
+    nx.draw(graph, pos, with_labels=True, node_size=500, node_color='skyblue', edge_color='gray', font_size=10)
+    
+    # Draw edge labels if weights are available
+    # edge_labels = nx.get_edge_attributes(graph, 'weight')  # Adjust 'weight' to your edge attribute
+    # nx.draw_networkx_edge_labels(graph, pos, font_size=8)
+    
+    plt.title("Graph Visualization with Edges")
+    # plt.show()
+
+visualize_graph_with_edges(graph)
+
+from pyvis.network import Network
+import pickle
+
+# Load the graph
+with open(custom_graph_path, 'rb') as f:
+    graph = pickle.load(f)
+
+# Convert node identifiers to strings
+graph = nx.relabel_nodes(graph, lambda x: str(x))
+
+
+# Convert non-serializable attributes
+for node, attributes in graph.nodes(data=True):
+    for key, value in attributes.items():
+        if isinstance(value, np.ndarray):
+            graph.nodes[node][key] = value.tolist()
+
+for u, v, attributes in graph.edges(data=True):
+    for key, value in attributes.items():
+        if isinstance(value, np.ndarray):
+            graph.edges[u, v][key] = value.tolist()
+
+# Create a Pyvis network
+net = Network(notebook=False)  # Disable notebook rendering if needed
+net.from_nx(graph)
+
+# Save and view the graph in a browser
+net.show("graph.html")
