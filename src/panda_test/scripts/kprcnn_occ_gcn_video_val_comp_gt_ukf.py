@@ -426,125 +426,135 @@ def denormalize_keypoints(batch_keypoints, width=640, height=480):
     denormalized_keypoints = torch.stack(denormalized_keypoints)
     return denormalized_keypoints
 
-# model = KeypointPipeline(weights_path)
-# model = model.to(device)
 
-# optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-# scaler = GradScaler()
-
-# num_epochs = 50
-# batch_size = 128
-
-# split_folder_path = train_test_split(root_dir)
-# KEYPOINTS_FOLDER_TRAIN = split_folder_path +"/train"
-# KEYPOINTS_FOLDER_VAL = split_folder_path +"/val"
-# KEYPOINTS_FOLDER_TEST = split_folder_path +"/test"
-
-# dataset_train = KPDataset(KEYPOINTS_FOLDER_TRAIN, transform=None, demo=False)
-# dataset_val = KPDataset(KEYPOINTS_FOLDER_VAL, transform=None, demo=False)
-# dataset_test = KPDataset(KEYPOINTS_FOLDER_TEST, transform=None, demo=False)
-
-# data_loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
-# data_loader_val = DataLoader(dataset_val, batch_size=1, shuffle=False, collate_fn=collate_fn)
-# data_loader_test = DataLoader(dataset_test, batch_size=1, shuffle=False, collate_fn=collate_fn)
-
-# checkpoint_dir = '/home/schatterjee/lama/kprcnn_panda/trained_models/sage_ckpt/'
-# checkpoint_path = os.path.join(checkpoint_dir, 'latest_checkpoint.pth')
-
-# # Create checkpoint directory if it doesn't exist
-# os.makedirs(checkpoint_dir, exist_ok=True)
-
-# # Load checkpoint if exists
-# start_epoch = 0
-# if os.path.isfile(checkpoint_path):
-#     checkpoint = torch.load(checkpoint_path)
-#     model.load_state_dict(checkpoint['model_state_dict'])
-#     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-#     scaler.load_state_dict(checkpoint['scaler_state_dict'])
-#     start_epoch = checkpoint['epoch'] + 1
-#     print(f"Loaded checkpoint from epoch {start_epoch}")
-
-
-# for epoch in range(start_epoch, num_epochs):
-#     model.train()
-#     total_loss = 0
-
-#     for imgs, target_dicts, _ in data_loader_train:
-#         imgs = [img.to(device) for img in imgs]
-#         optimizer.zero_grad()
-        
-#         with autocast():
-#             KGNN2D = model(imgs)            
-#             keypoints_gt = process_batch_keypoints(target_dicts)
-#             # print("Ground truth keypoints", keypoints_gt)
-#             reordered_normalized_keypoints = reorder_batch_keypoints(KGNN2D)
-#             denormalized_keypoints = denormalize_keypoints(reordered_normalized_keypoints)
-#             # print("Final precicted keypoints", denormalized_keypoints)
-#             gt_distances_angles = calculate_gt_distances_angles(keypoints_gt)
-#             pred_distances_angles = calculate_gt_distances_angles(denormalized_keypoints)
-#             loss_kgnn2d = kgnn2d_loss(keypoints_gt, denormalized_keypoints, gt_distances_angles[:, :, 0], 
-#                                       gt_distances_angles[:, :, 1], gt_distances_angles[:, :, 2], 
-#                                       gt_distances_angles[:, :, 3], pred_distances_angles[:, :, 0], 
-#                                       pred_distances_angles[:, :, 1], pred_distances_angles[:, :, 2], 
-#                                       pred_distances_angles[:, :, 3])
-            
-#         scaler.scale(loss_kgnn2d).backward()
-#         scaler.step(optimizer)
-#         scaler.update()
-#         total_loss += loss_kgnn2d.item()
-#     print(f'Epoch {epoch+1}/{num_epochs}, Loss: {total_loss / len(data_loader_train)}')
-    
-# # Save checkpoint every epoch
-#     if (epoch + 1) % 1 == 0:
-#         checkpoint_path = os.path.join(checkpoint_dir, f'kprcnn_occ_sage_ckpt_b{batch_size}e{epoch+1}.pth')
-#         torch.save({
-#             'epoch': epoch,
-#             'model_state_dict': model.state_dict(),
-#             'optimizer_state_dict': optimizer.state_dict(),
-#             'scaler_state_dict': scaler.state_dict(),
-#         }, checkpoint_path)
-#         print(f'Checkpoint saved to {checkpoint_path}')
-
-#     # Save latest checkpoint
-#     torch.save({
-#         'epoch': epoch,
-#         'model_state_dict': model.state_dict(),
-#         'optimizer_state_dict': optimizer.state_dict(),
-#         'scaler_state_dict': scaler.state_dict(),
-#     }, checkpoint_path)
-
-# # end_time = time.time()
-
-# # total_time = end_time - start_time
-# # print("total time", total_time)
-
-# # Save final model
-# model_save_path = f"/home/schatterjee/lama/kprcnn_panda/trained_models/kprcnn_sage_b{batch_size}_e{num_epochs}.pth"
-# torch.save(model.state_dict(), model_save_path)
-
+#Prediction starts from here
 import cv2
 import os
 import torch
 from torchvision.transforms import functional as F
 import copy
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+from filterpy.kalman import UnscentedKalmanFilter as UKF
+from filterpy.kalman import MerweScaledSigmaPoints
 
-# Instantiate the model
-model = KeypointPipeline(weights_path)
-model = model.to(device)
+class KeypointUKF:
+    def __init__(self, num_keypoints=9, dt=1.0):
+        self.num_keypoints = num_keypoints
+        self.dt = dt  # Time step between frames
 
-# Load the checkpoint
-checkpoint_path = '/home/jc-merlab/Pictures/Data/trained_models/gcn_ckpt/kprcnn_occ_gcn_ckpt_b128e17.pth'
-checkpoint = torch.load(checkpoint_path)
+        # UKF State Size: Each keypoint has (x, y, vx, vy), so total 36D
+        self.state_dim = self.num_keypoints * 4  # 9 * 4 = 36
+        self.measurement_dim = self.num_keypoints * 2  # Only x, y (9 * 2 = 18)
 
-# Extract the state dictionary
-model_state_dict = checkpoint['model_state_dict']
+        # UKF Sigma Points
+        self.points = MerweScaledSigmaPoints(n=self.state_dim, alpha=0.001, beta=1.0, kappa=0.0)
 
-# Load the state dictionary into the model
-model.load_state_dict(model_state_dict)
+        # UKF Initialization
+        self.ukf = UKF(dim_x=self.state_dim, dim_z=self.measurement_dim, fx=self.motion_model, 
+                       hx=self.measurement_model, dt=self.dt, points=self.points)
 
-model.eval()  # Set the model to evaluation mode
+        # Initialize state vector (positions and velocities)
+        self.ukf.x = np.zeros(self.state_dim)  # Start with all zeros
+
+        # Covariance matrices
+        self.ukf.P *= 0.001 # Initial state uncertainty
+        self.ukf.Q = np.eye(self.state_dim) * 0.001  # Process noise (adjustable)
+        self.ukf.R = np.eye(self.measurement_dim) * 20  # Measurement noise
+
+        self.initialized = False
+
+    def initialize_state(self, first_keypoints):
+        """ Initializes UKF state from the first keypoint prediction (9 keypoints, each with x, y, vx, vy). """
+        # first_keypoints = first_keypoints.cpu().numpy()
+
+        # Initialize positions
+        for i in range(self.num_keypoints):
+            idx = i * 4
+            self.ukf.x[idx] = first_keypoints[i, 0]  # x
+            self.ukf.x[idx + 1] = first_keypoints[i, 1]  # y
+            self.ukf.x[idx + 2] = 0  # Initial velocity x
+            self.ukf.x[idx + 3] = 0  # Initial velocity y
+        
+        self.initialized = True  # Mark UKF as initialized
+
+    def motion_model(self, x, dt):
+        """ State transition function assuming constant velocity model """
+        num_kp = self.num_keypoints
+        new_x = np.copy(x)
+
+        for i in range(num_kp):
+            idx = i * 4
+            new_x[idx] += x[idx + 2] * dt  # x = x + vx * dt
+            new_x[idx + 1] += x[idx + 3] * dt  # y = y + vy * dt
+            # Velocity remains unchanged
+
+        return new_x
+
+    def measurement_model(self, x):
+        """ Extracts x, y positions from the full state vector """
+        num_kp = self.num_keypoints
+        z = np.zeros(self.measurement_dim)
+
+        for i in range(num_kp):
+            z[i * 2] = x[i * 4]  # x
+            z[i * 2 + 1] = x[i * 4 + 1]  # y
+
+        return z
+
+    def update(self, observed_keypoints):
+        """ Updates UKF with detected keypoints while refining localization. """
+        observed_keypoints = observed_keypoints.cpu().numpy()  # Convert to NumPy
+        z = observed_keypoints.flatten()  # Flatten (9,2) to (18,)
+
+        # **First Frame Handling**
+        if not self.initialized:
+            self.initialize_state(observed_keypoints)
+            return observed_keypoints  # First frame is directly passed through (no filtering)
+
+
+        # Predict the next state
+        self.ukf.predict()
+
+        # Update UKF with new observations
+        self.ukf.update(z)
+
+        # Extract both x and y coordinates properly
+        filtered_x = self.ukf.x[::4]  # Extract x values
+        filtered_y = self.ukf.x[1::4]  # Extract y values
+        filtered_keypoints = np.stack((filtered_x, filtered_y), axis=1)  # Shape (9,2)
+
+        return filtered_keypoints
+
+# **Step 1: Extract Ground Truth Keypoints (From Non-Occluded Video)**
+def extract_gt_keypoints(video_path, model, device):
+    cap = cv2.VideoCapture(video_path)
+    gt_keypoints = []
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+        
+        image = Image.fromarray(frame)
+        image = F.to_tensor(image).to(device).unsqueeze(0)
+
+        with torch.no_grad():
+            output = model(image)
+
+        scores = output[0]['scores'].detach().cpu().numpy()
+        high_scores_idxs = np.where(scores > 0.7)[0].tolist()
+        post_nms_idxs = torchvision.ops.nms(output[0]['boxes'][high_scores_idxs], 
+                                            output[0]['scores'][high_scores_idxs], 0.3).cpu().numpy()
+
+        labels = output[0]['labels'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy().tolist()
+        raw_keypoints = output[0]['keypoints'][high_scores_idxs][post_nms_idxs].detach().cpu().numpy()[:, 0, :2]
+
+        sorted_keypoints = [x for _, x in sorted(zip(labels, raw_keypoints))]
+        gt_keypoints.append(np.array(sorted_keypoints))
+
+    cap.release()
+    return gt_keypoints
+
 
 def prepare_image(image_path):
     img = cv2.imread(image_path)
@@ -594,6 +604,26 @@ def visualize_keypoints_with_ground_truth(image_path, predicted_keypoints, groun
     output_path = os.path.join(out_dir, filename)
     cv2.imwrite(output_path, img)
 
+def visualize_keypoints(image, predicted_keypoints, gt_keypoints, out_dir, frame_id):
+    img = image.copy()  # Use the frame directly
+    if torch.is_tensor(predicted_keypoints):
+        predicted_keypoints = predicted_keypoints.cpu().numpy()
+    if torch.is_tensor(gt_keypoints):
+        gt_keypoints = gt_keypoints.cpu().numpy()
+
+    # Draw GT keypoints (always present, marked in green)
+    for kp in gt_keypoints:
+        x, y = int(kp[0]), int(kp[1])
+        cv2.circle(img, (x, y), radius=10, color=(0, 255, 0), thickness=-1)  # Green for GT
+
+    # Draw predicted keypoints (ignoring NaN values, marked in red)
+    for kp in predicted_keypoints:
+        x, y = int(kp[0]), int(kp[1])
+        cv2.circle(img, (x, y), radius=7, color=(0, 0, 255), thickness=-1)  # Red for predicted
+    
+    output_path = os.path.join(out_dir, f"frame_{frame_id:04d}.jpg")  # Save with frame index
+    cv2.imwrite(output_path, img)
+
 def calculate_accuracy(predicted_keypoints, ground_truth_keypoints, margin=10):
     """
     Calculate the accuracy of predicted keypoints within a margin of 10 pixels.
@@ -622,65 +652,139 @@ def calculate_accuracy(predicted_keypoints, ground_truth_keypoints, margin=10):
     invisible_accuracy = (correct_invisible / total_invisible) * 100 if total_invisible > 0 else 0
     return accuracy, invisible_accuracy, total_invisible
 
-def process_folder(folder_path, output_path, output_path_line):
+def extract_predicted_keypoints(folder_path, model, keypoint_filter, device, output_path, gt_keypoints):
+    cap = cv2.VideoCapture(folder_path)
+    frame_id = 0
+    predicted_keypoints = []
+    # Initialize UKF for keypoint filtering   
 
-    accuracies = []
-    invisible_accuracies = []
-    total_invisible_keypoints = 0
-    total_inference_time = []
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break  # Stop if video ends
 
-    for filename in os.listdir(folder_path):
-        if filename.endswith(".jpg") or filename.endswith(".png"):
-            image_path = os.path.join(folder_path, filename)
-            img_tensor = prepare_image(image_path).to(device)
-            start_time = time.time()
-            KGNN2D = predict(model, img_tensor)
-            print(KGNN2D.shape)
-            end_time = time.time()
-            inference_time = end_time - start_time
-            print(f"Inference time for {filename}: {inference_time:.4f} seconds")
-            ordered_keypoints = reorder_batch_keypoints(KGNN2D)
-            denormalized_keypoints = postprocess_keypoints(ordered_keypoints)
-            
-            json_filename = filename.split('.')[0] + '.json'
-            json_path = os.path.join(folder_path, json_filename)
-            ground_truth_keypoints = load_ground_truth(json_path)
-           
-            img = cv2.imread(image_path)
-            img_copy = copy.deepcopy(img)
+        # Convert frame to image tensor
+        image = Image.fromarray(frame)
+        img_tensor = F.to_tensor(image).to(device)
 
-            # draw_lines_between_keypoints(img_copy, ground_truth_keypoints, (0, 0, 255))
-            
-            cv2.imwrite(os.path.join(output_path_line, filename), img_copy)
-            visualize_keypoints_with_ground_truth(image_path, denormalized_keypoints, ground_truth_keypoints, output_path)
-            img_with_keypoints = cv2.imread(os.path.join(output_path, filename))
+        # Predict keypoints using KGNN2D
+        KGNN2D = predict(model, img_tensor)
 
-            # Calculate and store accuracy
-            accuracy, invisible_accuracy, num_invisible = calculate_accuracy(denormalized_keypoints, ground_truth_keypoints, margin=10)
-            accuracies.append(accuracy)
-            invisible_accuracies.append(invisible_accuracy)
-            total_inference_time.append(inference_time)
-            total_invisible_keypoints += num_invisible
-            print(f"Accuracy for {filename}: {accuracy}%")
-            print(f"Invisible Keypoint Accuracy for {filename}: {invisible_accuracy}%")
+        # Reorder and denormalize keypoints
+        ordered_keypoints = reorder_batch_keypoints(KGNN2D)
+        denormalized_keypoints = postprocess_keypoints(ordered_keypoints).squeeze(0)
 
-            # Save the image with lines
-            cv2.imwrite(os.path.join(output_path, filename), img_with_keypoints)
+        # print(denormalized_keypoints.cpu().numpy())
 
-    # Print overall accuracy
-    overall_accuracy = np.mean(accuracies)
-    overall_invisible_accuracy = np.mean(invisible_accuracies)
-    avg_inference_time = np.mean(total_inference_time)
-    print(f"Overall accuracy: {overall_accuracy}%")
-    print(f"Overall invisible keypoint accuracy: {overall_invisible_accuracy}%")
-    print(f"Total number of invisible keypoints: {total_invisible_keypoints}")
-    print(f"Average inference time: {avg_inference_time}")
+        # Apply UKF to smooth keypoints
+        filtered_keypoints = keypoint_filter.update(denormalized_keypoints)
 
-folder_path = '/home/jc-merlab/Pictures/Data/occ_phys_test_data/'
-output_path = '/home/jc-merlab/Pictures/Data/occ_phys_test_data/gcn_output_v3/'
-output_path_line = '/home/jc-merlab/Pictures/Data/occ_test_op_line/'
-process_folder(folder_path, output_path, output_path_line)
+        # print(filtered_keypoints.shape)
 
+        # Visualize UKF-smoothed keypoints
+        # visualize_keypoints(frame, filtered_keypoints, output_path, frame_id)
+        visualize_keypoints(frame, filtered_keypoints, gt_keypoints[frame_id], output_path, frame_id)
+
+
+        predicted_keypoints.append(np.array(filtered_keypoints))
+
+        frame_id += 1  # Increment frame count
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+    return predicted_keypoints
+
+def compute_errors(gt_keypoints, pred_keypoints):
+    errors_per_frame = []
+    errors_per_keypoint = {i: [] for i in range(9)}
+
+    for frame_idx in range(len(gt_keypoints)):
+        gt = gt_keypoints[frame_idx]
+        pred = pred_keypoints[frame_idx]
+
+        frame_errors = np.linalg.norm(gt - pred, axis=1)
+        errors_per_frame.append(np.mean(frame_errors))
+
+        for i in range(9):
+            errors_per_keypoint[i].append(frame_errors[i])
+
+    return errors_per_frame, errors_per_keypoint
+
+def visualize_errors(errors_per_frame, errors_per_keypoint):
+    frames = list(range(len(errors_per_frame)))
+
+    plt.figure(figsize=(16,12))
+    plt.plot(frames, errors_per_frame, label="Mean Error per Frame", color='b')
+    plt.xlabel("Frame", fontsize=28)
+    plt.ylabel("Mean Error (pixels)", fontsize=28)
+    plt.title("Frame-wise Keypoint Prediction Error", fontsize=28)
+    plt.xticks(fontsize=18)  # Increase font size of x-axis tick values
+    plt.yticks(fontsize=18)  # Increase font size of y-axis tick values
+    plt.legend(fontsize=20)
+    plt.grid()
+    plt.show()
+
+def visualize_individual_keypoint_errors(errors_per_keypoint):
+    fig, axes = plt.subplots(3, 3, figsize=(15, 12))
+    fig.suptitle("Per-Keypoint Error Over Frames", fontsize=20)
+
+    frames = list(range(len(errors_per_keypoint[0])))
+
+    # Compute global min and max values for consistent y-axis limits
+    min_error = min(min(errors) for errors in errors_per_keypoint.values())
+    max_error = max(max(errors) for errors in errors_per_keypoint.values())
+
+    for i, ax in enumerate(axes.flatten()):
+        ax.plot(frames, errors_per_keypoint[i], label=f"Keypoint {i+1}", color='r')
+        ax.set_title(f"Keypoint {i+1}", fontsize=14)
+        ax.set_xlabel("Frame", fontsize=12)
+        ax.set_ylabel("Error (pixels)", fontsize=12)
+        ax.legend()
+        ax.grid()
+
+        # Apply the same y-axis limit for consistency
+        ax.set_ylim(0, 159)
+
+    plt.tight_layout()
+    plt.show()
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+print(device)
+
+weights_path = '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_planning_b1_e50_v8.pth'
+model_kprcnn = torch.load(weights_path).to(device)
+model_kprcnn.eval()
+
+# **Final Execution**
+non_occluded_video_path = "/home/jc-merlab/Pictures/Test_Data/vid_occ_gt/exp_01/output_video.avi"
+gt_keypoints = extract_gt_keypoints(non_occluded_video_path, model_kprcnn, device)
+
+model_kpgcn = KeypointPipeline(weights_path)
+model_kpgcn = model_kpgcn.to(device)
+
+occluded_video_path = "/home/jc-merlab/Pictures/Test_Data/vid_occ_pred/exp_01/output_video.avi"
+output_path = '/home/jc-merlab/Pictures/Test_Data/vid_occ_kpgcn_gt_ukf_01/'
+os.makedirs(output_path, exist_ok=True)
+
+# Load the checkpoint
+checkpoint_path = '/home/jc-merlab/Pictures/Data/trained_models/gcn_ckpt/kprcnn_occ_gcn_ckpt_b128e17.pth'
+checkpoint = torch.load(checkpoint_path)
+
+# Extract the state dictionary
+model_state_dict = checkpoint['model_state_dict']
+
+# Load the state dictionary into the model
+model_kpgcn.load_state_dict(model_state_dict)
+
+model_kpgcn.eval()  # Set the model to evaluation mode
+
+keypoint_filter = KeypointUKF()
+pred_keypoints = extract_predicted_keypoints(occluded_video_path, model_kpgcn, keypoint_filter, device, output_path, gt_keypoints)
+
+errors_per_frame, errors_per_keypoint = compute_errors(gt_keypoints, pred_keypoints)
+visualize_errors(errors_per_frame, errors_per_keypoint)
+visualize_individual_keypoint_errors(errors_per_keypoint)
 
 
 

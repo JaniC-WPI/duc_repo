@@ -12,7 +12,7 @@
 // #include "encoderless_vs/control_points.h"
 #include "panda_test/energyFuncMsg.h"
 // #include "encoderless_vs/franka_control_points.h"
-#include "panda_test/dl_img.h"
+#include "panda_test/dl_sim_img.h"
 #include "panda_test/vel_start.h"
 
 #include "std_msgs/Float32.h"
@@ -123,7 +123,7 @@ int main(int argc, char **argv){
     ros::service::waitForService("franka_kp_dl_service", 1000);  
 
     // Declare Service clients
-    ros::ServiceClient kp_client = n.serviceClient<panda_test::dl_img>("franka_kp_dl_service");
+    ros::ServiceClient kp_client = n.serviceClient<panda_test::dl_sim_img>("franka_kp_dl_service");
     ros::ServiceClient energyClient = n.serviceClient<panda_test::energyFuncMsg>("computeEnergyFunc");
     
     // Initializing status msg
@@ -212,7 +212,7 @@ int main(int argc, char **argv){
     panda_test::energyFuncMsg msg;
 
     // Declaring msg for control points service call
-    panda_test::dl_img cp_msg;
+    panda_test::dl_sim_img cp_msg;
     cp_msg.request.input = 1;
 
     float t = 1/rate; // time in seconds, used for integrating angular velocity

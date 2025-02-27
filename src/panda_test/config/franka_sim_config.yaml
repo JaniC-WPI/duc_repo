@@ -3,6 +3,7 @@ vsbot :
   deeplearning:
     # weights_path: '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_weights_ld_b1_e30.pth'
     weights_path: '/home/jc-merlab/Pictures/Data/trained_models/keypointsrcnn_planning_b1_e50_v8.pth'
+    inpaint_path: '/home/jc-merlab/Pictures/Data/trained_models/generator.pth'
 
 # Jacobian Estimation Parameters ------------------------------------
   estimation:
@@ -33,9 +34,9 @@ vsbot :
     # jacobian: [19, 47, -79,  7, 89, -13, 71, -59, -23, 61, 41, -67,  -3,  2, -11, 29, -43, -31] #6X3 features
     # jacobian: [19, 47, -79,  7, 89, -13] # 2X3 features
    
-    gains1: [-3.0,-3.0,-3.0,-3.0,-3.0,-3.0,-3.0,-3.0,-3.0,-3.0] # for intermediate configs
-    # gains2: [-3.0,-3.0,-3.0,-3.0,-3.0,-3.0, -7.0, -7.0] # for last config
-    gains2: [-3.0,-3.0,-3.0,-3.0,-2.0,-2.0,-2.0,-2.0,-2.0,-2.0]
+    gains1: [-3.0,-3.0,-3.0,-3.0,-2.5,-2.5,-2.5,-2.5,-2.5,-2.5] # for intermediate configs
+    # gains2: [-2.5,-2.5,-2.5,-2.5,-2.5,-2.5, -7.0, -7.0] # for last config
+    gains2: [-3.0,-3.0,-3.0,-3.0,-2.5,-2.5,-2.5,-2.5,-2.5,-2.5]
 
 
     debug_mode: 1

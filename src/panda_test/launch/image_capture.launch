@@ -5,18 +5,18 @@
 
     <!-- setting auto exposure parameter to False -->
    <node name="set_auto_exposure_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera enable_auto_exposure False"/>
-   <node name="set_brigtness_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera brightness -30"/>
+   <node name="set_brigtness_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera brightness -40"/>
    <!-- <node name="set_sharp_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera sharpness 200"/> -->
    <!-- <node name="set_enable_wb_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera enable_auto_white_balance False"/> -->
    <!-- <node name="set_wb_rgb" pkg="dynamic_reconfigure" type="dynparam" args="set /camera/rgb_camera white_balance -5000"/> -->
-
-
 
     <!-- Run this file to test a newly trained keypoint detection model on realtime otherwise keep commented -->
     <!-- <node name="image_capture" pkg="panda_test" type="kprcnn_track_3d.py" respawn="false" output="screen" /> -->
 
     <!-- Run this file to capture raw image data while the robot is in motion on realtime otherwise keep commented -->
-    <node name="image_capture" pkg="panda_test" type="image_capture.py" respawn="false" output="screen" />
+    <!-- <node name="image_capture" pkg="panda_test" type="image_capture.py" respawn="false" output="screen" /> -->
+    <node name="image_capture" pkg="panda_test" type="inpainting_direct_ros.py" respawn="false" output="screen" />
+
 
 
     <node name="image_view" pkg="image_view" type="image_view" respawn="false" output="screen">

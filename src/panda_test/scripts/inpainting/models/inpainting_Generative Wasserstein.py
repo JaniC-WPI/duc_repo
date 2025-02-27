@@ -16,7 +16,7 @@ from sklearn.model_selection import train_test_split
 from torchmetrics.image import StructuralSimilarityIndexMeasure
 from torchmetrics.image import TotalVariation
 
-from utils_1.inpainting_utils import *
+from utils_inpaint.inpainting_utils import *
 
 torch.backends.cudnn.enabled = True
 torch.backends.cudnn.benchmark =True

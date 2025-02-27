@@ -101,7 +101,7 @@ import os
 import sys
 
 # Paths to the input and output directories
-default_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/panda_rearranged_data/path_planning_rearranged/'
+default_data_dir = '/home/jc-merlab/Pictures/Data/occ_new_panda_physical_dataset_trunc_v2/'
 output_data_dir = '/home/jc-merlab/Pictures/panda_data/panda_sim_vel/kp_plan_viz/'
 
 # def visualize_and_save(image, keypoints, filename, output_data_dir):
@@ -139,9 +139,9 @@ def visualize_and_save(image, keypoints, filename, output_data_dir):
             v2 = int(keypoints[i + 1][1])
 
         # Draw the keypoints
-        cv2.circle(image, (u1, v1), radius=3, color=(0, 0, 255), thickness=-1)
+        cv2.circle(image, (u1, v1), radius=8, color=(0, 0, 255), thickness=-1)
         # Draw line connecting the keypoints
-        cv2.line(image, (u1, v1), (u2, v2), color=(0, 255, 0), thickness=1)
+        cv2.line(image, (u1, v1), (u2, v2), color=(0, 255, 0), thickness=3)
 
     # Handle the last keypoint similarly
     if isinstance(keypoints[-1][0], list):
@@ -150,7 +150,7 @@ def visualize_and_save(image, keypoints, filename, output_data_dir):
     else:
         u = int(keypoints[-1][0])
         v = int(keypoints[-1][1])
-    cv2.circle(image, (u, v), radius=3, color=(0, 0, 255), thickness=-1)
+    cv2.circle(image, (u, v), radius=8, color=(0, 0, 255), thickness=-1)
 
     # Save the image to the specified output directory
     output_path = os.path.join(output_data_dir, filename)
