@@ -12,7 +12,7 @@
 // #include "encoderless_vs/control_points.h"
 #include "panda_test/energyFuncMsg.h"
 // #include "encoderless_vs/franka_control_points.h"
-#include "panda_test/dl_sim_img.h"
+#include "panda_test/dl_img.h"
 #include "panda_test/vel_start.h"
 
 #include "std_msgs/Float32.h"
@@ -123,7 +123,7 @@ int main(int argc, char **argv){
     ros::service::waitForService("franka_kp_dl_service", 1000);  
 
     // Declare Service clients
-    ros::ServiceClient kp_client = n.serviceClient<panda_test::dl_sim_img>("franka_kp_dl_service");
+    ros::ServiceClient kp_client = n.serviceClient<panda_test::dl_img>("franka_kp_dl_service");
     ros::ServiceClient energyClient = n.serviceClient<panda_test::energyFuncMsg>("computeEnergyFunc");
     
     // Initializing status msg
@@ -146,13 +146,15 @@ int main(int argc, char **argv){
     // Servoing variables
     int window; // Estimation window size
     n.getParam("vsbot/estimation/window", window);
+    int control_window; // Estimation window size
+    n.getParam("vsbot/estimation/control_window", control_window);
     float rate; // control & estimation loop rate
     n.getParam("vsbot/estimation/rate", rate);
     float thresh1;
     n.getParam("vsbot/control/thresh1",thresh1);
     float thresh2;
     n.getParam("vsbot/control/thresh2",thresh2);
-    float lam;
+        float lam;
     n.getParam("vsbot/control/lam",lam);
     std::vector<float> gains1;
     n.getParam("vsbot/control/gains1",gains1);
@@ -164,6 +166,10 @@ int main(int argc, char **argv){
     n.getParam("vsbot/shape_control/no_of_actuators", no_of_actuators);
     int debug_mode = 0;
     n.getParam("vsbot/control/debug_mode", debug_mode);
+
+    // Fallback velocity incase Nan velocity generated
+    float fallback_vel;
+    n.getParam("vsbot/control/fallback_vel", fallback_vel);
 
     int it = 0;                                     // iterator
     std::vector<float> error (no_of_features,0);    //error vector
@@ -212,7 +218,7 @@ int main(int argc, char **argv){
     panda_test::energyFuncMsg msg;
 
     // Declaring msg for control points service call
-    panda_test::dl_sim_img cp_msg;
+    panda_test::dl_img cp_msg;
     cp_msg.request.input = 1;
 
     float t = 1/rate; // time in seconds, used for integrating angular velocity
@@ -432,9 +438,9 @@ int main(int argc, char **argv){
 
         // call compute energy functional
         energyClient.call(msg);
-        if(debug_mode==1){
-            std::cout << "Is the energyClient called: " << std::endl;
-        }
+        // if(debug_mode==1){
+        //     std::cout << "Is the energyClient called: " << std::endl;
+        // }
 
         // Populating service response
         std::vector<float> qhatdot = msg.response.qhat_dot.data;
@@ -497,6 +503,9 @@ int main(int argc, char **argv){
     std_msgs::Int32 current_goal_set_msg; // Message for publishing current goal set index
 
     while(ros::ok() && !end_flag && current_goal_set < num_goal_sets){    // convergence condition
+
+        bool fallback_used = false;
+
         // error norm "err" is always positive
         // compute current error & norm
         for(int i = 0; i < no_of_features; i++){
@@ -511,24 +520,27 @@ int main(int argc, char **argv){
 
         std::vector<float> current_gains;   
         std::vector<float> gamma_control; 
+        float cur_sat;
+
 
         // current_gains = gains1;
         if ((err <= mod_err_thresh[1])) {
-            current_gains = gains1;
+                        current_gains = gains1;
             gamma_control = gamma_control_01;
-        }
+            }
         else {
             gamma_control = gamma_control_02;
             current_gains = gains2; // Use the second set of gains for the last goal
+            cur_sat = saturation[0];
         }
         // current_gains = gains1;
         if(debug_mode == 1) {
-            std::cout << "Current goal set: " << current_goal_set << std::endl;
-            std::cout << "Number of goal sets: " << num_goal_sets << std::endl;
-            std::cout << "Current Threshold in use: " << ((current_goal_set < num_goal_sets - 1) ? thresh1 : thresh2) << std::endl;
+            // std::cout << "Current goal set: " << current_goal_set << std::endl;
+            // std::cout << "Number of goal sets: " << num_goal_sets << std::endl;
+            // std::cout << "Current Threshold in use: " << ((current_goal_set < num_goal_sets - 1) ? thresh1 : thresh2) << std::endl;
             std::cout << "Current Error: " << err << std::endl;
         }
-        std::cout << "gamma: " << gamma_control[0] << " " << gamma_control[1] << " " << gamma_control[2] << std::endl;
+        // std::cout << "gamma: " << gamma_control[0] << " " << gamma_control[1] << " " << gamma_control[2] << std::endl;
 
         // Convert gains to Eigen vector
         Eigen::VectorXf K(no_of_features);
@@ -547,7 +559,7 @@ int main(int argc, char **argv){
             row_count = row_count + 1;
             itr = itr + no_of_actuators;
         }
-        std_msgs::Float64MultiArray Qhat_msg;
+                std_msgs::Float64MultiArray Qhat_msg;
         Qhat_msg.layout.dim.push_back(std_msgs::MultiArrayDimension());
         Qhat_msg.layout.dim[0].label = "Qhat_column_elements";
         Qhat_msg.layout.dim[0].size = Qhat.rows() * Qhat.cols(); // Assuming Qhat is a dense matrix
@@ -586,15 +598,34 @@ int main(int argc, char **argv){
         }       
         // Closed form solution for linearly independent columns
         // A_inv = (A.transpose()*A).inverse() * A.transpose()
+        // Applying SVD based pseudo inverse
+        // Eigen::JacobiSVD<Eigen::MatrixXf> svd(Qhat, Eigen::ComputeThinU | Eigen::ComputeThinV);
+        // float tolerance = 1e-6;
+        // Eigen::VectorXf singular_values = svd.singularValues();
+        // for (int i = 0; i < singular_values.size(); ++i) {
+        //     if (singular_values(i) < tolerance) singular_values(i) = 0.0;
+        //     else singular_values(i) = 1.0 / singular_values(i);
+        // }
+        // Damped Pseudo-Inverse (Tikhonov regularization)
+        float lambda = 1e-4;
+        // Eigen::MatrixXf Qhat_inv = (Qhat.transpose() * Qhat + lambda * Eigen::MatrixXf::Identity(Qhat.cols(), Qhat.cols())).inverse() * Qhat.transpose();
+
+
+        // Calls svd internally - supposedly more efficient
+        // Eigen::MatrixXf Qhat_inv = Qhat.completeOrthogonalDecomposition().pseudoInverse();
+        // Eigen::MatrixXf Qhat_inv = svd.matrixV() * singular_values.asDiagonal() * svd.matrixU().transpose();
         Eigen::MatrixXf Qhat_inv = (Qhat.transpose()*Qhat).inverse() * Qhat.transpose();
-        std::cout << "Erroc Vector before saturation" << error_vec << std::endl; 
+        std::cout << "Is Qhat Inverse the issue for NaN" << Qhat_inv << std::endl; 
+
+        std::cout << "Current saturation" << cur_sat << std::endl; 
         // Saturating the error
         for(int i=0; i<no_of_features; i++){
-            if(abs(error_vec(i)) > saturation){
-                error_vec(i) = (error_vec(i)/abs(error_vec(i)))*saturation;
+            if(abs(error_vec(i)) > cur_sat){
+                    if (abs(error_vec(i)) < 1e-6) error_vec(i) = 0.0;
+                    else error_vec(i) = (error_vec(i)/abs(error_vec(i))) * cur_sat;
+                }
             }
-        }
-        std::cout << "Erroc Vector after saturation" << error_vec << std::endl; 
+                    // std::cout << "Erroc Vector after saturation" << error_vec << std::endl; 
         std_msgs::Float64MultiArray Qhat_feat_msg;
         Qhat_feat_msg.layout.dim.push_back(std_msgs::MultiArrayDimension());
         Qhat_feat_msg.layout.dim[0].label = "Qhat_row_elements";
@@ -618,21 +649,42 @@ int main(int argc, char **argv){
         std_msgs::Float32MultiArray feature_errors_msg;
         feature_errors_msg.data = feature_errors;
         joint_vel = (Qhat_inv)*(Eigen::MatrixXf(K.asDiagonal())*error_vec);
+        if (debug_mode == 1){
+            std::cout << "Current Joint_vel: " << joint_vel << std::endl;
+        }
         // Publish velocity to robot
         // Check for NaNs in the computed velocities
-        if (!joint_vel.allFinite()) {
-            std::cerr << "Warning: NaN detected in joint velocities. Applying minimal velocities." << std::endl;
-        }
+        // if (!joint_vel.allFinite()) {
+        //     std::cerr << "Warning: NaN detected in joint velocities. Applying minimal velocities." << std::endl;
+        // }
         j_vel.data.clear();
-        j_vel.data.push_back(joint_vel[0]);
-        j_vel.data.push_back(joint_vel[1]);
-        if (no_of_actuators==3) {
-            j_vel.data.push_back(joint_vel[2]); // Only add j3_vel if no_of_actuators is more than 2
+
+        for (int i =0; i < no_of_actuators; ++i) {
+            float vel_i = joint_vel[i];
+            if (!std::isfinite(vel_i)) {
+                std::cerr << "Warning: NaN or Inf detected in joint " << i 
+                  << ". Applying fallback velocity to this joint." << std::endl;
+
+                vel_i = fallback_vel;  // Replace with your fallback value for that joint
+                fallback_used = true;
+            }
+
+            j_vel.data.push_back(vel_i);
         }
+
+        // j_vel.data.push_back(joint_vel[0]);
+        // j_vel.data.push_back(joint_vel[1]);
+        // if (err <= 150) {
+        //     j_vel.data.push_back(joint_vel[2]);
+        // }
+        // else {
+        //     j_vel.data.push_back(joint_vel[2]*0.5);
+        // }
+        // if (no_of_actuators==3) {
+        //     j_vel.data.push_back(joint_vel[2]); // Only add j3_vel if no_of_actuators is more than 2
+        // }
         j_pub.publish(j_vel);  
-        if (debug_mode == 1){
-            std::cout << "Current Joint_vel: " << j_vel << std::endl;
-        }
+        
         // Get current state of robot
         control_points.data.clear();
         kp_client.call(cp_msg);
@@ -686,7 +738,7 @@ int main(int argc, char **argv){
         //     std::cout << "Moving to closer goal set " << current_goal_set << std::endl;
         // }
         // Check if we should move to a different goal
-        if (err < ((current_goal_set < num_goal_sets - 1) ? thresh1 : thresh2)) {
+                if (err < ((current_goal_set < num_goal_sets - 1) ? thresh1 : thresh2)) {
             // If the current goal is reached
             std::cout << "Goal " << current_goal_set << " reached. Moving to next goal." << std::endl;
             if (current_goal_set < num_goal_sets - 1) {
@@ -717,48 +769,30 @@ int main(int argc, char **argv){
                     std::cout << "N Size before condition : " << data_size << std::endl;
                     std::cout << "n Size before condition : " << ds.size() << std::endl;
             }
-            if (data_size < window) {
-                if(debug_mode==2){
-                    std::cout << "Current Window Size for small n: " << data_size << std::endl;
-                }
+            if (data_size < control_window) {
+                // if(debug_mode==2){
+                //     std::cout << "Current Window Size for small n: " << data_size << std::endl;
+                // }
                 for(int i=0; i<no_of_features;i++){
                     dSinitial.push_back(ds[i]);
                 }
                 for(int i=0; i<no_of_actuators;i++){
                     dRinitial.push_back(dr[i]);
                 }
-                if(debug_mode==2){
-                    std::cout << "Current Window Size for small n after replacement: " << data_size << std::endl;
-                    std::cout << "current dSinitial size after pushing back dSinitial with ds: " << (dSinitial.size()/no_of_features) << std::endl;
-                    std::cout << "current ds size after pushing back dsInitial with ds: " << (ds.size()/no_of_features) << std::endl;
-                }
             }
             else {
                 // Discard oldest and push latest sample
-                if(debug_mode==2){
-                    std::cout << "Current Window Size for big N: " << data_size << std::endl;
-                    std::cout << "current dSinitial size before replacing dSinitial with ds: " << (dSinitial.size()/no_of_features) << std::endl;
-                    std::cout << "current ds size before replacing dsInitial with ds: " << (ds.size()/no_of_features) << std::endl;
-                }
                 for(int i=0; i<no_of_features;i++){
                     dSinitial[i] = ds[i];
                 }
                 for(int i=0; i<no_of_actuators;i++){
                     dRinitial[i] = dr[i];
                 }
-                 if(debug_mode==2){
-                    std::cout << "Current Window Size for big N: " << data_size << std::endl;
-                    std::cout << "current dSinitial size after replacing dSinitial with ds: " << (dSinitial.size()/no_of_features) << std::endl;
-                    std::cout << "current ds size after replacing dSinitial with ds: " << (ds.size()/no_of_features) << std::endl;
-                }
                 std::rotate(dSinitial.begin(), dSinitial.begin()+no_of_features, dSinitial.end());
                 std::rotate(dRinitial.begin(), dRinitial.begin()+no_of_actuators, dRinitial.end());              
             }          
             
             int cur_win_size = dSinitial.size()/no_of_features;
-            if(debug_mode==1){
-                    std::cout << "Is the control out of the window size if else block: " << std::endl;
-            }
             // Compute Jacobian update with new sampling window
             // converting vectors to ros msg for service
             dSmsg.data.clear();
@@ -773,7 +807,7 @@ int main(int argc, char **argv){
             for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr){
                 qhatmsg.data.push_back(*itr);
             }
-            std::cout << "gamma: " << gamma_control[0] << " " << gamma_control[1] << " " << gamma_control[2] << std::endl;
+            // std::cout << "gamma: " << gamma_control[0] << " " << gamma_control[1] << " " << gamma_control[2] << std::endl;
 
             msg.request.gamma_first_actuator = gamma_control[0];
             msg.request.gamma_second_actuator = gamma_control[1];
@@ -785,16 +819,15 @@ int main(int argc, char **argv){
             msg.request.feature_error_magnitude = error_magnitude; 
             msg.request.feature_errors = feature_errors_msg; 
             msg.request.data_size = cur_win_size;
-            // Call energy functional service
+
             energyClient.call(msg);
-            if(debug_mode==1){
-                    std::cout << "Is the energyClient called: " << std::endl;
-            }
             if (!energyClient.call(msg)) {
                 ROS_ERROR("Failed to call service computeEnergyFunc");
                 break;  
             }
-            // Populate service response
+            else {
+                std::cout << "The energyClient called: " << std::endl;
+            }
             std::vector<float> qhatdot = msg.response.qhat_dot.data;
             // Update Jacobian
             for(int i = 0; i<qhat.size(); i++){
@@ -804,7 +837,8 @@ int main(int argc, char **argv){
             qhatmsg.data.clear();
             for(std::vector<float>::iterator itr = qhat.begin(); itr != qhat.end(); ++itr){
                 qhatmsg.data.push_back(*itr);
-            }          
+            }            
+
             // Update state variables
             old_features = cur_features;
             // Publish ds, dr, J, & error vectors to store
